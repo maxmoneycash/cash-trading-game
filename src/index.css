@@ -2,6 +2,23 @@
   margin: 0;
   padding: 0;
   box-sizing: border-box;
+  /* Prevent text selection */
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -khtml-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  /* Prevent tap highlighting */
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  /* Prevent elastic scrolling */
+  position: fixed;
+  overflow: hidden;
+  width: 100%;
+  height: 100%;
 }
 
 body {
@@ -12,6 +29,24 @@ body {
   overflow: hidden;
   height: 100vh;
   width: 100vw;
+  /* Prevent pull-to-refresh */
+  overscroll-behavior: none;
+  /* Ensure no text selection */
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  /* Prevent elastic scrolling on iOS */
+  position: fixed;
+  touch-action: none;
+}
+
+/* Prevent any highlighting on interactive elements */
+canvas {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: none;
 }
 
 #root {

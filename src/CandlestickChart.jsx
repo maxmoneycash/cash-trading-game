@@ -870,25 +870,50 @@ const CandlestickChart = () => {
             };
 
             // Touch/mouse handlers for the chart canvas
+            let touchActive = false;
+
             p.mousePressed = () => {
                 if (p.mouseX >= 0 && p.mouseX <= p.width && p.mouseY >= 0 && p.mouseY <= p.height) {
-                    startPosition();
+                    if (!touchActive) { // Prevent double triggering with touch
+                        startPosition();
+                    }
                     return false;
                 }
             };
 
             p.mouseReleased = () => {
-                closePosition();
+                if (!touchActive) { // Prevent double triggering with touch
+                    closePosition();
+                }
                 return false;
             };
 
-            p.touchStarted = () => {
+            p.touchStarted = (event) => {
+                touchActive = true;
                 startPosition();
+                // Prevent all default behaviors
+                if (event && event.preventDefault) {
+                    event.preventDefault();
+                }
                 return false;
             };
 
-            p.touchEnded = () => {
+            p.touchMoved = (event) => {
+                // Keep the position open while finger moves
+                // Prevent all default behaviors
+                if (event && event.preventDefault) {
+                    event.preventDefault();
+                }
+                return false;
+            };
+
+            p.touchEnded = (event) => {
+                touchActive = false;
                 closePosition();
+                // Prevent all default behaviors
+                if (event && event.preventDefault) {
+                    event.preventDefault();
+                }
                 return false;
             };
         };
@@ -902,11 +927,44 @@ const CandlestickChart = () => {
         };
     }, []); // Removed balance dependency to prevent chart resets
 
-    // Prevent scrolling on mobile
+    // Prevent scrolling and unwanted mobile behaviors
     useEffect(() => {
+        // Prevent scroll
         const preventScroll = (e) => e.preventDefault();
+
+        // Prevent context menu on long press
+        const preventContextMenu = (e) => {
+            e.preventDefault();
+            return false;
+        };
+
+        // Prevent selection on double tap
+        const preventSelection = (e) => {
+            e.preventDefault();
+            return false;
+        };
+
+        // Add event listeners
         document.body.addEventListener('touchmove', preventScroll, { passive: false });
-        return () => document.body.removeEventListener('touchmove', preventScroll);
+        document.addEventListener('contextmenu', preventContextMenu);
+        document.addEventListener('selectstart', preventSelection);
+        document.addEventListener('selectionchange', preventSelection);
+
+        // Disable pinch zoom on iOS
+        document.addEventListener('gesturestart', preventScroll);
+        document.addEventListener('gesturechange', preventScroll);
+        document.addEventListener('gestureend', preventScroll);
+
+        // Clean up
+        return () => {
+            document.body.removeEventListener('touchmove', preventScroll);
+            document.removeEventListener('contextmenu', preventContextMenu);
+            document.removeEventListener('selectstart', preventSelection);
+            document.removeEventListener('selectionchange', preventSelection);
+            document.removeEventListener('gesturestart', preventScroll);
+            document.removeEventListener('gesturechange', preventScroll);
+            document.removeEventListener('gestureend', preventScroll);
+        };
     }, []);
 
     const formatPnl = (value) => {
@@ -925,9 +983,25 @@ const CandlestickChart = () => {
             overflow: 'hidden',
             background: 'linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 50%, #0f0f0f 100%)',
             userSelect: 'none',
-            touchAction: 'none'
+            WebkitUserSelect: 'none',
+            MozUserSelect: 'none',
+            msUserSelect: 'none',
+            touchAction: 'none',
+            WebkitTouchCallout: 'none',
+            WebkitTapHighlightColor: 'transparent',
+            cursor: 'pointer'
         }}>
-            <div ref={chartRef} style={{ width: '100%', height: '100%' }}></div>
+            <div ref={chartRef} style={{
+                width: '100%',
+                height: '100%',
+                userSelect: 'none',
+                WebkitUserSelect: 'none',
+                MozUserSelect: 'none',
+                msUserSelect: 'none',
+                touchAction: 'none',
+                WebkitTouchCallout: 'none',
+                WebkitTapHighlightColor: 'transparent'
+            }}></div>
 
             {/* Hold Indicator */}
             {isHolding && (
@@ -1059,6 +1133,41 @@ const CandlestickChart = () => {
         @keyframes firework {
           0% { transform: scale(0) rotate(0deg); opacity: 1; }
           100% { transform: scale(1) rotate(180deg); opacity: 0; }
+        }
+        
+        /* Prevent text selection and Safari highlighting */
+        * {
+          -webkit-touch-callout: none;
+          -webkit-user-select: none;
+          -khtml-user-select: none;
+          -moz-user-select: none;
+          -ms-user-select: none;
+          user-select: none;
+          -webkit-tap-highlight-color: transparent;
+        }
+        
+        /* Prevent image dragging */
+        img {
+          -webkit-user-drag: none;
+          -khtml-user-drag: none;
+          -moz-user-drag: none;
+          -o-user-drag: none;
+          user-drag: none;
+        }
+        
+        /* Ensure the entire app prevents selection */
+        html, body {
+          -webkit-touch-callout: none;
+          -webkit-user-select: none;
+          -khtml-user-select: none;
+          -moz-user-select: none;
+          -ms-user-select: none;
+          user-select: none;
+          -webkit-tap-highlight-color: transparent;
+          overflow: hidden;
+          position: fixed;
+          width: 100%;
+          height: 100%;
         }
       `}</style>
         </div>

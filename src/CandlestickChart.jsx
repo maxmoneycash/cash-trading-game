@@ -10,6 +10,36 @@ const CandlestickChart = () => {
     const [candleCount, setCandleCount] = useState(0);
     const [isHolding, setIsHolding] = useState(false);
     const [showFireworks, setShowFireworks] = useState(false);
+    const [showLiquidation, setShowLiquidation] = useState(false);
+    const [rugpullType, setRugpullType] = useState(null);
+    const [displayPnl, setDisplayPnl] = useState(0); // Animated display value
+
+    // Smooth PNL animation
+    useEffect(() => {
+        const animationDuration = 300; // milliseconds
+        const steps = 30;
+        const stepDuration = animationDuration / steps;
+        const difference = pnl - displayPnl;
+        const increment = difference / steps;
+
+        if (Math.abs(difference) < 0.01) {
+            setDisplayPnl(pnl);
+            return;
+        }
+
+        let currentStep = 0;
+        const interval = setInterval(() => {
+            currentStep++;
+            if (currentStep >= steps) {
+                setDisplayPnl(pnl);
+                clearInterval(interval);
+            } else {
+                setDisplayPnl(prev => prev + increment);
+            }
+        }, stepDuration);
+
+        return () => clearInterval(interval);
+    }, [pnl]);
 
     // More realistic Bitcoin historical data simulation
     const generateBitcoinData = () => {
@@ -59,24 +89,24 @@ const CandlestickChart = () => {
         for (let i = 0; i < 3000; i++) { // Reasonable timeline
             const currentDate = new Date(startDate.getTime() + i * 24 * 60 * 60 * 1000);
 
-            // Much more controlled growth - realistic for Bitcoin's actual growth
+            // More realistic price ranges that avoid obvious floors/ceilings
             const yearProgress = i / 365.25; // Years since start
             let baseGrowthMultiplier = 1;
 
-            // Scaled up growth phases for playable values - REDUCED GROWTH
+            // More realistic and less predictable growth phases
             if (yearProgress < 1) baseGrowthMultiplier = 1; // 2009: $10
-            else if (yearProgress < 2) baseGrowthMultiplier = 1.8; // 2010: $18 (was 2.5)
-            else if (yearProgress < 3) baseGrowthMultiplier = 5; // 2011: $50 (was 10)
-            else if (yearProgress < 4) baseGrowthMultiplier = 12; // 2012: $120 (was 25)
-            else if (yearProgress < 5) baseGrowthMultiplier = 40; // 2013: $400 (was 100)
-            else if (yearProgress < 6) baseGrowthMultiplier = 20; // 2014: $200 (was 50) - bigger crash
-            else if (yearProgress < 7) baseGrowthMultiplier = 15; // 2015: $150 (was 40) - extended bear
-            else if (yearProgress < 8) baseGrowthMultiplier = 30; // 2016: $300 (was 80)
-            else if (yearProgress < 9) baseGrowthMultiplier = 600; // 2017: $6,000 (was 1500)
-            else if (yearProgress < 10) baseGrowthMultiplier = 200; // 2018: $2,000 (was 600) - bigger crash
-            else if (yearProgress < 11) baseGrowthMultiplier = 350; // 2019: $3,500 (was 900)
-            else if (yearProgress < 12) baseGrowthMultiplier = 1200; // 2020: $12,000 (was 3000)
-            else baseGrowthMultiplier = 2000; // 2021+: $20,000 (was 5000)
+            else if (yearProgress < 2) baseGrowthMultiplier = 1.5; // 2010: $15
+            else if (yearProgress < 3) baseGrowthMultiplier = 3; // 2011: $30
+            else if (yearProgress < 4) baseGrowthMultiplier = 8; // 2012: $80
+            else if (yearProgress < 5) baseGrowthMultiplier = 25; // 2013: $250
+            else if (yearProgress < 6) baseGrowthMultiplier = 18; // 2014: $180 - less dramatic crash
+            else if (yearProgress < 7) baseGrowthMultiplier = 22; // 2015: $220 - less obvious bottom
+            else if (yearProgress < 8) baseGrowthMultiplier = 35; // 2016: $350
+            else if (yearProgress < 9) baseGrowthMultiplier = 180; // 2017: $1,800 - less extreme rally
+            else if (yearProgress < 10) baseGrowthMultiplier = 85; // 2018: $850 - less dramatic crash
+            else if (yearProgress < 11) baseGrowthMultiplier = 110; // 2019: $1,100
+            else if (yearProgress < 12) baseGrowthMultiplier = 320; // 2020: $3,200
+            else baseGrowthMultiplier = 450; // 2021+: $4,500 - more realistic peak
 
             // Combine all sine wave layers for organic movement
             const trendWave = longTermTrend(i) + mediumTerm(i) + shortTerm(i) + noise(i) + microNoise(i);
@@ -93,52 +123,64 @@ const CandlestickChart = () => {
                 }
             }
 
-            // Enhanced volatility with choppy alternating pattern
-            const baseVolatility = 0.02 + Math.pow(Math.random(), 0.6) * 0.15; // 2% to 17% daily moves
-            const choppiness = Math.sin(i * 0.3) * 0.5 + 0.5; // Choppy alternating pattern
-            const alternatingBias = Math.sin(i * 0.8) * 0.3; // Creates alternating green/red periods
+            // Balanced volatility for visual appeal and realism
+            const baseVolatility = 0.02 + Math.pow(Math.random(), 0.6) * 0.12; // 2% to 14% daily moves
+            const choppiness = Math.sin(i * 0.4) * 0.6 + 0.4; // More variation for visual appeal
+            const alternatingBias = Math.sin(i * 0.7) * 0.25; // More alternating for varied colors
 
-            // Massive drawdown periods (bear markets) - MORE FREQUENT
-            const drawdownCycles = Math.sin(i * 0.0008) * 0.5; // Increased amplitude for bigger crashes
-            const miniCrashes = Math.sin(i * 0.05) * 0.3; // Add mini crashes every ~20 candles
-            const drawdownMultiplier = drawdownCycles < -0.15 ? 0.3 + (drawdownCycles + 0.15) * 2 : 1;
+            // Balanced drawdown periods for visual variety
+            const drawdownCycles = Math.sin(i * 0.001) * 0.4; // Medium amplitude for visual interest
+            const miniCrashes = Math.sin(i * 0.04) * 0.2; // Medium mini crashes for variety
+            const drawdownMultiplier = drawdownCycles < -0.15 ? 0.7 + (drawdownCycles + 0.15) * 1.8 : 1;
 
-            // Random direction with more realistic distribution - ADD DOWNWARD BIAS
-            const trendBias = trendWave * 0.4 + alternatingBias - 0.1; // Reduced trend strength, added -0.1 downward bias
-            const randomFactor = (Math.random() - 0.52) * 2; // Slightly favor downward moves
-            const direction = Math.sign(trendBias + randomFactor * 0.8 + miniCrashes);
+            // Add occasional consolidation periods for realism
+            const consolidationCycle = Math.sin(i * 0.015) * 0.6; // Creates sideways periods
+            const isConsolidating = consolidationCycle > 0.4; // 20% of the time in consolidation
+
+            // More dynamic random direction for visual variety
+            const trendBias = trendWave * 0.4 + alternatingBias; // Stronger trend influence
+            const randomFactor = (Math.random() - 0.5) * 2.5; // More random variation
+            const consolidationDamping = isConsolidating ? 0.4 : 1; // Less dampening
+            const direction = Math.sign(trendBias + randomFactor * 0.8 + miniCrashes) * consolidationDamping;
 
             // Calculate current base price with controlled growth
             const basePrice = 10 * baseGrowthMultiplier;
             const currentBasePrice = basePrice * eventMultiplier * drawdownMultiplier;
 
-            // Calculate price movement with higher volatility
-            const volatility = baseVolatility * eventVolatility * (1 + choppiness * 0.7); // Increased from 0.5
-            const moveSize = volatility * currentBasePrice * (0.5 + Math.random() * 0.8); // Bigger moves
+            // Calculate price movement with visual appeal in mind
+            const volatility = baseVolatility * eventVolatility * (1 + choppiness * 0.6); // More dynamic
+            const consolidationVolatility = isConsolidating ? 0.6 : 1; // Less reduction during consolidation
+
+            // Add occasional larger moves for visual interest
+            const bigMoveChance = Math.random();
+            const bigMoveMultiplier = bigMoveChance < 0.05 ? 2.5 : (bigMoveChance < 0.15 ? 1.5 : 1);
+
+            const moveSize = volatility * currentBasePrice * (0.4 + Math.random() * 0.8) * consolidationVolatility * bigMoveMultiplier; // More varied moves
 
             // More realistic OHLC generation
             const open = price;
 
-            // Create realistic intraday patterns with more controlled wicks
-            const wickMultiplier = 0.3 + Math.random() * 0.5; // 30-80% of move size for wicks
-            const openToHigh = Math.random() * moveSize * wickMultiplier * (direction > 0 ? 1.2 : 0.5);
-            const openToLow = Math.random() * moveSize * wickMultiplier * (direction < 0 ? 1.2 : 0.5);
-            const openToClose = direction * moveSize * (0.4 + Math.random() * 0.6);
+            // Create varied intraday patterns for visual appeal
+            const wickMultiplier = 0.3 + Math.random() * 0.7; // 30-100% of move size for more varied wicks
+            const openToHigh = Math.random() * moveSize * wickMultiplier * (direction > 0 ? 1.3 : 0.7);
+            const openToLow = Math.random() * moveSize * wickMultiplier * (direction < 0 ? 1.3 : 0.7);
+            const openToClose = direction * moveSize * (0.4 + Math.random() * 0.7); // More varied body sizes
 
-            // Ensure wicks aren't too extreme
-            const maxWickSize = moveSize * 0.8; // Wicks shouldn't be more than 80% of the total move
+            // Allow for more varied wick sizes
+            const maxWickSize = moveSize * 0.8; // Wicks can be up to 80% of the total move
             const high = open + Math.min(Math.abs(openToHigh), maxWickSize);
             const low = open - Math.min(Math.abs(openToLow), maxWickSize);
             const close = Math.max(low + 0.01, Math.min(high - 0.01, open + openToClose));
 
-            // Gradually move price towards target base price
-            const targetAdjustment = (currentBasePrice - price) * 0.02; // 2% convergence rate
+            // Gradually move price towards target base price with more realistic convergence
+            const targetAdjustment = (currentBasePrice - price) * 0.01; // 1% convergence rate
             const adjustedClose = close + targetAdjustment;
 
-            // Ensure realistic price constraints
-            const finalOpen = Math.max(1, open); // Minimum $1
+            // More realistic price constraints - avoid obvious floors
+            const minPrice = Math.max(currentBasePrice * 0.1, 5); // Minimum 10% of base price or $5
+            const finalOpen = Math.max(minPrice, open);
             const finalHigh = Math.max(finalOpen, high);
-            const finalLow = Math.min(finalOpen, Math.max(1, low));
+            const finalLow = Math.min(finalOpen, Math.max(minPrice, low));
             const finalClose = Math.max(finalLow, Math.min(finalHigh, adjustedClose));
 
             data.push({
@@ -161,7 +203,7 @@ const CandlestickChart = () => {
             let candles = [];
             let allRoundCandles = [];
             let currentIndex = 0;
-            let animationSpeed = 2; // Fixed at 2x speed
+            let animationSpeed = 1.94; // Slowed down by 3% from 2x speed
             let isAnimating = true;
             let lastUpdate = 0;
             let candleWidth = p.windowWidth < 768 ? 4 : 6;
@@ -180,18 +222,181 @@ const CandlestickChart = () => {
             let zoomTransition = 0; // 0 = normal view, 1 = fully zoomed out
             let zoomStartTime = 0;
 
+            // Rugpull/Liquidation system
+            let rugpullActive = false;
+            let rugpullProgress = 0;
+            let rugpullTargetPrice = 0;
+            let rugpullCandles = 0;
+            let rugpullPattern = null;
+            let rugpullSlowMotion = false;
+            let rugpullZoom = 1;
+            let liquidationCandleCreated = false;
+            let liquidationScheduled = false;
+            let liquidationCandleIndex = 0;
+
             // Position tracking - now supporting multiple trades per round
             let currentPosition = null; // Current active position
             let completedTrades = []; // All completed trades in this round
             let currentPnl = 0;
             let isHoldingPosition = false;
 
+            // Money emoji animation system
+            let activeMoneyEmojis = [];
+            let pnlLineEndPos = null; // Track the end position of PNL line
+            let shouldExplodeEmojis = false;
+            let explosionCenter = null;
+
             const bitcoinData = generateBitcoinData();
+
+            // Money emoji class
+            class MoneyEmoji {
+                constructor(x, y) {
+                    this.x = x;
+                    this.y = y;
+                    this.vx = (Math.random() - 0.5) * 8; // Horizontal velocity
+                    this.vy = -Math.random() * 10 - 5; // Initial upward velocity
+                    this.scale = 0.5 + Math.random() * 0.5;
+                    this.rotation = Math.random() * 360;
+                    this.rotationSpeed = (Math.random() - 0.5) * 20;
+                    this.opacity = 255;
+                    this.gravity = 0.5;
+                    this.drag = 0.98;
+                    this.lifetime = 0;
+                    this.maxLifetime = 3000; // 3 seconds
+                    this.exploding = false;
+                    this.explosionVx = 0;
+                    this.explosionVy = 0;
+                }
+
+                explode(centerX, centerY) {
+                    this.exploding = true;
+                    const angle = Math.atan2(this.y - centerY, this.x - centerX);
+                    const force = 15 + Math.random() * 10;
+                    this.explosionVx = Math.cos(angle) * force;
+                    this.explosionVy = Math.sin(angle) * force;
+                    this.gravity = 0.8;
+                }
+
+                update() {
+                    this.lifetime += 16; // ~60fps
+
+                    if (this.exploding) {
+                        this.vx = this.explosionVx;
+                        this.vy = this.explosionVy;
+                        this.explosionVx *= 0.95;
+                        this.explosionVy *= 0.95;
+                    }
+
+                    // Physics
+                    this.vy += this.gravity;
+                    this.vx *= this.drag;
+                    this.vy *= this.drag;
+
+                    this.x += this.vx;
+                    this.y += this.vy;
+                    this.rotation += this.rotationSpeed;
+
+                    // Fade out
+                    if (this.lifetime > this.maxLifetime * 0.7) {
+                        this.opacity = p.map(this.lifetime, this.maxLifetime * 0.7, this.maxLifetime, 255, 0);
+                    }
+
+                    // Return true if should be removed
+                    return this.lifetime > this.maxLifetime || this.y > p.height + 50;
+                }
+
+                draw() {
+                    p.push();
+                    p.translate(this.x, this.y);
+                    p.rotate(p.radians(this.rotation));
+                    p.scale(this.scale);
+                    p.textAlign(p.CENTER, p.CENTER);
+                    p.textSize(40);
+                    p.fill(255, 255, 255, this.opacity);
+                    p.text('💵', 0, 0);
+                    p.pop();
+                }
+            }
+
+            // Update money emojis
+            const updateMoneyEmojis = () => {
+                // Update existing emojis
+                activeMoneyEmojis = activeMoneyEmojis.filter(emoji => {
+                    const shouldRemove = emoji.update();
+                    if (!shouldRemove) {
+                        emoji.draw();
+                    }
+                    return !shouldRemove;
+                });
+
+                // Handle explosion when closing profitable position
+                if (shouldExplodeEmojis && explosionCenter) {
+                    // Create explosion effect with many emojis
+                    for (let i = 0; i < 25; i++) {
+                        const emoji = new MoneyEmoji(
+                            explosionCenter.x + (Math.random() - 0.5) * 30,
+                            explosionCenter.y + (Math.random() - 0.5) * 30
+                        );
+                        emoji.explode(explosionCenter.x, explosionCenter.y);
+                        activeMoneyEmojis.push(emoji);
+                    }
+                    shouldExplodeEmojis = false;
+                }
+            };
+
+            // End game due to liquidation/rugpull
+            const endGameLiquidation = () => {
+                // These should already be stopped, but ensure they are
+                rugpullActive = false;
+                rugpullSlowMotion = false;
+                rugpullZoom = 1;
+                liquidationScheduled = false;
+                liquidationCandleCreated = false;
+                isRoundActive = false; // Ensure round is stopped
+
+                // Check if user was actually holding a position
+                const wasHoldingPosition = currentPosition && isHoldingPosition;
+
+                if (wasHoldingPosition) {
+                    // User was holding - this is a true liquidation
+                    const massiveLoss = -currentPosition.positionSize; // Lose entire position
+                    setBalance(prevBalance => Math.max(0, prevBalance + massiveLoss));
+                    setPnl(massiveLoss);
+
+                    // Show liquidation overlay immediately (we already waited 2s)
+                    setShowLiquidation(true);
+                } else {
+                    // User wasn't holding - this is just a rugpull, no liquidation
+                    // Balance stays the same, just show rugpull message
+                    setRugpullType('rugpull'); // Special type for non-liquidation
+
+                    // Show rugpull overlay immediately (we already waited 2s)
+                    setShowLiquidation(true);
+                    setRugpullType('rugpull');
+                }
+
+                // Force close any position (even if not holding)
+                isHoldingPosition = false;
+                setIsHolding(false);
+                currentPosition = null;
+
+                // Show effects and restart (3s overlay)
+                setTimeout(() => {
+                    setShowLiquidation(false);
+                    setRugpullType(null);
+                    // Start completely new round after rugpull/liquidation
+                    setTimeout(() => {
+                        currentIndex = 0; // Reset to start of data
+                        startRound();
+                    }, 1000);
+                }, 3000); // 3s overlay duration
+            };
 
             // Start a new round
             const startRound = () => {
                 roundStartTime = p.millis();
                 isRoundActive = true;
+                isAnimating = true; // Reset animation to true for new round
                 isHistoricalView = false;
                 zoomTransition = 0;
                 completedTrades = [];
@@ -200,8 +405,41 @@ const CandlestickChart = () => {
                 isHoldingPosition = false;
                 setIsHolding(false);
                 setPnl(0);
+                setDisplayPnl(0); // Reset animated display
                 allRoundCandles = [];
                 candles = [];
+
+                // Reset rugpull state
+                rugpullActive = false;
+                rugpullProgress = 0;
+                rugpullTargetPrice = 0;
+                rugpullCandles = 0;
+                rugpullPattern = null;
+                rugpullSlowMotion = false;
+                rugpullZoom = 1;
+                liquidationCandleCreated = false;
+                setShowLiquidation(false);
+                setRugpullType(null);
+
+                // Reset money emoji system
+                activeMoneyEmojis = [];
+                pnlLineEndPos = null;
+                shouldExplodeEmojis = false;
+                explosionCenter = null;
+
+                // Only schedule liquidation randomly (30% chance per round)
+                const shouldLiquidate = Math.random() < 0.3;
+                if (shouldLiquidate) {
+                    liquidationScheduled = true;
+                    // Random time during round: after 5 seconds (approximately 40+ candles at 2x speed)
+                    // At 2x speed, we get about 16-17 candles per second, so 5 seconds = ~80-85 candles
+                    // Schedule between candle 85-180 to ensure it's after 5 seconds
+                    liquidationCandleIndex = Math.floor(Math.random() * 95) + 85;
+                    console.log(`📅 Liquidation scheduled for candle #${liquidationCandleIndex} (after 5+ seconds)`);
+                } else {
+                    liquidationScheduled = false;
+                    console.log(`✅ No liquidation this round`);
+                }
             };
 
             // Check if round should end
@@ -210,7 +448,13 @@ const CandlestickChart = () => {
 
                 const elapsed = p.millis() - roundStartTime;
                 if (elapsed >= roundDuration) {
-                    endRound();
+                    // If liquidation was scheduled but didn't happen, trigger it now
+                    if (liquidationScheduled && !rugpullActive) {
+                        liquidationScheduled = false;
+                        initiateRugpull({ open: 100, high: 100, low: 100, close: 100 });
+                    } else {
+                        endRound();
+                    }
                 }
             };
 
@@ -222,6 +466,12 @@ const CandlestickChart = () => {
                 if (currentPosition && isHoldingPosition) {
                     closePosition();
                 }
+
+                // Clear money emoji state
+                activeMoneyEmojis = [];
+                pnlLineEndPos = null;
+                shouldExplodeEmojis = false;
+                explosionCenter = null;
 
                 // Start zoom-out transition
                 isHistoricalView = true;
@@ -242,6 +492,11 @@ const CandlestickChart = () => {
                 for (const candle of visible) {
                     min = Math.min(min, candle.low);
                     max = Math.max(max, candle.high);
+
+                    // Special handling for liquidation candles - ensure we show the full crash
+                    if (candle.isLiquidation) {
+                        min = Math.min(min, 0); // Force min to 0 to show full liquidation
+                    }
                 }
 
                 // If we have positions, make sure they're visible in the scale
@@ -262,7 +517,13 @@ const CandlestickChart = () => {
 
                 // Less padding on mobile for better visibility
                 const topPadding = range * (isMobile ? 0.08 : 0.10);    // 8% mobile, 10% desktop
-                const bottomPadding = range * (isMobile ? 0.12 : 0.15); // 12% mobile, 15% desktop
+                let bottomPadding = range * (isMobile ? 0.12 : 0.15); // 12% mobile, 15% desktop
+
+                // If we have a liquidation candle, ensure extra bottom padding to see the crash
+                const hasLiquidation = visible.some(c => c.isLiquidation);
+                if (hasLiquidation) {
+                    bottomPadding = Math.max(bottomPadding, 5); // At least $5 padding below 0
+                }
 
                 // Ensure minimum range for very stable prices
                 const minRange = isMobile ? 5 : 10;
@@ -279,8 +540,14 @@ const CandlestickChart = () => {
                     max = 100;
                 }
 
+                // Ensure scale shows full range but never goes negative
                 priceScale.min = Math.max(0, min - bottomPadding);
                 priceScale.max = max + topPadding;
+
+                // Special case for liquidation - ensure we can see the crash to near-zero
+                if (hasLiquidation && priceScale.min > 0) {
+                    priceScale.min = 0; // Show from $0 when there's a liquidation
+                }
             };
 
             const drawTimer = () => {
@@ -307,34 +574,6 @@ const CandlestickChart = () => {
                 p.rect(chartArea.x + chartArea.width - 55, chartArea.y - 20, 45 * progress, 3); // Reduced from 75/60
             };
 
-            const drawHistoricalOverlay = () => {
-                if (!isHistoricalView) return;
-
-                // Fade in the overlay
-                zoomTransition = p.lerp(zoomTransition, 1, 0.05);
-
-                // Semi-transparent overlay
-                p.fill(0, 0, 0, 100 * zoomTransition);
-                p.noStroke();
-                p.rect(0, 0, p.width, p.height);
-
-                // Historical view label - responsive sizing
-                const isMobile = p.windowWidth < 768;
-                p.fill(255, 255, 255, 255 * zoomTransition);
-                p.textAlign(p.CENTER, p.CENTER);
-                p.textSize(isMobile ? 18 : 24);
-                p.text('Round Summary', p.width / 2, isMobile ? 30 : 40);
-
-                // Show round stats with mobile-friendly sizing
-                const totalTrades = completedTrades.length;
-                const profitableTrades = completedTrades.filter(t => t.netProfit > 0).length;
-                const totalPnl = completedTrades.reduce((sum, t) => sum + t.netProfit, 0);
-
-                p.textSize(isMobile ? 12 : 16);
-                p.text("Trades: " + totalTrades + " | Profitable: " + profitableTrades, p.width / 2, isMobile ? 50 : 70);
-                p.text("Total P&L: $" + totalPnl.toFixed(2), p.width / 2, isMobile ? 70 : 90);
-            };
-
             const updateDisplay = (visible) => {
                 if (visible.length === 0) return;
 
@@ -353,20 +592,94 @@ const CandlestickChart = () => {
                 }
             };
 
+            // Rugpull initiation function
+            const initiateRugpull = (data) => {
+                rugpullActive = true;
+                rugpullProgress = 0;
+                rugpullCandles = 0;
+
+                // Different rugpull patterns
+                const patterns = ['instant', 'gradual', 'deadcat'];
+                rugpullPattern = patterns[Math.floor(Math.random() * patterns.length)];
+
+                rugpullTargetPrice = Math.random() * 2; // Crash to $0-2
+
+                // Set rugpull type for UI (but don't show liquidation overlay yet)
+                setRugpullType(rugpullPattern);
+
+                console.log(`🔥 RUGPULL INITIATED: ${rugpullPattern} pattern at candle #${allRoundCandles.length + 1}`);
+            };
+
+            // Process ongoing rugpull
+            const processRugpull = (data) => {
+                // If liquidation candle already created, return normal data
+                if (liquidationCandleCreated) {
+                    return data;
+                }
+
+                rugpullCandles++;
+
+                // All patterns now create ONE liquidation candle immediately
+                rugpullSlowMotion = true;
+                rugpullZoom = 1; // Keep zoom at 1 to avoid making all candles bigger
+                liquidationCandleCreated = true; // Mark that we've created the liquidation candle
+                rugpullActive = false; // Stop rugpull processing immediately
+
+                // Create single liquidation candle
+                return {
+                    ...data,
+                    open: data.open,
+                    high: data.open,
+                    low: rugpullTargetPrice,
+                    close: rugpullTargetPrice,
+                    isLiquidation: true // Mark as liquidation candle
+                };
+            };
+
             const addCandle = (data) => {
+                let finalData = { ...data };
+
+                // Check if it's time for the scheduled liquidation
+                const currentCandleCount = allRoundCandles.length + 1;
+                if (isRoundActive && !rugpullActive && liquidationScheduled && currentCandleCount >= liquidationCandleIndex) {
+                    // Ensure we have space in the visible area before triggering liquidation
+                    if (candles.length >= maxCandles - 1) {
+                        candles.shift(); // Make space proactively
+                    }
+                    liquidationScheduled = false; // Mark as triggered
+                    initiateRugpull(finalData);
+                }
+
+                // Handle ongoing rugpull
+                if (rugpullActive) {
+                    finalData = processRugpull(finalData);
+
+                    // Stop everything immediately when liquidation candle is created
+                    if (finalData.isLiquidation) {
+                        isRoundActive = false; // Stop round immediately - freeze chart
+                        rugpullActive = false; // Stop rugpull processing
+                        isAnimating = false; // Stop all animations and movement
+
+                        // Wait 3 full seconds before showing overlay - let user clearly see the crash
+                        setTimeout(() => {
+                            endGameLiquidation();
+                        }, 3000); // 3 second delay to see the liquidation candle clearly
+                    }
+                }
+
                 // Add to historical round candles with all properties
                 allRoundCandles.push({
-                    ...data,
+                    ...finalData,
                     animation: 1 // Ensure historical candles are fully visible
                 });
 
+                // Normal candle handling for all candles including liquidation
                 if (candles.length >= maxCandles) {
                     candles.shift();
                 }
-
                 candles.push({
-                    ...data,
-                    animation: 0
+                    ...finalData,
+                    animation: finalData.isLiquidation ? 1 : 0 // Full animation for liquidation candles
                 });
 
                 // Track candles elapsed if we have a position
@@ -416,6 +729,9 @@ const CandlestickChart = () => {
 
                 const currentCandle = visible[visible.length - 1];
 
+                // Hide PNL line when liquidation is happening or current candle is liquidation
+                if (currentCandle.isLiquidation || liquidationCandleCreated) return;
+
                 // Calculate scale factor for historical view
                 let scaleFactor = 1;
                 if (isHistoricalView) {
@@ -424,9 +740,10 @@ const CandlestickChart = () => {
                 }
 
                 // Use fixed positions to avoid any animation dependencies
+                const rightPadding = 8; // Match the padding used in drawCandles
                 const currentCandleX = isHistoricalView
                     ? chartArea.x + ((visible.length - 1) * currentCandleSpacing * scaleFactor)
-                    : chartArea.x + chartArea.width - currentCandleWidth;
+                    : chartArea.x + chartArea.width - currentCandleWidth - rightPadding;
 
                 const entryElapsed = tradePosition.candlesElapsed;
                 const exitElapsed = isCompleted ? tradePosition.exitElapsed : 0;
@@ -496,14 +813,24 @@ const CandlestickChart = () => {
                 let lineEndY = adjustedExitY;
 
                 // Allow line to extend to the full chart width (no more clipping for price label)
-                const finalEndX = Math.min(lineEndX, chartArea.x + chartArea.width - 5);
+                const finalEndX = Math.min(lineEndX, chartArea.x + chartArea.width - rightPadding - 5);
+
+                // Track PNL line end position for money emojis (only for active position)
+                if (!isCompleted && tradePnl >= 0) {
+                    pnlLineEndPos = { x: finalEndX, y: lineEndY };
+                }
 
                 // Special handling for brand new positions - draw immediately!
                 if (!isCompleted && entryElapsed === 0) {
                     // Draw a simple horizontal line extending to the right
                     const immediateStartX = currentCandleX + currentCandleWidth / 2;
-                    const immediateEndX = Math.min(immediateStartX + 80, chartArea.x + chartArea.width - 10);
+                    const immediateEndX = Math.min(immediateStartX + 80, chartArea.x + chartArea.width - rightPadding - 10);
                     const immediateY = entryY;
+
+                    // Track PNL line end position for new positions
+                    if (tradePnl >= 0) {
+                        pnlLineEndPos = { x: immediateEndX, y: immediateY };
+                    }
 
                     // Draw immediate line with white color to show it's just started
                     p.stroke(255, 255, 255, 255);
@@ -572,7 +899,9 @@ const CandlestickChart = () => {
                         candleX = Math.min(candleX, maxX);
                     } else {
                         // Normal view: position from right edge
-                        candleX = chartArea.x + chartArea.width - currentCandleWidth - (dist * currentCandleSpacing);
+                        // Add padding to ensure rightmost candle is fully visible
+                        const rightPadding = 8; // Minimal padding to maximize chart usage
+                        candleX = chartArea.x + chartArea.width - currentCandleWidth - rightPadding - (dist * currentCandleSpacing);
                     }
 
                     // Skip if candle is off-screen - adjusted for smaller candles
@@ -588,19 +917,28 @@ const CandlestickChart = () => {
                         chartArea.y + chartArea.height, chartArea.y);
 
                     const isGreen = candle.close > candle.open;
-                    const candleColor = isGreen ? [0, 255, 136] : [255, 255, 255]; // Reverted to original white for red candles
+                    const isLiquidation = candle.isLiquidation;
+                    // Force liquidation candles to be bright red regardless of direction
+                    const candleColor = isLiquidation ? [255, 50, 50] : (isGreen ? [0, 255, 136] : [255, 255, 255]);
 
-                    // Add subtle glow for recent candles (only in normal view)
-                    if (!isHistoricalView && dist < 3) {
+                    // Add dramatic glow for liquidation candles or subtle glow for recent candles
+                    if (isLiquidation) {
+                        // Dramatic pulsing red glow for liquidation candles - more reasonable size
+                        const liquidationGlow = 150 + Math.sin(p.millis() * 0.01) * 50;
+                        p.stroke(255, 0, 0, liquidationGlow);
+                        p.strokeWeight(3);
+                        p.line(candleX + currentCandleWidth / 2, highY, candleX + currentCandleWidth / 2, lowY);
+                    } else if (!isHistoricalView && dist < 3) {
                         p.stroke(candleColor[0], candleColor[1], candleColor[2], 40 * candle.animation);
                         p.strokeWeight(2);
                         p.line(candleX + currentCandleWidth / 2, highY, candleX + currentCandleWidth / 2, lowY);
                     }
 
                     // Draw main wick
+                    const wickX = isLiquidation ? candleX + currentCandleWidth / 2 : candleX + currentCandleWidth / 2;
                     p.stroke(candleColor[0], candleColor[1], candleColor[2], 160 * candle.animation);
-                    p.strokeWeight(1);
-                    p.line(candleX + currentCandleWidth / 2, highY, candleX + currentCandleWidth / 2, lowY);
+                    p.strokeWeight(isLiquidation ? 2 : 1); // Thicker wick for liquidation
+                    p.line(wickX, highY, wickX, lowY);
 
                     const bodyHeight = Math.abs(closeY - openY);
                     const bodyY = Math.min(openY, closeY);
@@ -613,7 +951,15 @@ const CandlestickChart = () => {
                         p.rect(candleX - pulseSize, bodyY - pulseSize, currentCandleWidth + pulseSize * 2, Math.max(bodyHeight, 1) + pulseSize * 2, 1);
                     }
 
-                    if (isGreen) {
+                    if (isLiquidation) {
+                        // Liquidation candles are always bright red with dramatic effect - wider than normal
+                        const liquidationWidth = currentCandleWidth * 1.5; // 50% wider
+                        const widthAdjustment = (liquidationWidth - currentCandleWidth) / 2;
+                        p.fill(255, 50, 50, 255 * candle.animation);
+                        p.stroke(255, 0, 0, 255 * candle.animation);
+                        p.strokeWeight(2);
+                        p.rect(candleX - widthAdjustment, bodyY, liquidationWidth, Math.max(bodyHeight, 1), 1);
+                    } else if (isGreen) {
                         p.fill(candleColor[0], candleColor[1], candleColor[2], 180 * candle.animation);
                         p.noStroke();
                         p.rect(candleX, bodyY, currentCandleWidth, Math.max(bodyHeight, 1), 1);
@@ -639,13 +985,13 @@ const CandlestickChart = () => {
                 const priceLineY = p.map(lastCandle.close, priceScale.min, priceScale.max,
                     chartArea.y + chartArea.height, chartArea.y);
 
-                // Draw price label in the right margin area
-                const labelWidth = p.width < 768 ? 45 : 55; // Made wider for better readability
+                // Increase the width of the orange box
+                const labelWidth = p.width < 768 ? 50 : 60; // Adjusted width
                 const labelHeight = p.width < 768 ? 18 : 22; // Made taller
                 const fontSize = p.width < 768 ? 10 : 12; // Increased font size
 
-                // Position in the right margin (after the chart area)
-                const labelX = chartArea.x + chartArea.width + 5; // 5px padding from chart edge
+                // Position orange box to use available margin space efficiently
+                const labelX = p.width - labelWidth - 2; // 2px from right edge
 
                 // Add subtle glow effect based on price movement
                 const priceChange = visible.length > 1 ? lastCandle.close - visible[visible.length - 2].close : 0;
@@ -680,11 +1026,14 @@ const CandlestickChart = () => {
                 p.textAlign(p.LEFT, p.CENTER);
                 p.textSize(fontSize);
 
+                const labelWidth = p.width < 768 ? 30 : 35; // Match the width of the orange price tracker box
+
                 for (let i = 0; i <= labelCount; i++) {
                     const y = chartArea.y + (chartArea.height * i / labelCount);
                     const price = p.map(i, 0, labelCount, priceScale.max, priceScale.min);
                     const priceText = price < 100 ? price.toFixed(2) : price.toFixed(0);
-                    p.text(`$${priceText}`, chartArea.x + chartArea.width + 5, y); // Positioned properly
+                    // Position Y-axis labels to align with the right edge of the orange box
+                    p.text(`$${priceText}`, p.width - labelWidth - 2, y);
                 }
             };
 
@@ -696,8 +1045,8 @@ const CandlestickChart = () => {
                 const lastCandle = candles[candles.length - 1];
                 const currentBalance = balance;
 
-                // Calculate position size (use 30% of balance) - reduced from 50%
-                const positionSize = currentBalance * 0.3;
+                // Calculate position size (use 20% of balance) - reduced for more realistic trading
+                const positionSize = currentBalance * 0.2;
                 const shares = positionSize / lastCandle.close;
 
                 currentPosition = {
@@ -744,15 +1093,27 @@ const CandlestickChart = () => {
                     return newBalance;
                 });
 
-                // Show fireworks for profit (after fees)
+                // Show fireworks and trigger money explosion for profit (after fees)
                 if (netProfit > 0) {
                     setShowFireworks(true);
                     setTimeout(() => setShowFireworks(false), 1000);
+
+                    // Trigger money emoji explosion
+                    if (pnlLineEndPos) {
+                        shouldExplodeEmojis = true;
+                        explosionCenter = { x: pnlLineEndPos.x, y: pnlLineEndPos.y };
+                    }
+
+                    // Play cash sound
+                    const cashSound = new Audio('https://assets.mixkit.co/active_storage/sfx/2003/2003-preview.mp3');
+                    cashSound.volume = 0.3;
+                    cashSound.play().catch(err => console.log('Could not play cash sound:', err));
                 }
 
                 currentPosition = null;
                 currentPnl = 0;
                 setPnl(0);
+                pnlLineEndPos = null; // Clear PNL line position
             };
 
             p.setup = () => {
@@ -762,7 +1123,7 @@ const CandlestickChart = () => {
                 // Optimize chart area for mobile vs desktop
                 const isMobile = p.windowWidth < 768;
                 const leftMargin = isMobile ? 20 : 30;
-                const rightMargin = isMobile ? 50 : 70; // Increased for Y-axis labels + wider orange box
+                const rightMargin = isMobile ? 45 : 60; // Reduced margin with tighter layout
                 const topMargin = isMobile ? 70 : 90;
                 const bottomMargin = isMobile ? 40 : 60;
 
@@ -790,8 +1151,9 @@ const CandlestickChart = () => {
                 // Check if round should end
                 checkRoundEnd();
 
-                // Fixed 2x speed - only animate if round is active
-                if (isAnimating && isRoundActive && p.millis() - lastUpdate > (120 / animationSpeed)) {
+                // Variable speed - slow motion during rugpull, stop completely after liquidation
+                const currentSpeed = rugpullSlowMotion ? 0.3 : animationSpeed; // Slow motion during liquidation
+                if (isAnimating && isRoundActive && !liquidationCandleCreated && !rugpullActive && p.millis() - lastUpdate > (120 / currentSpeed)) {
                     if (currentIndex < bitcoinData.length) {
                         addCandle(bitcoinData[currentIndex]);
                         currentIndex++;
@@ -867,9 +1229,16 @@ const CandlestickChart = () => {
 
                 drawPNLLine(currentCandleWidth, currentCandleSpacing, visible); // Draw PNL line last so it's on top
                 drawTimer(); // Draw timer
-                drawHistoricalOverlay(); // Draw historical overlay
 
                 gridAlpha = p.lerp(gridAlpha, 40, 0.1);
+
+                // Clear PNL line position if not in profit or not holding
+                if (!isHoldingPosition || currentPnl <= 0) {
+                    pnlLineEndPos = null;
+                }
+
+                // Update money emojis last so they appear on top
+                updateMoneyEmojis();
 
                 // Restore original chart area if it was modified
                 if (originalChartArea) {
@@ -884,7 +1253,7 @@ const CandlestickChart = () => {
                 // Optimize chart area for mobile vs desktop
                 const isMobile = p.windowWidth < 768;
                 const leftMargin = isMobile ? 20 : 30;
-                const rightMargin = isMobile ? 50 : 70; // Increased for Y-axis labels + wider orange box
+                const rightMargin = isMobile ? 45 : 60; // Reduced margin with tighter layout
                 const topMargin = isMobile ? 70 : 90;
                 const bottomMargin = isMobile ? 40 : 60;
 
@@ -1035,45 +1404,69 @@ const CandlestickChart = () => {
                 WebkitTapHighlightColor: 'transparent'
             }}></div>
 
-            {/* Hold Indicator */}
-            {isHolding && (
+            {/* Fancy PNL Display - Always Visible in Top Left */}
+            <div style={{
+                position: 'absolute',
+                top: '20px',
+                left: '20px',
+                width: window.innerWidth < 768 ? '140px' : '180px', // Fixed width to prevent resizing
+                background: `linear-gradient(135deg, ${pnl >= 0 ? 'rgba(0, 255, 136, 0.15)' : 'rgba(255, 68, 68, 0.15)'} 0%, ${pnl >= 0 ? 'rgba(0, 255, 136, 0.05)' : 'rgba(255, 68, 68, 0.05)'} 100%)`,
+                backdropFilter: 'blur(20px) saturate(180%)',
+                border: `1px solid ${pnl >= 0 ? 'rgba(0, 255, 136, 0.3)' : 'rgba(255, 68, 68, 0.3)'}`,
+                borderRadius: '16px',
+                padding: window.innerWidth < 768 ? '12px 16px' : '16px 20px',
+                boxShadow: `
+                    0 10px 40px ${pnl >= 0 ? 'rgba(0, 255, 136, 0.1)' : 'rgba(255, 68, 68, 0.1)'},
+                    inset 0 1px 1px ${pnl >= 0 ? 'rgba(0, 255, 136, 0.2)' : 'rgba(255, 68, 68, 0.2)'},
+                    0 0 80px ${pnl >= 0 ? 'rgba(0, 255, 136, 0.05)' : 'rgba(255, 68, 68, 0.05)'}
+                `,
+                transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+                transform: isHolding ? 'scale(1.05)' : 'scale(1)',
+                zIndex: 1000
+            }}>
                 <div style={{
-                    position: 'absolute',
-                    top: '20px',
-                    left: '50%',
-                    transform: 'translateX(-50%)',
-                    background: 'rgba(0, 255, 136, 0.9)',
-                    color: 'black',
-                    padding: '8px 16px',
-                    borderRadius: '20px',
-                    fontSize: '14px',
-                    fontWeight: 'bold',
-                    animation: 'pulse 1s infinite',
-                    zIndex: 1000
+                    fontSize: window.innerWidth < 768 ? '12px' : '14px',
+                    color: 'rgba(255, 255, 255, 0.6)',
+                    marginBottom: '4px',
+                    fontWeight: '500',
+                    letterSpacing: '0.5px',
+                    textTransform: 'uppercase'
                 }}>
-                    HOLDING POSITION
+                    P&L
                 </div>
-            )}
-
-            {/* Live PNL Display */}
-            {isHolding && (
                 <div style={{
-                    position: 'absolute',
-                    top: '60px',
-                    left: '50%',
-                    transform: 'translateX(-50%)',
-                    background: pnl >= 0 ? 'rgba(0, 255, 136, 0.9)' : 'rgba(255, 68, 68, 0.9)',
-                    color: 'white',
-                    padding: '12px 24px',
-                    borderRadius: '15px',
-                    fontSize: window.innerWidth < 768 ? '18px' : '24px',
-                    fontWeight: 'bold',
-                    zIndex: 1000,
-                    boxShadow: '0 4px 20px rgba(0,0,0,0.3)'
+                    fontSize: window.innerWidth < 768 ? '24px' : '32px',
+                    fontWeight: '700',
+                    color: pnl >= 0 ? '#00FF88' : '#FF4444',
+                    textShadow: `0 0 20px ${pnl >= 0 ? 'rgba(0, 255, 136, 0.5)' : 'rgba(255, 68, 68, 0.5)'}`,
+                    lineHeight: 1,
+                    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace',
+                    letterSpacing: '-0.5px',
+                    position: 'relative',
+                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                    textAlign: 'center' // Center the numbers within the fixed width
                 }}>
-                    {pnl >= 0 ? '+' : ''}${formatPnl(pnl)}
+                    <span style={{
+                        display: 'inline-block',
+                        transform: displayPnl !== 0 ? 'scale(1)' : 'scale(0.95)',
+                        transition: 'transform 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55)'
+                    }}>
+                        {displayPnl >= 0 ? '+' : ''}${formatPnl(Math.abs(displayPnl))}
+                    </span>
                 </div>
-            )}
+                {isHolding && (
+                    <div style={{
+                        fontSize: window.innerWidth < 768 ? '10px' : '11px',
+                        color: 'rgba(255, 255, 255, 0.5)',
+                        marginTop: '6px',
+                        fontWeight: '500',
+                        letterSpacing: '0.3px',
+                        textAlign: 'center'
+                    }}>
+                        ACTIVE POSITION
+                    </div>
+                )}
+            </div>
 
             {/* Fireworks */}
             {showFireworks && (
@@ -1102,6 +1495,73 @@ const CandlestickChart = () => {
                 </div>
             )}
 
+            {/* Liquidation Effect */}
+            {showLiquidation && (
+                <div style={{
+                    position: 'absolute',
+                    inset: 0,
+                    background: 'linear-gradient(45deg, rgba(255,0,0,0.7), rgba(139,0,0,0.8))',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    zIndex: 1000,
+                    animation: 'liquidationPulse 0.5s ease-in-out infinite alternate'
+                }}>
+                    <div style={{
+                        fontSize: window.innerWidth < 768 ? '32px' : '48px',
+                        fontWeight: 'bold',
+                        color: '#ffffff',
+                        textShadow: '0 0 20px rgba(255,0,0,0.8)',
+                        marginBottom: '20px',
+                        animation: 'shake 0.3s ease-in-out infinite'
+                    }}>
+                        {rugpullType === 'rugpull' ? '💥 GET RUGGED 💥' : '🔥 LIQUIDATED 🔥'}
+                    </div>
+
+                    <div style={{
+                        fontSize: window.innerWidth < 768 ? '18px' : '24px',
+                        color: '#ffffff',
+                        textAlign: 'center',
+                        marginBottom: '10px'
+                    }}>
+                        {rugpullType === 'rugpull' && '📈➡️💀 MARKET CRASHED'}
+                        {rugpullType === 'instant' && '⚡ FLASH CRASH'}
+                        {rugpullType === 'gradual' && '📉 DEATH SPIRAL'}
+                        {rugpullType === 'deadcat' && '🐱‍💀 DEAD CAT BOUNCE'}
+                    </div>
+
+                    <div style={{
+                        fontSize: window.innerWidth < 768 ? '14px' : '18px',
+                        color: '#ffcccc',
+                        textAlign: 'center'
+                    }}>
+                        {rugpullType === 'rugpull'
+                            ? 'Game Over • Starting new round...'
+                            : 'All positions closed • Starting new round...'
+                        }
+                    </div>
+
+                    {/* Red particles effect */}
+                    {[...Array(20)].map((_, i) => (
+                        <div
+                            key={i}
+                            style={{
+                                position: 'absolute',
+                                left: `${Math.random() * 100}%`,
+                                top: `${Math.random() * 100}%`,
+                                width: '6px',
+                                height: '6px',
+                                background: '#ff0000',
+                                borderRadius: '50%',
+                                animation: `fall ${1 + Math.random() * 2}s linear infinite`,
+                                opacity: 0.7
+                            }}
+                        />
+                    ))}
+                </div>
+            )}
+
             {/* Game Stats */}
             <div style={{
                 position: 'absolute',
@@ -1117,23 +1577,6 @@ const CandlestickChart = () => {
                 border: '1px solid rgba(255, 255, 255, 0.1)'
             }}>
                 Balance: ${balance.toFixed(0)}
-            </div>
-
-            {/* Price Display */}
-            <div style={{
-                position: 'absolute',
-                top: '20px',
-                left: '20px',
-                background: 'rgba(0, 0, 0, 0.8)',
-                color: 'white',
-                padding: '8px 16px',
-                borderRadius: '12px',
-                fontSize: window.innerWidth < 768 ? '14px' : '16px',
-                fontWeight: 'bold',
-                backdropFilter: 'blur(20px)',
-                border: '1px solid rgba(255, 255, 255, 0.1)'
-            }}>
-                ${formatPrice(currentPrice)}
             </div>
 
             {/* Instructions */}
@@ -1162,9 +1605,55 @@ const CandlestickChart = () => {
           50% { opacity: 0.7; }
         }
         
+        @keyframes numberChange {
+          0% { 
+            transform: scale(1) translateY(0);
+            filter: blur(0px);
+          }
+          50% { 
+            transform: scale(1.1) translateY(-2px);
+            filter: blur(0.5px);
+          }
+          100% { 
+            transform: scale(1) translateY(0);
+            filter: blur(0px);
+          }
+        }
+        
+        @keyframes glow {
+          0%, 100% { 
+            box-shadow: 0 0 5px currentColor, 0 0 10px currentColor;
+          }
+          50% { 
+            box-shadow: 0 0 10px currentColor, 0 0 20px currentColor, 0 0 30px currentColor;
+          }
+        }
+        
         @keyframes firework {
           0% { transform: scale(0) rotate(0deg); opacity: 1; }
           100% { transform: scale(1) rotate(180deg); opacity: 0; }
+        }
+        
+        @keyframes liquidationPulse {
+          0% { background: linear-gradient(45deg, rgba(255,0,0,0.7), rgba(139,0,0,0.8)); }
+          100% { background: linear-gradient(45deg, rgba(255,50,50,0.9), rgba(180,0,0,0.9)); }
+        }
+        
+        @keyframes shake {
+          0%, 100% { transform: translateX(0); }
+          25% { transform: translateX(-5px); }
+          75% { transform: translateX(5px); }
+        }
+        
+        @keyframes fall {
+          0% { 
+            transform: translateY(-100vh) rotate(0deg); 
+            opacity: 1; 
+          }
+          100% { 
+            transform: translateY(100vh) rotate(360deg); 
+            opacity: 0; 
+          }
         }
         
         /* Prevent text selection and Safari highlighting */

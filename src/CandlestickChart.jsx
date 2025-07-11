@@ -416,10 +416,6 @@ const CandlestickChart = () => {
 
                 const currentCandle = visible[visible.length - 1];
 
-                // Calculate where the price label starts
-                const labelWidth = p.windowWidth < 768 ? 50 : 60; // Reduced from 70/90
-                const priceLabelLeftEdge = chartArea.x + chartArea.width - labelWidth;
-
                 // Calculate scale factor for historical view
                 let scaleFactor = 1;
                 if (isHistoricalView) {
@@ -455,7 +451,18 @@ const CandlestickChart = () => {
                 let lineStartX, lineStartY;
                 const entryXForSlope = actualEntryX + currentCandleWidth / 2;
                 const exitXForSlope = actualExitX + currentCandleWidth / 2;
-                const slope = (exitY - entryY) / (exitXForSlope - entryXForSlope);
+
+                // Special handling for brand new positions (candlesElapsed = 0)
+                let adjustedExitXForSlope = exitXForSlope;
+                let adjustedExitY = exitY;
+                if (!isCompleted && entryElapsed === 0) {
+                    // For new positions, create a visible horizontal line extending to the right
+                    adjustedExitXForSlope = exitXForSlope + Math.min(currentCandleSpacing * 3, 60);
+                    // Keep the same Y coordinate to make it perfectly horizontal
+                    adjustedExitY = entryY;
+                }
+
+                const slope = (adjustedExitY - entryY) / (adjustedExitXForSlope - entryXForSlope);
 
                 const entryIsVisible = actualEntryX >= chartArea.x;
 
@@ -485,11 +492,30 @@ const CandlestickChart = () => {
                 }
 
                 // Determine end position
-                let lineEndX = exitXForSlope;
-                let lineEndY = exitY;
+                let lineEndX = adjustedExitXForSlope;
+                let lineEndY = adjustedExitY;
 
-                // Clip end X to avoid overlapping price label
-                const finalEndX = Math.min(lineEndX, priceLabelLeftEdge - 2);
+                // Allow line to extend to the full chart width (no more clipping for price label)
+                const finalEndX = Math.min(lineEndX, chartArea.x + chartArea.width - 5);
+
+                // Special handling for brand new positions - draw immediately!
+                if (!isCompleted && entryElapsed === 0) {
+                    // Draw a simple horizontal line extending to the right
+                    const immediateStartX = currentCandleX + currentCandleWidth / 2;
+                    const immediateEndX = Math.min(immediateStartX + 80, chartArea.x + chartArea.width - 10);
+                    const immediateY = entryY;
+
+                    // Draw immediate line with white color to show it's just started
+                    p.stroke(255, 255, 255, 255);
+                    p.strokeWeight(3);
+                    p.line(immediateStartX, immediateY, immediateEndX, immediateY);
+
+                    // Draw entry point
+                    p.fill(255, 255, 255, 255);
+                    p.noStroke();
+                    p.ellipse(immediateStartX, immediateY, 8, 8);
+                    return; // Skip the complex logic for brand new positions
+                }
 
                 // Don't draw if the entire line is off-screen to the left
                 if (finalEndX < lineStartX) return;
@@ -511,8 +537,8 @@ const CandlestickChart = () => {
                 p.strokeWeight(3);
                 p.line(lineStartX, lineStartY, finalEndX, lineEndY);
 
-                // Entry point - only draw if visible AND not at the same position as exit
-                if (entryIsVisible && entryElapsed > exitElapsed) {
+                // Entry point - always show for new positions, or when visible and not at same position as exit
+                if (entryIsVisible && (entryElapsed === 0 || entryElapsed > exitElapsed)) {
                     p.fill(255, 255, 255, alpha);
                     p.noStroke();
                     p.ellipse(lineStartX, lineStartY, 8, 8);
@@ -613,10 +639,13 @@ const CandlestickChart = () => {
                 const priceLineY = p.map(lastCandle.close, priceScale.min, priceScale.max,
                     chartArea.y + chartArea.height, chartArea.y);
 
-                // Draw price label only (no orange line)
-                const labelWidth = p.width < 768 ? 50 : 60; // Reduced from 70/90
-                const labelHeight = 24;
-                const fontSize = p.width < 768 ? 11 : 13;
+                // Draw price label in the right margin area
+                const labelWidth = p.width < 768 ? 45 : 55; // Made wider for better readability
+                const labelHeight = p.width < 768 ? 18 : 22; // Made taller
+                const fontSize = p.width < 768 ? 10 : 12; // Increased font size
+
+                // Position in the right margin (after the chart area)
+                const labelX = chartArea.x + chartArea.width + 5; // 5px padding from chart edge
 
                 // Add subtle glow effect based on price movement
                 const priceChange = visible.length > 1 ? lastCandle.close - visible[visible.length - 2].close : 0;
@@ -626,13 +655,13 @@ const CandlestickChart = () => {
                 if (glowIntensity > 5) {
                     p.fill(247, 147, 26, glowIntensity);
                     p.noStroke();
-                    p.rect(chartArea.x + chartArea.width - labelWidth - 2, priceLineY - labelHeight / 2 - 2, labelWidth + 4, labelHeight + 4, 8);
+                    p.rect(labelX - 2, priceLineY - labelHeight / 2 - 2, labelWidth + 4, labelHeight + 4, 6);
                 }
 
                 // Background with better contrast
                 p.fill(247, 147, 26, 255);
                 p.noStroke();
-                p.rect(chartArea.x + chartArea.width - labelWidth, priceLineY - labelHeight / 2, labelWidth, labelHeight, 6);
+                p.rect(labelX, priceLineY - labelHeight / 2, labelWidth, labelHeight, 4);
 
                 // Text with high contrast
                 p.fill(0, 0, 0, 255);
@@ -640,14 +669,14 @@ const CandlestickChart = () => {
                 p.textSize(fontSize);
                 p.textStyle(p.BOLD);
                 const priceText = lastCandle.close < 100 ? lastCandle.close.toFixed(2) : lastCandle.close.toFixed(0);
-                p.text(`$${priceText}`, chartArea.x + chartArea.width - labelWidth / 2, priceLineY);
+                p.text(`$${priceText}`, labelX + labelWidth / 2, priceLineY);
             };
 
             const drawPriceLabels = () => {
-                const fontSize = p.width < 768 ? 7 : 9; // Reduced from 8/10
+                const fontSize = p.width < 768 ? 8 : 10; // Slightly larger for better readability
                 const labelCount = p.width < 768 ? 5 : 7;
 
-                p.fill(255, 255, 255, 100);
+                p.fill(255, 255, 255, 120); // Slightly brighter
                 p.textAlign(p.LEFT, p.CENTER);
                 p.textSize(fontSize);
 
@@ -655,7 +684,7 @@ const CandlestickChart = () => {
                     const y = chartArea.y + (chartArea.height * i / labelCount);
                     const price = p.map(i, 0, labelCount, priceScale.max, priceScale.min);
                     const priceText = price < 100 ? price.toFixed(2) : price.toFixed(0);
-                    p.text(`$${priceText}`, chartArea.x + chartArea.width + 3, y); // Reduced from 5 to 3
+                    p.text(`$${priceText}`, chartArea.x + chartArea.width + 5, y); // Positioned properly
                 }
             };
 
@@ -682,6 +711,9 @@ const CandlestickChart = () => {
                 setIsHolding(true);
                 currentPnl = 0;
                 setPnl(0);
+
+                // Force immediate redraw to show the line
+                p.redraw();
             };
 
             const closePosition = () => {
@@ -730,7 +762,7 @@ const CandlestickChart = () => {
                 // Optimize chart area for mobile vs desktop
                 const isMobile = p.windowWidth < 768;
                 const leftMargin = isMobile ? 20 : 30;
-                const rightMargin = isMobile ? 40 : 50; // Significantly reduced from 80/100
+                const rightMargin = isMobile ? 50 : 70; // Increased for Y-axis labels + wider orange box
                 const topMargin = isMobile ? 70 : 90;
                 const bottomMargin = isMobile ? 40 : 60;
 
@@ -830,7 +862,7 @@ const CandlestickChart = () => {
                 // Hide price line and labels during historical view on mobile to save space
                 if (!(isHistoricalView && p.windowWidth < 768)) {
                     drawPriceLine(visible); // Draw price label before PNL line
-                    drawPriceLabels();
+                    drawPriceLabels(); // Y-axis labels back for professional look
                 }
 
                 drawPNLLine(currentCandleWidth, currentCandleSpacing, visible); // Draw PNL line last so it's on top
@@ -852,7 +884,7 @@ const CandlestickChart = () => {
                 // Optimize chart area for mobile vs desktop
                 const isMobile = p.windowWidth < 768;
                 const leftMargin = isMobile ? 20 : 30;
-                const rightMargin = isMobile ? 40 : 50; // Significantly reduced from 80/100
+                const rightMargin = isMobile ? 50 : 70; // Increased for Y-axis labels + wider orange box
                 const topMargin = isMobile ? 70 : 90;
                 const bottomMargin = isMobile ? 40 : 60;
 

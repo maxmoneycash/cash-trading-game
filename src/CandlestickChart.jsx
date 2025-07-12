@@ -1574,7 +1574,8 @@ const CandlestickChart = () => {
                 fontSize: window.innerWidth < 768 ? '14px' : '16px',
                 fontWeight: 'bold',
                 backdropFilter: 'blur(20px)',
-                border: '1px solid rgba(255, 255, 255, 0.1)'
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+                zIndex: 1001 // Ensure it's above everything
             }}>
                 Balance: ${balance.toFixed(0)}
             </div>
@@ -1593,7 +1594,8 @@ const CandlestickChart = () => {
                     fontWeight: '500',
                     backdropFilter: 'blur(20px)',
                     border: '1px solid rgba(255, 255, 255, 0.1)',
-                    textAlign: 'center'
+                    textAlign: 'center',
+                    zIndex: 1001 // Ensure it's above everything
                 }}>
                     Hold to Buy<br />Release to Sell
                 </div>

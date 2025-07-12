@@ -231,8 +231,6 @@ const CandlestickChart = () => {
             let rugpullSlowMotion = false;
             let rugpullZoom = 1;
             let liquidationCandleCreated = false;
-            let liquidationScheduled = false;
-            let liquidationCandleIndex = 0;
 
             // Position tracking - now supporting multiple trades per round
             let currentPosition = null; // Current active position
@@ -350,7 +348,6 @@ const CandlestickChart = () => {
                 rugpullActive = false;
                 rugpullSlowMotion = false;
                 rugpullZoom = 1;
-                liquidationScheduled = false;
                 liquidationCandleCreated = false;
                 isRoundActive = false; // Ensure round is stopped
 
@@ -427,19 +424,9 @@ const CandlestickChart = () => {
                 shouldExplodeEmojis = false;
                 explosionCenter = null;
 
-                // Only schedule liquidation randomly (30% chance per round)
-                const shouldLiquidate = Math.random() < 0.3;
-                if (shouldLiquidate) {
-                    liquidationScheduled = true;
-                    // Random time during round: after 5 seconds (approximately 40+ candles at 2x speed)
-                    // At 2x speed, we get about 16-17 candles per second, so 5 seconds = ~80-85 candles
-                    // Schedule between candle 85-180 to ensure it's after 5 seconds
-                    liquidationCandleIndex = Math.floor(Math.random() * 95) + 85;
-                    console.log(`📅 Liquidation scheduled for candle #${liquidationCandleIndex} (after 5+ seconds)`);
-                } else {
-                    liquidationScheduled = false;
-                    console.log(`✅ No liquidation this round`);
-                }
+                // No more fixed liquidation scheduling - now dynamic based on position duration
+                liquidationCandleCreated = false;
+                console.log(`✅ Round started - liquidation risk increases with position duration`);
             };
 
             // Check if round should end
@@ -448,13 +435,7 @@ const CandlestickChart = () => {
 
                 const elapsed = p.millis() - roundStartTime;
                 if (elapsed >= roundDuration) {
-                    // If liquidation was scheduled but didn't happen, trigger it now
-                    if (liquidationScheduled && !rugpullActive) {
-                        liquidationScheduled = false;
-                        initiateRugpull({ open: 100, high: 100, low: 100, close: 100 });
-                    } else {
-                        endRound();
-                    }
+                    endRound();
                 }
             };
 
@@ -639,15 +620,33 @@ const CandlestickChart = () => {
             const addCandle = (data) => {
                 let finalData = { ...data };
 
-                // Check if it's time for the scheduled liquidation
-                const currentCandleCount = allRoundCandles.length + 1;
-                if (isRoundActive && !rugpullActive && liquidationScheduled && currentCandleCount >= liquidationCandleIndex) {
-                    // Ensure we have space in the visible area before triggering liquidation
-                    if (candles.length >= maxCandles - 1) {
-                        candles.shift(); // Make space proactively
+                // Dynamic liquidation probability based on position duration
+                if (isRoundActive && !rugpullActive && currentPosition && isHoldingPosition) {
+                    const positionDuration = currentPosition.candlesElapsed;
+
+                    // Calculate liquidation probability based on position duration
+                    // Starts at 0% and increases exponentially
+                    // After 50 candles (~3 seconds): ~0.5% chance per candle
+                    // After 100 candles (~6 seconds): ~2% chance per candle  
+                    // After 150 candles (~9 seconds): ~4.5% chance per candle
+                    // After 200 candles (~12 seconds): ~8% chance per candle
+                    let liquidationProbability = 0;
+
+                    if (positionDuration > 30) { // Grace period of ~2 seconds
+                        // Exponential curve: starts slow, ramps up quickly
+                        const riskFactor = (positionDuration - 30) / 100; // Normalize after grace period
+                        liquidationProbability = Math.min(0.12, Math.pow(riskFactor, 1.8) * 0.15); // Cap at 12%
                     }
-                    liquidationScheduled = false; // Mark as triggered
-                    initiateRugpull(finalData);
+
+                    // Roll for liquidation
+                    if (liquidationProbability > 0 && Math.random() < liquidationProbability) {
+                        // Ensure we have space in the visible area before triggering liquidation
+                        if (candles.length >= maxCandles - 1) {
+                            candles.shift(); // Make space proactively
+                        }
+                        console.log(`💀 LIQUIDATION TRIGGERED! Duration: ${positionDuration} candles, Probability: ${(liquidationProbability * 100).toFixed(2)}%`);
+                        initiateRugpull(finalData);
+                    }
                 }
 
                 // Handle ongoing rugpull
@@ -1410,6 +1409,7 @@ const CandlestickChart = () => {
                 top: '20px',
                 left: '20px',
                 width: window.innerWidth < 768 ? '140px' : '180px', // Fixed width to prevent resizing
+                height: window.innerWidth < 768 ? '80px' : '95px', // Fixed height to prevent shape changes
                 background: `linear-gradient(135deg, ${pnl >= 0 ? 'rgba(0, 255, 136, 0.15)' : 'rgba(255, 68, 68, 0.15)'} 0%, ${pnl >= 0 ? 'rgba(0, 255, 136, 0.05)' : 'rgba(255, 68, 68, 0.05)'} 100%)`,
                 backdropFilter: 'blur(20px) saturate(180%)',
                 border: `1px solid ${pnl >= 0 ? 'rgba(0, 255, 136, 0.3)' : 'rgba(255, 68, 68, 0.3)'}`,
@@ -1422,7 +1422,10 @@ const CandlestickChart = () => {
                 `,
                 transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
                 transform: isHolding ? 'scale(1.05)' : 'scale(1)',
-                zIndex: 1000
+                zIndex: 1000,
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center' // Center content vertically
             }}>
                 <div style={{
                     fontSize: window.innerWidth < 768 ? '12px' : '14px',
@@ -1430,7 +1433,8 @@ const CandlestickChart = () => {
                     marginBottom: '4px',
                     fontWeight: '500',
                     letterSpacing: '0.5px',
-                    textTransform: 'uppercase'
+                    textTransform: 'uppercase',
+                    textAlign: 'center'
                 }}>
                     P&L
                 </div>
@@ -1454,18 +1458,18 @@ const CandlestickChart = () => {
                         {displayPnl >= 0 ? '+' : ''}${formatPnl(Math.abs(displayPnl))}
                     </span>
                 </div>
-                {isHolding && (
-                    <div style={{
-                        fontSize: window.innerWidth < 768 ? '10px' : '11px',
-                        color: 'rgba(255, 255, 255, 0.5)',
-                        marginTop: '6px',
-                        fontWeight: '500',
-                        letterSpacing: '0.3px',
-                        textAlign: 'center'
-                    }}>
-                        ACTIVE POSITION
-                    </div>
-                )}
+                <div style={{
+                    fontSize: window.innerWidth < 768 ? '10px' : '11px',
+                    color: 'rgba(255, 255, 255, 0.5)',
+                    marginTop: '6px',
+                    fontWeight: '500',
+                    letterSpacing: '0.3px',
+                    textAlign: 'center',
+                    opacity: isHolding ? 1 : 0, // Always reserve space, just hide/show
+                    transition: 'opacity 0.3s ease'
+                }}>
+                    ACTIVE POSITION
+                </div>
             </div>
 
             {/* Fireworks */}
@@ -1565,7 +1569,9 @@ const CandlestickChart = () => {
             {/* Game Stats */}
             <div style={{
                 position: 'absolute',
-                bottom: '20px',
+                bottom: window.innerWidth < 768
+                    ? `max(40px, calc(env(safe-area-inset-bottom, 20px) + 20px))` // More padding on mobile
+                    : `max(20px, env(safe-area-inset-bottom, 20px))`, // Account for iPhone safe area
                 left: '20px',
                 background: 'rgba(0, 0, 0, 0.8)',
                 color: 'white',
@@ -1584,7 +1590,9 @@ const CandlestickChart = () => {
             {!isHolding && (
                 <div style={{
                     position: 'absolute',
-                    bottom: '20px',
+                    bottom: window.innerWidth < 768
+                        ? `max(40px, calc(env(safe-area-inset-bottom, 20px) + 20px))` // More padding on mobile
+                        : `max(20px, env(safe-area-inset-bottom, 20px))`, // Account for iPhone safe area
                     right: '20px',
                     background: 'rgba(0, 0, 0, 0.8)',
                     color: 'white',
@@ -1691,6 +1699,22 @@ const CandlestickChart = () => {
           position: fixed;
           width: 100%;
           height: 100%;
+        }
+        
+        /* Mobile Safari specific fixes */
+        @supports (padding: max(0px)) {
+          .mobile-safe-area {
+            padding-bottom: max(20px, env(safe-area-inset-bottom));
+          }
+        }
+        
+        /* Force viewport height on mobile Safari */
+        @media screen and (max-width: 768px) {
+          html, body {
+            height: -webkit-fill-available;
+            height: 100vh;
+            height: 100svh; /* Small viewport height for newer browsers */
+          }
         }
       `}</style>
         </div>

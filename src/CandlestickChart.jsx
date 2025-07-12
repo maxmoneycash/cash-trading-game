@@ -1124,7 +1124,7 @@ const CandlestickChart = () => {
                 const leftMargin = isMobile ? 20 : 30;
                 const rightMargin = isMobile ? 45 : 60; // Reduced margin with tighter layout
                 const topMargin = isMobile ? 70 : 90;
-                const bottomMargin = isMobile ? 40 : 60;
+                const bottomMargin = isMobile ? 100 : 60; // Increased bottom margin on mobile for UI elements
 
                 chartArea = {
                     x: leftMargin,
@@ -1254,7 +1254,7 @@ const CandlestickChart = () => {
                 const leftMargin = isMobile ? 20 : 30;
                 const rightMargin = isMobile ? 45 : 60; // Reduced margin with tighter layout
                 const topMargin = isMobile ? 70 : 90;
-                const bottomMargin = isMobile ? 40 : 60;
+                const bottomMargin = isMobile ? 100 : 60; // Increased bottom margin on mobile for UI elements
 
                 chartArea = {
                     x: leftMargin,
@@ -1569,9 +1569,7 @@ const CandlestickChart = () => {
             {/* Game Stats */}
             <div style={{
                 position: 'absolute',
-                bottom: window.innerWidth < 768
-                    ? `max(40px, calc(env(safe-area-inset-bottom, 20px) + 20px))` // More padding on mobile
-                    : `max(20px, env(safe-area-inset-bottom, 20px))`, // Account for iPhone safe area
+                bottom: window.innerWidth < 768 ? '80px' : '20px', // Much more aggressive mobile positioning
                 left: '20px',
                 background: 'rgba(0, 0, 0, 0.8)',
                 color: 'white',
@@ -1590,9 +1588,7 @@ const CandlestickChart = () => {
             {!isHolding && (
                 <div style={{
                     position: 'absolute',
-                    bottom: window.innerWidth < 768
-                        ? `max(40px, calc(env(safe-area-inset-bottom, 20px) + 20px))` // More padding on mobile
-                        : `max(20px, env(safe-area-inset-bottom, 20px))`, // Account for iPhone safe area
+                    bottom: window.innerWidth < 768 ? '80px' : '20px', // Much more aggressive mobile positioning
                     right: '20px',
                     background: 'rgba(0, 0, 0, 0.8)',
                     color: 'white',
@@ -1603,7 +1599,9 @@ const CandlestickChart = () => {
                     backdropFilter: 'blur(20px)',
                     border: '1px solid rgba(255, 255, 255, 0.1)',
                     textAlign: 'center',
-                    zIndex: 1001 // Ensure it's above everything
+                    zIndex: 1001, // Ensure it's above everything
+                    maxWidth: '140px', // Prevent text from getting too wide on mobile
+                    lineHeight: 1.3 // Better line spacing for readability
                 }}>
                     Hold to Buy<br />Release to Sell
                 </div>

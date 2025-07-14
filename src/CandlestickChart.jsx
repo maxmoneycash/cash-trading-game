@@ -1569,7 +1569,7 @@ const CandlestickChart = () => {
             {/* Game Stats */}
             <div style={{
                 position: 'absolute',
-                bottom: window.innerWidth < 768 ? '80px' : '20px', // Much more aggressive mobile positioning
+                bottom: window.innerWidth < 768 ? '120px' : '20px', // Even more aggressive mobile positioning
                 left: '20px',
                 background: 'rgba(0, 0, 0, 0.8)',
                 color: 'white',
@@ -1588,7 +1588,7 @@ const CandlestickChart = () => {
             {!isHolding && (
                 <div style={{
                     position: 'absolute',
-                    bottom: window.innerWidth < 768 ? '80px' : '20px', // Much more aggressive mobile positioning
+                    bottom: window.innerWidth < 768 ? '120px' : '20px', // Even more aggressive mobile positioning
                     right: '20px',
                     background: 'rgba(0, 0, 0, 0.8)',
                     color: 'white',
@@ -1599,7 +1599,7 @@ const CandlestickChart = () => {
                     backdropFilter: 'blur(20px)',
                     border: '1px solid rgba(255, 255, 255, 0.1)',
                     textAlign: 'center',
-                    zIndex: 1001, // Ensure it's above everything
+                    zIndex: 1001,
                     maxWidth: '140px', // Prevent text from getting too wide on mobile
                     lineHeight: 1.3 // Better line spacing for readability
                 }}>

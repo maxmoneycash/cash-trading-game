@@ -1566,46 +1566,56 @@ const CandlestickChart = () => {
                 </div>
             )}
 
-            {/* Game Stats */}
+            {/* Bottom UI Container */}
             <div style={{
-                position: 'absolute',
-                bottom: window.innerWidth < 768 ? '120px' : '20px', // Even more aggressive mobile positioning
-                left: '20px',
-                background: 'rgba(0, 0, 0, 0.8)',
-                color: 'white',
-                padding: '12px 16px',
-                borderRadius: '12px',
-                fontSize: window.innerWidth < 768 ? '14px' : '16px',
-                fontWeight: 'bold',
-                backdropFilter: 'blur(20px)',
-                border: '1px solid rgba(255, 255, 255, 0.1)',
-                zIndex: 1001 // Ensure it's above everything
+                position: 'fixed',
+                bottom: 0,
+                left: 0,
+                right: 0,
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                padding: '0 20px',
+                paddingBottom: `calc(10px + env(safe-area-inset-bottom, 0px))`, // Consistent padding with safe area
+                height: '60px', // Fixed height for consistency
+                zIndex: 1001, // Above everything
+                pointerEvents: 'none' // Allow clicks through container
             }}>
-                Balance: ${balance.toFixed(0)}
-            </div>
-
-            {/* Instructions */}
-            {!isHolding && (
+                {/* Game Stats */}
                 <div style={{
-                    position: 'absolute',
-                    bottom: window.innerWidth < 768 ? '120px' : '20px', // Even more aggressive mobile positioning
-                    right: '20px',
                     background: 'rgba(0, 0, 0, 0.8)',
                     color: 'white',
                     padding: '12px 16px',
                     borderRadius: '12px',
-                    fontSize: window.innerWidth < 768 ? '12px' : '14px',
-                    fontWeight: '500',
+                    fontSize: window.innerWidth < 768 ? '14px' : '16px',
+                    fontWeight: 'bold',
                     backdropFilter: 'blur(20px)',
                     border: '1px solid rgba(255, 255, 255, 0.1)',
-                    textAlign: 'center',
-                    zIndex: 1001,
-                    maxWidth: '140px', // Prevent text from getting too wide on mobile
-                    lineHeight: 1.3 // Better line spacing for readability
+                    pointerEvents: 'auto' // Enable interactions
                 }}>
-                    Hold to Buy<br />Release to Sell
+                    Balance: ${balance.toFixed(0)}
                 </div>
-            )}
+
+                {/* Instructions */}
+                {!isHolding && (
+                    <div style={{
+                        background: 'rgba(0, 0, 0, 0.8)',
+                        color: 'white',
+                        padding: '12px 16px',
+                        borderRadius: '12px',
+                        fontSize: window.innerWidth < 768 ? '12px' : '14px',
+                        fontWeight: '500',
+                        backdropFilter: 'blur(20px)',
+                        border: '1px solid rgba(255, 255, 255, 0.1)',
+                        textAlign: 'center',
+                        pointerEvents: 'auto', // Enable interactions
+                        maxWidth: '140px',
+                        lineHeight: 1.3
+                    }}>
+                        Hold to Buy<br />Release to Sell
+                    </div>
+                )}
+            </div>
 
             <style jsx>{`
         @keyframes pulse {

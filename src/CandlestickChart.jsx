@@ -694,7 +694,7 @@ const CandlestickChart = () => {
             };
 
             const drawGrid = () => {
-                p.stroke(255, 255, 255, gridAlpha * 0.25); // Slightly more visible
+                p.stroke(255, 255, 255, gridAlpha * 0.38); // Increased from 0.25 to 0.38 for more visible grid
                 p.strokeWeight(0.5);
 
                 const gridLines = p.width < 768 ? 5 : 8;
@@ -1379,7 +1379,7 @@ const CandlestickChart = () => {
             width: '100vw',
             height: '100vh',
             overflow: 'hidden',
-            background: 'linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 50%, #0f0f0f 100%)',
+            background: 'linear-gradient(135deg, #0B1215 0%, #1a1a1a 50%, #0f0f0f 100%)',
             userSelect: 'none',
             WebkitUserSelect: 'none',
             MozUserSelect: 'none',

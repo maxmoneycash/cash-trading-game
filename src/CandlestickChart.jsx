@@ -1472,33 +1472,6 @@ const CandlestickChart = () => {
                 </div>
             </div>
 
-            {/* Fireworks */}
-            {showFireworks && (
-                <div style={{
-                    position: 'absolute',
-                    inset: 0,
-                    pointerEvents: 'none',
-                    zIndex: 999
-                }}>
-                    {[...Array(15)].map((_, i) => (
-                        <div
-                            key={i}
-                            style={{
-                                position: 'absolute',
-                                left: `${Math.random() * 100}%`,
-                                top: `${Math.random() * 100}%`,
-                                width: '40px',
-                                height: '40px',
-                                background: 'radial-gradient(circle, #ffff00 2px, transparent 2px)',
-                                backgroundSize: '8px 8px',
-                                animation: `firework 0.8s ease-out ${Math.random() * 0.3}s`,
-                                opacity: 0
-                            }}
-                        />
-                    ))}
-                </div>
-            )}
-
             {/* Liquidation Effect */}
             {showLiquidation && (
                 <div style={{
@@ -1599,6 +1572,9 @@ const CandlestickChart = () => {
                 {/* Instructions */}
                 {!isHolding && (
                     <div style={{
+                        position: 'absolute',
+                        bottom: window.innerWidth < 768 ? '120px' : '20px', // Even more aggressive mobile positioning
+                        right: '20px',
                         background: 'rgba(0, 0, 0, 0.8)',
                         color: 'white',
                         padding: '12px 16px',
@@ -1608,9 +1584,10 @@ const CandlestickChart = () => {
                         backdropFilter: 'blur(20px)',
                         border: '1px solid rgba(255, 255, 255, 0.1)',
                         textAlign: 'center',
-                        pointerEvents: 'auto', // Enable interactions
-                        maxWidth: '140px',
-                        lineHeight: 1.3
+                        zIndex: 1001,
+                        maxWidth: '140px', // Prevent text from getting too wide on mobile
+                        lineHeight: 1.3, // Better line spacing for readability
+                        fontFamily: 'Bai Jamjuree, sans-serif' // Apply font
                     }}>
                         Hold to Buy<br />Release to Sell
                     </div>
@@ -1618,6 +1595,16 @@ const CandlestickChart = () => {
             </div>
 
             <style jsx>{`
+        @import url('https://fonts.googleapis.com/css2?family=Bai+Jamjuree:wght@400;500;600;700&display=swap');
+        
+        * {
+          font-family: 'Bai Jamjuree', sans-serif !important;
+        }
+        
+        html, body {
+          font-family: 'Bai Jamjuree', sans-serif !important;
+        }
+        
         @keyframes pulse {
           0%, 100% { opacity: 1; }
           50% { opacity: 0.7; }
@@ -1645,11 +1632,6 @@ const CandlestickChart = () => {
           50% { 
             box-shadow: 0 0 10px currentColor, 0 0 20px currentColor, 0 0 30px currentColor;
           }
-        }
-        
-        @keyframes firework {
-          0% { transform: scale(0) rotate(0deg); opacity: 1; }
-          100% { transform: scale(1) rotate(180deg); opacity: 0; }
         }
         
         @keyframes liquidationPulse {

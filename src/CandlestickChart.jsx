@@ -203,7 +203,7 @@ const CandlestickChart = () => {
             let candles = [];
             let allRoundCandles = [];
             let currentIndex = 0;
-            let animationSpeed = 1.94; // Slowed down by 3% from 2x speed
+            let animationSpeed = 1.8818; // Slowed down by another 3% from 1.94x
             let isAnimating = true;
             let lastUpdate = 0;
             let candleWidth = p.windowWidth < 768 ? 4 : 6;

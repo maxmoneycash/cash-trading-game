@@ -1124,7 +1124,7 @@ const CandlestickChart = () => {
                 const leftMargin = isMobile ? 20 : 30;
                 const rightMargin = isMobile ? 45 : 60; // Reduced margin with tighter layout
                 const topMargin = isMobile ? 70 : 90;
-                const bottomMargin = isMobile ? 60 : 60; // Reduced from 100 to 70 on mobile to extend chart downward
+                const bottomMargin = isMobile ? 63 : 60; // Reduced from 100 to 70 on mobile to extend chart downward
 
                 chartArea = {
                     x: leftMargin,
@@ -1254,7 +1254,7 @@ const CandlestickChart = () => {
                 const leftMargin = isMobile ? 20 : 30;
                 const rightMargin = isMobile ? 45 : 60; // Reduced margin with tighter layout
                 const topMargin = isMobile ? 70 : 90;
-                const bottomMargin = isMobile ? 60 : 60; // Reduced from 100 to 70 on mobile to extend chart downward
+                const bottomMargin = isMobile ? 63 : 60; // Reduced from 100 to 70 on mobile to extend chart downward
 
                 chartArea = {
                     x: leftMargin,
@@ -1598,7 +1598,8 @@ const CandlestickChart = () => {
                         textAlign: 'center',
                         pointerEvents: 'auto',
                         maxWidth: '140px',
-                        lineHeight: 1.3
+                        lineHeight: 1,
+                        whiteSpace: 'wrap'
                     }}>
                         Hold to Buy<br />Release to Sell
                     </div>

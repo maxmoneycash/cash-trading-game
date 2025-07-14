@@ -260,7 +260,7 @@ const CandlestickChart = () => {
                     this.gravity = 0.5;
                     this.drag = 0.98;
                     this.lifetime = 0;
-                    this.maxLifetime = 3000; // 3 seconds
+                    this.maxLifetime = 2000; // Reduced from 3000 to make them disappear faster
                     this.exploding = false;
                     this.explosionVx = 0;
                     this.explosionVy = 0;
@@ -329,8 +329,13 @@ const CandlestickChart = () => {
 
                 // Handle explosion when closing profitable position
                 if (shouldExplodeEmojis && explosionCenter) {
-                    // Create explosion effect with many emojis
-                    for (let i = 0; i < 25; i++) {
+                    // Dynamic number based on current active emojis to prevent overload
+                    let numEmojis = 15; // Reduced base from 25
+                    if (activeMoneyEmojis.length > 40) numEmojis = 8;
+                    if (activeMoneyEmojis.length > 70) numEmojis = 4;
+
+                    // Create explosion effect with dynamic number
+                    for (let i = 0; i < numEmojis; i++) {
                         const emoji = new MoneyEmoji(
                             explosionCenter.x + (Math.random() - 0.5) * 30,
                             explosionCenter.y + (Math.random() - 0.5) * 30
@@ -1103,7 +1108,7 @@ const CandlestickChart = () => {
 
                     // Play cash sound
                     const cashSound = new Audio('https://assets.mixkit.co/active_storage/sfx/2003/2003-preview.mp3');
-                    cashSound.volume = 0.3;
+                    cashSound.volume = 0.7;
                     cashSound.play().catch(err => console.log('Could not play cash sound:', err));
                 }
 

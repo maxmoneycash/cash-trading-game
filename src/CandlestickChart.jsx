@@ -1124,7 +1124,7 @@ const CandlestickChart = () => {
                 const leftMargin = isMobile ? 20 : 30;
                 const rightMargin = isMobile ? 45 : 60; // Reduced margin with tighter layout
                 const topMargin = isMobile ? 70 : 90;
-                const bottomMargin = isMobile ? 100 : 60; // Increased bottom margin on mobile for UI elements
+                const bottomMargin = isMobile ? 60 : 60; // Reduced from 100 to 70 on mobile to extend chart downward
 
                 chartArea = {
                     x: leftMargin,
@@ -1254,7 +1254,7 @@ const CandlestickChart = () => {
                 const leftMargin = isMobile ? 20 : 30;
                 const rightMargin = isMobile ? 45 : 60; // Reduced margin with tighter layout
                 const topMargin = isMobile ? 70 : 90;
-                const bottomMargin = isMobile ? 100 : 60; // Increased bottom margin on mobile for UI elements
+                const bottomMargin = isMobile ? 60 : 60; // Reduced from 100 to 70 on mobile to extend chart downward
 
                 chartArea = {
                     x: leftMargin,
@@ -1512,7 +1512,7 @@ const CandlestickChart = () => {
                         textShadow: '0 0 10px rgba(255,0,0,0.4)',
                         letterSpacing: '0.5px'
                     }}>
-                        {rugpullType === 'rugpull' && '📈➡️💀 MARKET CRASHED'}
+                        {rugpullType === 'rugpull' && '📈💀 MARKET CRASHED'}
                         {rugpullType === 'instant' && '⚡ FLASH CRASH'}
                         {rugpullType === 'gradual' && '📉 DEATH SPIRAL'}
                         {rugpullType === 'deadcat' && '🐱‍💀 DEAD CAT BOUNCE'}

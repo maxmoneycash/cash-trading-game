@@ -1477,13 +1477,20 @@ const CandlestickChart = () => {
                 <div style={{
                     position: 'absolute',
                     inset: 0,
-                    background: 'linear-gradient(45deg, rgba(255,0,0,0.7), rgba(139,0,0,0.8))',
+                    background: `linear-gradient(135deg, rgba(255,0,0,0.2) 0%, rgba(139,0,0,0.1) 100%)`,
+                    backdropFilter: 'blur(20px) saturate(180%)',
                     display: 'flex',
                     flexDirection: 'column',
                     justifyContent: 'center',
                     alignItems: 'center',
                     zIndex: 1000,
-                    animation: 'liquidationPulse 0.5s ease-in-out infinite alternate'
+                    animation: 'liquidationPulse 0.5s ease-in-out infinite alternate',
+                    boxShadow: `
+                        0 10px 40px rgba(255,0,0,0.1),
+                        inset 0 1px 1px rgba(255,68,68,0.2),
+                        0 0 80px rgba(255,68,68,0.05)
+                    `,
+                    transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)'
                 }}>
                     <div style={{
                         fontSize: window.innerWidth < 768 ? '32px' : '48px',
@@ -1491,7 +1498,8 @@ const CandlestickChart = () => {
                         color: '#ffffff',
                         textShadow: '0 0 20px rgba(255,0,0,0.8)',
                         marginBottom: '20px',
-                        animation: 'shake 0.3s ease-in-out infinite'
+                        animation: 'shake 0.3s ease-in-out infinite',
+                        letterSpacing: '-0.5px'
                     }}>
                         {rugpullType === 'rugpull' ? '💥 GET RUGGED 💥' : '🔥 LIQUIDATED 🔥'}
                     </div>
@@ -1500,7 +1508,9 @@ const CandlestickChart = () => {
                         fontSize: window.innerWidth < 768 ? '18px' : '24px',
                         color: '#ffffff',
                         textAlign: 'center',
-                        marginBottom: '10px'
+                        marginBottom: '10px',
+                        textShadow: '0 0 10px rgba(255,0,0,0.4)',
+                        letterSpacing: '0.5px'
                     }}>
                         {rugpullType === 'rugpull' && '📈➡️💀 MARKET CRASHED'}
                         {rugpullType === 'instant' && '⚡ FLASH CRASH'}
@@ -1511,7 +1521,9 @@ const CandlestickChart = () => {
                     <div style={{
                         fontSize: window.innerWidth < 768 ? '14px' : '18px',
                         color: '#ffcccc',
-                        textAlign: 'center'
+                        textAlign: 'center',
+                        textShadow: '0 0 5px rgba(255,0,0,0.3)',
+                        letterSpacing: '0.3px'
                     }}>
                         {rugpullType === 'rugpull'
                             ? 'Game Over • Starting new round...'
@@ -1532,7 +1544,8 @@ const CandlestickChart = () => {
                                 background: '#ff0000',
                                 borderRadius: '50%',
                                 animation: `fall ${1 + Math.random() * 2}s linear infinite`,
-                                opacity: 0.7
+                                opacity: 0.7,
+                                boxShadow: '0 0 10px rgba(255,0,0,0.5)'
                             }}
                         />
                     ))}
@@ -1547,7 +1560,7 @@ const CandlestickChart = () => {
                 right: 0,
                 display: 'flex',
                 justifyContent: 'space-between',
-                alignItems: 'center',
+                alignItems: 'flex-end', // Align to bottom
                 padding: '0 20px',
                 paddingBottom: `calc(10px + env(safe-area-inset-bottom, 0px))`, // Consistent padding with safe area
                 height: '60px', // Fixed height for consistency
@@ -1556,6 +1569,7 @@ const CandlestickChart = () => {
             }}>
                 {/* Game Stats */}
                 <div style={{
+                    width: window.innerWidth < 768 ? '140px' : '180px', // Fixed width matching PNL
                     background: 'rgba(0, 0, 0, 0.8)',
                     color: 'white',
                     padding: '12px 16px',
@@ -1564,7 +1578,8 @@ const CandlestickChart = () => {
                     fontWeight: 'bold',
                     backdropFilter: 'blur(20px)',
                     border: '1px solid rgba(255, 255, 255, 0.1)',
-                    pointerEvents: 'auto' // Enable interactions
+                    pointerEvents: 'auto', // Enable interactions
+                    textAlign: 'center' // Center the text
                 }}>
                     Balance: ${balance.toFixed(0)}
                 </div>
@@ -1572,9 +1587,6 @@ const CandlestickChart = () => {
                 {/* Instructions */}
                 {!isHolding && (
                     <div style={{
-                        position: 'absolute',
-                        bottom: window.innerWidth < 768 ? '120px' : '20px', // Even more aggressive mobile positioning
-                        right: '20px',
                         background: 'rgba(0, 0, 0, 0.8)',
                         color: 'white',
                         padding: '12px 16px',
@@ -1584,10 +1596,9 @@ const CandlestickChart = () => {
                         backdropFilter: 'blur(20px)',
                         border: '1px solid rgba(255, 255, 255, 0.1)',
                         textAlign: 'center',
-                        zIndex: 1001,
-                        maxWidth: '140px', // Prevent text from getting too wide on mobile
-                        lineHeight: 1.3, // Better line spacing for readability
-                        fontFamily: 'Bai Jamjuree, sans-serif' // Apply font
+                        pointerEvents: 'auto',
+                        maxWidth: '140px',
+                        lineHeight: 1.3
                     }}>
                         Hold to Buy<br />Release to Sell
                     </div>

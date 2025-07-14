@@ -694,7 +694,7 @@ const CandlestickChart = () => {
             };
 
             const drawGrid = () => {
-                p.stroke(255, 255, 255, gridAlpha * 0.15);
+                p.stroke(255, 255, 255, gridAlpha * 0.25); // Slightly more visible
                 p.strokeWeight(0.5);
 
                 const gridLines = p.width < 768 ? 5 : 8;
@@ -951,13 +951,11 @@ const CandlestickChart = () => {
                     }
 
                     if (isLiquidation) {
-                        // Liquidation candles are always bright red with dramatic effect - wider than normal
-                        const liquidationWidth = currentCandleWidth * 1.5; // 50% wider
-                        const widthAdjustment = (liquidationWidth - currentCandleWidth) / 2;
+                        // Liquidation candles are always bright red with dramatic effect
                         p.fill(255, 50, 50, 255 * candle.animation);
                         p.stroke(255, 0, 0, 255 * candle.animation);
-                        p.strokeWeight(2);
-                        p.rect(candleX - widthAdjustment, bodyY, liquidationWidth, Math.max(bodyHeight, 1), 1);
+                        p.strokeWeight(1); // Same weight as regular
+                        p.rect(candleX, bodyY, currentCandleWidth, Math.max(bodyHeight, 1), 1);
                     } else if (isGreen) {
                         p.fill(candleColor[0], candleColor[1], candleColor[2], 180 * candle.animation);
                         p.noStroke();
@@ -1570,16 +1568,22 @@ const CandlestickChart = () => {
                 {/* Game Stats */}
                 <div style={{
                     width: window.innerWidth < 768 ? '140px' : '180px', // Fixed width matching PNL
+                    height: '40px', // Fixed height for consistency
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
                     background: 'rgba(0, 0, 0, 0.8)',
                     color: 'white',
-                    padding: '12px 16px',
+                    padding: '0 16px',
                     borderRadius: '12px',
                     fontSize: window.innerWidth < 768 ? '14px' : '16px',
                     fontWeight: 'bold',
                     backdropFilter: 'blur(20px)',
                     border: '1px solid rgba(255, 255, 255, 0.1)',
                     pointerEvents: 'auto', // Enable interactions
-                    textAlign: 'center' // Center the text
+                    whiteSpace: 'nowrap', // Prevent text wrapping
+                    overflow: 'hidden', // Hide overflow if needed
+                    textOverflow: 'ellipsis' // Ellipsis for very long text
                 }}>
                     Balance: ${balance.toFixed(0)}
                 </div>
@@ -1587,9 +1591,13 @@ const CandlestickChart = () => {
                 {/* Instructions */}
                 {!isHolding && (
                     <div style={{
+                        height: '40px', // Fixed height matching balance
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
                         background: 'rgba(0, 0, 0, 0.8)',
                         color: 'white',
-                        padding: '12px 16px',
+                        padding: '0 16px',
                         borderRadius: '12px',
                         fontSize: window.innerWidth < 768 ? '12px' : '14px',
                         fontWeight: '500',
@@ -1598,8 +1606,7 @@ const CandlestickChart = () => {
                         textAlign: 'center',
                         pointerEvents: 'auto',
                         maxWidth: '140px',
-                        lineHeight: 1,
-                        whiteSpace: 'wrap'
+                        lineHeight: 1.3
                     }}>
                         Hold to Buy<br />Release to Sell
                     </div>

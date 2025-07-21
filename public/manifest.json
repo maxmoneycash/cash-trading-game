@@ -1,0 +1,21 @@
+{
+  "name": "CASH TRADING GAME",
+  "short_name": "Cash Trading",
+  "description": "A trading simulation game",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#000000",
+  "orientation": "portrait",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/cash_app_icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["games", "finance", "entertainment"],
+  "lang": "en"
+}

@@ -1041,8 +1041,9 @@ const CandlestickChart = () => {
 
             // Position management functions
             const startPosition = () => {
-                // Only allow new positions during active rounds
-                if (currentPosition || candles.length === 0 || !isRoundActive || isHistoricalView) return;
+                try {
+                    // Only allow new positions during active rounds
+                    if (currentPosition || candles.length === 0 || !isRoundActive || isHistoricalView) return;
 
                 const lastCandle = candles[candles.length - 1];
                 const currentBalance = balance;
@@ -1065,10 +1066,14 @@ const CandlestickChart = () => {
 
                 // Force immediate redraw to show the line
                 p.redraw();
+                } catch (error) {
+                    console.error('❌ Error in startPosition:', error);
+                }
             };
 
             const closePosition = () => {
-                if (!currentPosition || !isHoldingPosition) return;
+                try {
+                    if (!currentPosition || !isHoldingPosition) return;
 
                 isHoldingPosition = false;
                 setIsHolding(false);
@@ -1116,6 +1121,9 @@ const CandlestickChart = () => {
                 currentPnl = 0;
                 setPnl(0);
                 pnlLineEndPos = null; // Clear PNL line position
+                } catch (error) {
+                    console.error('❌ Error in closePosition:', error);
+                }
             };
 
             p.setup = () => {
@@ -1276,17 +1284,25 @@ const CandlestickChart = () => {
             let touchActive = false;
 
             p.mousePressed = () => {
-                if (p.mouseX >= 0 && p.mouseX <= p.width && p.mouseY >= 0 && p.mouseY <= p.height) {
+                // Don't do anything if p5 isn't ready
+                try {
                     if (!touchActive) { // Prevent double triggering with touch
                         startPosition();
                     }
-                    return false;
+                } catch (error) {
+                    console.log('❌ Mouse handler error, p5 not ready');
                 }
+                return false;
             };
 
             p.mouseReleased = () => {
-                if (!touchActive) { // Prevent double triggering with touch
-                    closePosition();
+                // Don't do anything if p5 isn't ready
+                try {
+                    if (!touchActive) { // Prevent double triggering with touch
+                        closePosition();
+                    }
+                } catch (error) {
+                    console.log('❌ Mouse release handler error, p5 not ready');
                 }
                 return false;
             };
@@ -1618,7 +1634,7 @@ const CandlestickChart = () => {
                 )}
             </div>
 
-            <style jsx>{`
+            <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Bai+Jamjuree:wght@400;500;600;700&display=swap');
         
         * {

@@ -1134,7 +1134,7 @@ const CandlestickChart = () => {
                 const isMobile = p.windowWidth < 768;
                 const leftMargin = isMobile ? 20 : 30;
                 const rightMargin = isMobile ? 45 : 60; // Reduced margin with tighter layout
-                const topMargin = isMobile ? 70 : 90;
+                const topMargin = isMobile ? 100 : 90;
                 const bottomMargin = isMobile ? 63 : 60; // Reduced from 100 to 70 on mobile to extend chart downward
 
                 chartArea = {
@@ -1264,7 +1264,7 @@ const CandlestickChart = () => {
                 const isMobile = p.windowWidth < 768;
                 const leftMargin = isMobile ? 20 : 30;
                 const rightMargin = isMobile ? 45 : 60; // Reduced margin with tighter layout
-                const topMargin = isMobile ? 70 : 90;
+                const topMargin = isMobile ? 100 : 90;
                 const bottomMargin = isMobile ? 63 : 60; // Reduced from 100 to 70 on mobile to extend chart downward
 
                 chartArea = {

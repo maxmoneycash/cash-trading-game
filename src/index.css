@@ -18,9 +18,11 @@ html {
   overflow: hidden;
   width: 100%;
   height: 100%;
-  /* Support safe areas on iOS */
+  /* Support safe areas on iOS - use screen height including safe areas */
   height: 100vh;
+  height: 100dvh; /* Dynamic viewport height */
   height: -webkit-fill-available;
+  background: linear-gradient(135deg, #0c0c0c 0%, #1a1a1a 100%);
 }
 
 body {
@@ -30,6 +32,7 @@ body {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   overflow: hidden;
   height: 100vh;
+  height: 100dvh; /* Dynamic viewport height */
   height: -webkit-fill-available;
   width: 100vw;
   /* Prevent pull-to-refresh */
@@ -40,6 +43,10 @@ body {
   user-select: none;
   /* Prevent elastic scrolling on iOS */
   touch-action: none;
+  /* Ensure background extends to full screen on iOS */
+  min-height: 100vh;
+  min-height: 100dvh;
+  min-height: -webkit-fill-available;
 }
 
 /* Prevent any highlighting on interactive elements */
@@ -53,6 +60,7 @@ canvas {
 
 #root {
   height: 100vh;
+  height: 100dvh; /* Dynamic viewport height */
   height: -webkit-fill-available;
   width: 100vw;
   position: relative;
@@ -60,6 +68,12 @@ canvas {
   padding-top: env(safe-area-inset-top, 0);
   padding-bottom: env(safe-area-inset-bottom, 0);
   box-sizing: border-box;
+  /* Ensure minimum height covers full screen */
+  min-height: 100vh;
+  min-height: 100dvh;
+  min-height: -webkit-fill-available;
+  /* Ensure background extends to safe areas */
+  background: linear-gradient(135deg, #0c0c0c 0%, #1a1a1a 100%);
 }
 
 /* Custom slider styling */

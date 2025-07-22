@@ -543,21 +543,28 @@ const CandlestickChart = () => {
                 const remaining = Math.max(0, roundDuration - elapsed);
                 const seconds = Math.ceil(remaining / 1000);
 
-                // Timer background
+                // Timer background - positioned symmetrically with P&L tracker, avoiding price labels
+                const isMobile = p.windowWidth < 768;
+                const timerWidth = isMobile ? 60 : 70;
+                const timerHeight = isMobile ? 35 : 40;
+                const timerX = p.windowWidth - timerWidth - (isMobile ? 75 : 85); // Move further left to avoid price labels
+                const timerY = 20; // Same height as P&L tracker for perfect symmetry
+                
                 p.fill(0, 0, 0, 150);
                 p.noStroke();
-                p.rect(chartArea.x + chartArea.width - 60, chartArea.y - 50, 55, 30, 5); // Reduced from 80/70
+                p.rect(timerX, timerY, timerWidth, timerHeight, 8);
 
                 // Timer text
                 p.fill(255, 255, 255, 255);
                 p.textAlign(p.CENTER, p.CENTER);
-                p.textSize(16);
-                p.text(seconds + "s", chartArea.x + chartArea.width - 32, chartArea.y - 35); // Adjusted position
+                p.textSize(isMobile ? 14 : 16);
+                p.text(seconds + "s", timerX + timerWidth/2, timerY + timerHeight/2 - 3);
 
                 // Progress bar
                 const progress = remaining / roundDuration;
                 p.fill(255, 68, 68);
-                p.rect(chartArea.x + chartArea.width - 55, chartArea.y - 20, 45 * progress, 3); // Reduced from 75/60
+                const barPadding = 8;
+                p.rect(timerX + barPadding, timerY + timerHeight - 6, (timerWidth - barPadding * 2) * progress, 3);
             };
 
             const updateDisplay = (visible) => {
@@ -1130,12 +1137,12 @@ const CandlestickChart = () => {
                 p.createCanvas(p.windowWidth, p.windowHeight);
                 p.strokeCap(p.ROUND);
 
-                // Optimize chart area for mobile vs desktop
+                // Optimize chart area for mobile vs desktop - Maximum screen utilization with overlap
                 const isMobile = p.windowWidth < 768;
-                const leftMargin = isMobile ? 20 : 30;
-                const rightMargin = isMobile ? 45 : 60; // Reduced margin with tighter layout
-                const topMargin = isMobile ? 100 : 90;
-                const bottomMargin = isMobile ? 63 : 60; // Reduced from 100 to 70 on mobile to extend chart downward
+                const leftMargin = isMobile ? 6 : 12; // Even smaller left margin for maximum width
+                const rightMargin = isMobile ? 42 : 58; // Slightly tighter right margin
+                const topMargin = isMobile ? 40 : 30; // Much smaller - chart overlaps behind P&L tracker
+                const bottomMargin = isMobile ? 75 : 68; // Closer to balance section for maximum height
 
                 chartArea = {
                     x: leftMargin,
@@ -1260,12 +1267,12 @@ const CandlestickChart = () => {
                 p.resizeCanvas(p.windowWidth, p.windowHeight);
                 p.strokeCap(p.ROUND);
 
-                // Optimize chart area for mobile vs desktop
+                // Optimize chart area for mobile vs desktop - Maximum screen utilization with overlap
                 const isMobile = p.windowWidth < 768;
-                const leftMargin = isMobile ? 20 : 30;
-                const rightMargin = isMobile ? 45 : 60; // Reduced margin with tighter layout
-                const topMargin = isMobile ? 100 : 90;
-                const bottomMargin = isMobile ? 63 : 60; // Reduced from 100 to 70 on mobile to extend chart downward
+                const leftMargin = isMobile ? 6 : 12; // Even smaller left margin for maximum width
+                const rightMargin = isMobile ? 42 : 58; // Slightly tighter right margin
+                const topMargin = isMobile ? 40 : 30; // Much smaller - chart overlaps behind P&L tracker
+                const bottomMargin = isMobile ? 75 : 68; // Closer to balance section for maximum height
 
                 chartArea = {
                     x: leftMargin,

@@ -1141,7 +1141,8 @@ const CandlestickChart = () => {
                 const isMobile = p.windowWidth < 768;
                 const leftMargin = isMobile ? 4 : 8; // Minimal left margin for maximum width
                 const rightMargin = isMobile ? 42 : 58; // Keep right margin for price labels
-                const topMargin = isMobile ? 10 : 8; // Minimal top margin - chart almost to screen edge
+                // Keep same margins - safe area handled by HTML padding now
+                const topMargin = isMobile ? 10 : 8; // Minimal top margin
                 const bottomMargin = isMobile ? 60 : 55; // Smaller margin since UI is at very bottom now
 
                 chartArea = {
@@ -1432,7 +1433,7 @@ const CandlestickChart = () => {
             {/* Fancy PNL Display - Always Visible inside chart grid */}
             <div style={{
                 position: 'absolute',
-                top: window.innerWidth < 768 ? '25px' : '23px', // Position inside chart area
+                top: `calc(${window.innerWidth < 768 ? '25px' : '23px'} + env(safe-area-inset-top, 0px))`, // Account for safe area
                 left: window.innerWidth < 768 ? '19px' : '23px', // Position inside chart area
                 width: window.innerWidth < 768 ? '140px' : '180px', // Fixed width to prevent resizing
                 height: window.innerWidth < 768 ? '80px' : '95px', // Fixed height to prevent shape changes

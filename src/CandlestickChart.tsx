@@ -1143,7 +1143,7 @@ const CandlestickChart = () => {
                 const rightMargin = isMobile ? 42 : 58; // Keep right margin for price labels
                 // Keep same margins - safe area handled by HTML padding now
                 const topMargin = isMobile ? 10 : 8; // Minimal top margin
-                const bottomMargin = isMobile ? 60 : 55; // Smaller margin since UI is at very bottom now
+                const bottomMargin = isMobile ? 10 : 10; // Minimal margin since UI is fixed positioned
 
                 chartArea = {
                     x: leftMargin,
@@ -1273,7 +1273,7 @@ const CandlestickChart = () => {
                 const leftMargin = isMobile ? 4 : 8; // Minimal left margin for maximum width
                 const rightMargin = isMobile ? 42 : 58; // Keep right margin for price labels
                 const topMargin = isMobile ? 10 : 8; // Minimal top margin - chart almost to screen edge
-                const bottomMargin = isMobile ? 60 : 55; // Smaller margin since UI is at very bottom now
+                const bottomMargin = isMobile ? 10 : 10; // Minimal margin since UI is fixed positioned
 
                 chartArea = {
                     x: leftMargin,
@@ -1409,6 +1409,7 @@ const CandlestickChart = () => {
             height: '100vh',
             overflow: 'hidden',
             background: 'transparent', // Let HTML background show through
+            border: '5px solid red', // DIAGNOSTIC: See what this div covers
             userSelect: 'none',
             WebkitUserSelect: 'none',
             MozUserSelect: 'none',

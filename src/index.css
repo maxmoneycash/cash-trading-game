@@ -23,6 +23,7 @@ html {
   padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
   background: linear-gradient(135deg, #0B1215 0%, #1a1a1a 50%, #0f0f0f 100%);
   background-attachment: fixed;
+  border: 10px solid blue; /* DIAGNOSTIC: See HTML coverage */
 }
 
 body {
@@ -31,9 +32,8 @@ body {
   background: linear-gradient(135deg, #0B1215 0%, #1a1a1a 50%, #0f0f0f 100%);
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   overflow: hidden;
-  height: 100vh;
-  height: 100dvh; /* Dynamic viewport height */
-  height: -webkit-fill-available;
+  /* Apply same iOS hack as HTML */
+  min-height: calc(100% + env(safe-area-inset-top));
   width: 100vw;
   /* Prevent pull-to-refresh */
   overscroll-behavior: none;
@@ -43,10 +43,8 @@ body {
   user-select: none;
   /* Prevent elastic scrolling on iOS */
   touch-action: none;
-  /* Ensure background extends to full screen on iOS */
-  min-height: 100vh;
-  min-height: 100dvh;
-  min-height: -webkit-fill-available;
+  background-attachment: fixed;
+  border: 8px solid green; /* DIAGNOSTIC: See body coverage */
 }
 
 /* Prevent any highlighting on interactive elements */

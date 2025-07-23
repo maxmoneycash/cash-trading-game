@@ -1404,11 +1404,16 @@ const CandlestickChart = () => {
 
     return (
         <div style={{
-            position: 'relative',
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
             width: '100vw',
             height: '100vh',
+            minHeight: '100svh',
             overflow: 'hidden',
-            background: 'transparent', // Let HTML background show through
+            background: 'linear-gradient(135deg, #0B1215 0%, #1a1a1a 50%, #0f0f0f 100%)', // Put background back
             border: '5px solid red', // DIAGNOSTIC: See what this div covers
             userSelect: 'none',
             WebkitUserSelect: 'none',

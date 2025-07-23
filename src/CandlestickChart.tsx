@@ -1413,10 +1413,14 @@ const CandlestickChart = () => {
             bottom: 0,
             width: '100vw',
             height: '100vh',
-            minHeight: '100svh',
+            minHeight: '100vh',
+            maxHeight: 'none',
             overflow: 'hidden',
-            background: 'linear-gradient(135deg, #0B1215 0%, #1a1a1a 50%, #0f0f0f 100%)', // Put background back
-            border: '5px solid red', // DIAGNOSTIC: Put back to see coverage
+            background: 'linear-gradient(135deg, #0B1215 0%, #1a1a1a 50%, #0f0f0f 100%)',
+            border: '5px solid red',
+            // Force extension beyond viewport
+            paddingBottom: '100px',
+            marginBottom: '-100px'
             userSelect: 'none',
             WebkitUserSelect: 'none',
             MozUserSelect: 'none',

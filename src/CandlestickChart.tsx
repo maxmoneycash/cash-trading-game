@@ -1416,7 +1416,7 @@ const CandlestickChart = () => {
             minHeight: '100svh',
             overflow: 'hidden',
             background: 'linear-gradient(135deg, #0B1215 0%, #1a1a1a 50%, #0f0f0f 100%)', // Put background back
-// Diagnostic border removed
+            border: '5px solid red', // DIAGNOSTIC: Put back to see coverage
             userSelect: 'none',
             WebkitUserSelect: 'none',
             MozUserSelect: 'none',
@@ -1587,16 +1587,7 @@ const CandlestickChart = () => {
                 </div>
             )}
 
-            {/* Bottom background extension to cover iOS home indicator area */}
-            <div style={{
-                position: 'fixed',
-                bottom: '-50px', // Extend below viewport
-                left: 0,
-                right: 0,
-                height: '100px', // Tall enough to cover any white space
-                background: 'linear-gradient(135deg, #0B1215 0%, #1a1a1a 50%, #0f0f0f 100%)',
-                zIndex: 999 // Below UI but above any white space
-            }}></div>
+            {/* Bottom background extension REMOVED - was creating gray background */}
 
             {/* Bottom UI Container - Positioned at very bottom for iOS PWA */}
             <div style={{

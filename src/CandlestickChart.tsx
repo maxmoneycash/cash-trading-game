@@ -1587,16 +1587,9 @@ const CandlestickChart = () => {
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'flex-end',
-                padding: '0 20px',
-                paddingBottom: '5px', // Fixed minimal padding
-                height: '50px', // Fixed height
+                padding: '0 20px 10px 20px',
                 zIndex: 1001,
-                pointerEvents: 'none',
-                // Use transparent background to show underlying app gradient
-                background: 'transparent',
-                // Extend below viewport
-                paddingBottom: 'max(5px, env(safe-area-inset-bottom, 0px))',
-                marginBottom: 'calc(-1 * env(safe-area-inset-bottom, 0px))'
+                pointerEvents: 'none'
             }}>
                 {/* Game Stats */}
                 <div style={{

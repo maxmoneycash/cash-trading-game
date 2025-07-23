@@ -63,21 +63,15 @@ canvas {
   height: 100dvh; /* Dynamic viewport height */
   height: -webkit-fill-available;
   width: 100vw;
-  position: relative;
-  /* Add safe area padding for iOS - extend background behind safe areas */
-  padding-top: env(safe-area-inset-top, 0);
-  padding-bottom: env(safe-area-inset-bottom, 0);
-  /* Use margin instead of padding for bottom to extend background */
-  margin-bottom: calc(-1 * env(safe-area-inset-bottom, 0));
-  padding-bottom: calc(env(safe-area-inset-bottom, 0) + 10px);
-  box-sizing: border-box;
-  /* Ensure minimum height covers full screen plus safe areas */
-  min-height: 100vh;
-  min-height: 100dvh;
-  min-height: calc(100vh + env(safe-area-inset-bottom, 0));
-  min-height: -webkit-fill-available;
+  position: fixed;
+  top: 0;
+  left: 0;
   /* Ensure background extends to safe areas */
   background: linear-gradient(135deg, #0B1215 0%, #1a1a1a 50%, #0f0f0f 100%);
+  /* Force full screen coverage */
+  min-height: 100vh;
+  min-height: 100dvh;
+  min-height: -webkit-fill-available;
 }
 
 /* Custom slider styling */

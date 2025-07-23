@@ -1145,7 +1145,7 @@ const CandlestickChart = () => {
                 const rightMargin = isMobile ? 42 : 58; // Keep right margin for price labels
                 // Keep same margins - safe area handled by HTML padding now
                 const topMargin = isMobile ? 10 : 8; // Minimal top margin
-                const bottomMargin = isMobile ? 10 : 10; // Minimal margin since UI is fixed positioned
+                const bottomMargin = isMobile ? 50 : 10; // Account for iOS PWA white section on mobile
 
                 chartArea = {
                     x: leftMargin,
@@ -1275,7 +1275,7 @@ const CandlestickChart = () => {
                 const leftMargin = isMobile ? 4 : 8; // Minimal left margin for maximum width
                 const rightMargin = isMobile ? 42 : 58; // Keep right margin for price labels
                 const topMargin = isMobile ? 10 : 8; // Minimal top margin - chart almost to screen edge
-                const bottomMargin = isMobile ? 10 : 10; // Minimal margin since UI is fixed positioned
+                const bottomMargin = isMobile ? 50 : 10; // Account for iOS PWA white section on mobile
 
                 chartArea = {
                     x: leftMargin,
@@ -1589,10 +1589,10 @@ const CandlestickChart = () => {
 
             {/* Bottom background extension REMOVED - was creating gray background */}
 
-            {/* Bottom UI Container - Positioned at very bottom for iOS PWA */}
+            {/* Bottom UI Container - Positioned above iOS PWA white section */}
             <div style={{
                 position: 'fixed',
-                bottom: 0,
+                bottom: window.innerWidth < 768 ? '40px' : '0px', // Lift above white section on mobile
                 left: 0,
                 right: 0,
                 display: 'flex',

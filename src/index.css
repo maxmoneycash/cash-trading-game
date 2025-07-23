@@ -17,10 +17,10 @@ html {
   /* Prevent elastic scrolling */
   overflow: hidden;
   width: 100%;
-  /* iOS PWA fix - use viewport units instead of % */
-  height: 100vh;
-  min-height: calc(100vh + env(safe-area-inset-top) + env(safe-area-inset-bottom));
-  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  /* Try modern viewport units for PWA */
+  height: 100svh; /* Small viewport height - excludes browser UI */
+  min-height: 100svh;
+  max-height: 100svh;
   background: linear-gradient(135deg, #0B1215 0%, #1a1a1a 50%, #0f0f0f 100%);
   background-attachment: fixed;
   border: 10px solid blue; /* DIAGNOSTIC: See HTML coverage */

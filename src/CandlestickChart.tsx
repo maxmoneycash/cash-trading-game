@@ -1408,7 +1408,7 @@ const CandlestickChart = () => {
             width: '100vw',
             height: '100vh',
             overflow: 'hidden',
-            background: 'linear-gradient(135deg, #0B1215 0%, #1a1a1a 50%, #0f0f0f 100%)',
+            background: 'transparent', // Let HTML background show through
             userSelect: 'none',
             WebkitUserSelect: 'none',
             MozUserSelect: 'none',
@@ -1433,7 +1433,7 @@ const CandlestickChart = () => {
             {/* Fancy PNL Display - Always Visible inside chart grid */}
             <div style={{
                 position: 'absolute',
-                top: `calc(${window.innerWidth < 768 ? '25px' : '23px'} + env(safe-area-inset-top, 0px))`, // Account for safe area
+                top: window.innerWidth < 768 ? '25px' : '23px', // Back to original - HTML padding handles safe area
                 left: window.innerWidth < 768 ? '19px' : '23px', // Position inside chart area
                 width: window.innerWidth < 768 ? '140px' : '180px', // Fixed width to prevent resizing
                 height: window.innerWidth < 768 ? '80px' : '95px', // Fixed height to prevent shape changes

@@ -543,12 +543,14 @@ const CandlestickChart = () => {
                 const remaining = Math.max(0, roundDuration - elapsed);
                 const seconds = Math.ceil(remaining / 1000);
 
-                // Timer background - positioned inside chart grid area
+                // Timer background - positioned inside chart grid area, below safe area
                 const isMobile = p.windowWidth < 768;
                 const timerWidth = isMobile ? 60 : 70;
                 const timerHeight = isMobile ? 35 : 40;
                 const timerX = chartArea.x + chartArea.width - timerWidth - 15; // Position inside chart area, avoiding price labels
-                const timerY = chartArea.y + 15; // Position inside chart area
+                // Add safe area offset for timer positioning
+                const safeAreaTop = 50; // Estimate for safe area height
+                const timerY = chartArea.y + 15 + safeAreaTop; // Position below safe area
                 
                 p.fill(0, 0, 0, 150);
                 p.noStroke();
@@ -1439,7 +1441,7 @@ const CandlestickChart = () => {
             {/* Fancy PNL Display - Always Visible inside chart grid */}
             <div style={{
                 position: 'absolute',
-                top: window.innerWidth < 768 ? '25px' : '23px', // Back to original - HTML padding handles safe area
+                top: `calc(${window.innerWidth < 768 ? '25px' : '23px'} + env(safe-area-inset-top, 0px))`, // Add safe area offset
                 left: window.innerWidth < 768 ? '19px' : '23px', // Position inside chart area
                 width: window.innerWidth < 768 ? '140px' : '180px', // Fixed width to prevent resizing
                 height: window.innerWidth < 768 ? '80px' : '95px', // Fixed height to prevent shape changes
@@ -1584,6 +1586,17 @@ const CandlestickChart = () => {
                     ))}
                 </div>
             )}
+
+            {/* Bottom background extension to cover iOS home indicator area */}
+            <div style={{
+                position: 'fixed',
+                bottom: '-50px', // Extend below viewport
+                left: 0,
+                right: 0,
+                height: '100px', // Tall enough to cover any white space
+                background: 'linear-gradient(135deg, #0B1215 0%, #1a1a1a 50%, #0f0f0f 100%)',
+                zIndex: 999 // Below UI but above any white space
+            }}></div>
 
             {/* Bottom UI Container - Positioned at very bottom for iOS PWA */}
             <div style={{

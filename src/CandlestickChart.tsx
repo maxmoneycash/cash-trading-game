@@ -1416,7 +1416,7 @@ const CandlestickChart = () => {
             minHeight: '100svh',
             overflow: 'hidden',
             background: 'linear-gradient(135deg, #0B1215 0%, #1a1a1a 50%, #0f0f0f 100%)', // Put background back
-            border: '5px solid red', // DIAGNOSTIC: See what this div covers
+// Diagnostic border removed
             userSelect: 'none',
             WebkitUserSelect: 'none',
             MozUserSelect: 'none',
@@ -1618,7 +1618,7 @@ const CandlestickChart = () => {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    background: 'rgba(0, 0, 0, 0.8)',
+                    background: 'transparent', // DIAGNOSTIC: Remove dark background
                     color: 'white',
                     padding: '0 16px',
                     borderRadius: '12px',
@@ -1641,7 +1641,7 @@ const CandlestickChart = () => {
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        background: 'rgba(0, 0, 0, 0.8)',
+                        background: 'transparent', // DIAGNOSTIC: Remove dark background
                         color: 'white',
                         padding: '0 16px',
                         borderRadius: '12px',

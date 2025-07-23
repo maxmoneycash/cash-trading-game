@@ -133,15 +133,16 @@ button:hover {
     /* Force full height in PWA mode */
     height: 100vh !important;
     height: -webkit-fill-available !important;
-    /* Prevent white space at bottom */
-    background: linear-gradient(135deg, #0c0c0c 0%, #1a1a1a 100%) !important;
+    /* Use exact same gradient as chart */
+    background: linear-gradient(135deg, #0B1215 0%, #1a1a1a 50%, #0f0f0f 100%) !important;
   }
   
   #root {
     /* Ensure root extends fully in PWA mode */
     min-height: 100vh !important;
     min-height: -webkit-fill-available !important;
-    background: linear-gradient(135deg, #0c0c0c 0%, #1a1a1a 100%) !important;
+    /* Use exact same gradient as chart */
+    background: linear-gradient(135deg, #0B1215 0%, #1a1a1a 50%, #0f0f0f 100%) !important;
   }
 }
 

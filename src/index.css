@@ -22,13 +22,13 @@ html {
   height: 100vh;
   height: 100dvh; /* Dynamic viewport height */
   height: -webkit-fill-available;
-  background: linear-gradient(135deg, #0c0c0c 0%, #1a1a1a 100%);
+  background: linear-gradient(135deg, #0B1215 0%, #1a1a1a 50%, #0f0f0f 100%);
 }
 
 body {
   margin: 0;
   padding: 0;
-  background: linear-gradient(135deg, #0c0c0c 0%, #1a1a1a 100%);
+  background: linear-gradient(135deg, #0B1215 0%, #1a1a1a 50%, #0f0f0f 100%);
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   overflow: hidden;
   height: 100vh;
@@ -64,16 +64,20 @@ canvas {
   height: -webkit-fill-available;
   width: 100vw;
   position: relative;
-  /* Add safe area padding for iOS */
+  /* Add safe area padding for iOS - extend background behind safe areas */
   padding-top: env(safe-area-inset-top, 0);
   padding-bottom: env(safe-area-inset-bottom, 0);
+  /* Use margin instead of padding for bottom to extend background */
+  margin-bottom: calc(-1 * env(safe-area-inset-bottom, 0));
+  padding-bottom: calc(env(safe-area-inset-bottom, 0) + 10px);
   box-sizing: border-box;
-  /* Ensure minimum height covers full screen */
+  /* Ensure minimum height covers full screen plus safe areas */
   min-height: 100vh;
   min-height: 100dvh;
+  min-height: calc(100vh + env(safe-area-inset-bottom, 0));
   min-height: -webkit-fill-available;
   /* Ensure background extends to safe areas */
-  background: linear-gradient(135deg, #0c0c0c 0%, #1a1a1a 100%);
+  background: linear-gradient(135deg, #0B1215 0%, #1a1a1a 50%, #0f0f0f 100%);
 }
 
 /* Custom slider styling */
@@ -112,6 +116,33 @@ input[type="range"]::-moz-range-thumb {
 button:hover {
   background: rgba(255, 255, 255, 0.2) !important;
   transform: translateY(-2px);
+}
+
+/* iOS PWA specific fixes */
+@supports (padding: max(0px)) {
+  #root {
+    /* Extend background behind safe areas on iOS */
+    padding-bottom: max(env(safe-area-inset-bottom, 0), 10px);
+    min-height: calc(100vh + env(safe-area-inset-bottom, 0));
+  }
+}
+
+/* Additional iOS PWA viewport fixes */
+@media screen and (display-mode: standalone) {
+  html, body {
+    /* Force full height in PWA mode */
+    height: 100vh !important;
+    height: -webkit-fill-available !important;
+    /* Prevent white space at bottom */
+    background: linear-gradient(135deg, #0c0c0c 0%, #1a1a1a 100%) !important;
+  }
+  
+  #root {
+    /* Ensure root extends fully in PWA mode */
+    min-height: 100vh !important;
+    min-height: -webkit-fill-available !important;
+    background: linear-gradient(135deg, #0c0c0c 0%, #1a1a1a 100%) !important;
+  }
 }
 
 /* Scrollbar styling for webkit browsers */

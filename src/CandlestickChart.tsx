@@ -543,12 +543,12 @@ const CandlestickChart = () => {
                 const remaining = Math.max(0, roundDuration - elapsed);
                 const seconds = Math.ceil(remaining / 1000);
 
-                // Timer background - positioned symmetrically with P&L tracker, avoiding price labels
+                // Timer background - positioned inside chart grid area
                 const isMobile = p.windowWidth < 768;
                 const timerWidth = isMobile ? 60 : 70;
                 const timerHeight = isMobile ? 35 : 40;
-                const timerX = p.windowWidth - timerWidth - (isMobile ? 75 : 85); // Move further left to avoid price labels
-                const timerY = 20; // Same height as P&L tracker for perfect symmetry
+                const timerX = chartArea.x + chartArea.width - timerWidth - 15; // Position inside chart area, avoiding price labels
+                const timerY = chartArea.y + 15; // Position inside chart area
                 
                 p.fill(0, 0, 0, 150);
                 p.noStroke();
@@ -1137,12 +1137,12 @@ const CandlestickChart = () => {
                 p.createCanvas(p.windowWidth, p.windowHeight);
                 p.strokeCap(p.ROUND);
 
-                // Optimize chart area for mobile vs desktop - Maximum screen utilization with overlap
+                // Optimize chart area for mobile vs desktop - Chart extends to screen edges
                 const isMobile = p.windowWidth < 768;
-                const leftMargin = isMobile ? 6 : 12; // Even smaller left margin for maximum width
-                const rightMargin = isMobile ? 42 : 58; // Slightly tighter right margin
-                const topMargin = isMobile ? 40 : 30; // Much smaller - chart overlaps behind P&L tracker
-                const bottomMargin = isMobile ? 75 : 68; // Closer to balance section for maximum height
+                const leftMargin = isMobile ? 4 : 8; // Minimal left margin for maximum width
+                const rightMargin = isMobile ? 42 : 58; // Keep right margin for price labels
+                const topMargin = isMobile ? 10 : 8; // Minimal top margin - chart almost to screen edge
+                const bottomMargin = isMobile ? 60 : 55; // Smaller margin since UI is at very bottom now
 
                 chartArea = {
                     x: leftMargin,
@@ -1267,12 +1267,12 @@ const CandlestickChart = () => {
                 p.resizeCanvas(p.windowWidth, p.windowHeight);
                 p.strokeCap(p.ROUND);
 
-                // Optimize chart area for mobile vs desktop - Maximum screen utilization with overlap
+                // Optimize chart area for mobile vs desktop - Chart extends to screen edges
                 const isMobile = p.windowWidth < 768;
-                const leftMargin = isMobile ? 6 : 12; // Even smaller left margin for maximum width
-                const rightMargin = isMobile ? 42 : 58; // Slightly tighter right margin
-                const topMargin = isMobile ? 40 : 30; // Much smaller - chart overlaps behind P&L tracker
-                const bottomMargin = isMobile ? 75 : 68; // Closer to balance section for maximum height
+                const leftMargin = isMobile ? 4 : 8; // Minimal left margin for maximum width
+                const rightMargin = isMobile ? 42 : 58; // Keep right margin for price labels
+                const topMargin = isMobile ? 10 : 8; // Minimal top margin - chart almost to screen edge
+                const bottomMargin = isMobile ? 60 : 55; // Smaller margin since UI is at very bottom now
 
                 chartArea = {
                     x: leftMargin,
@@ -1429,11 +1429,11 @@ const CandlestickChart = () => {
                 WebkitTapHighlightColor: 'transparent'
             }}></div>
 
-            {/* Fancy PNL Display - Always Visible in Top Left */}
+            {/* Fancy PNL Display - Always Visible inside chart grid */}
             <div style={{
                 position: 'absolute',
-                top: '20px',
-                left: '20px',
+                top: window.innerWidth < 768 ? '25px' : '23px', // Position inside chart area
+                left: window.innerWidth < 768 ? '19px' : '23px', // Position inside chart area
                 width: window.innerWidth < 768 ? '140px' : '180px', // Fixed width to prevent resizing
                 height: window.innerWidth < 768 ? '80px' : '95px', // Fixed height to prevent shape changes
                 background: `linear-gradient(135deg, ${pnl >= 0 ? 'rgba(0, 255, 136, 0.15)' : 'rgba(255, 68, 68, 0.15)'} 0%, ${pnl >= 0 ? 'rgba(0, 255, 136, 0.05)' : 'rgba(255, 68, 68, 0.05)'} 100%)`,
@@ -1578,7 +1578,7 @@ const CandlestickChart = () => {
                 </div>
             )}
 
-            {/* Bottom UI Container */}
+            {/* Bottom UI Container - Positioned at very bottom for iOS PWA */}
             <div style={{
                 position: 'fixed',
                 bottom: 0,
@@ -1586,12 +1586,14 @@ const CandlestickChart = () => {
                 right: 0,
                 display: 'flex',
                 justifyContent: 'space-between',
-                alignItems: 'flex-end', // Align to bottom
+                alignItems: 'flex-end',
                 padding: '0 20px',
-                paddingBottom: `calc(10px + env(safe-area-inset-bottom, 0px))`, // Consistent padding with safe area
-                height: '60px', // Fixed height for consistency
-                zIndex: 1001, // Above everything
-                pointerEvents: 'none' // Allow clicks through container
+                paddingBottom: `calc(5px + env(safe-area-inset-bottom, 0px))`, // Minimal padding for bottom positioning
+                height: `calc(50px + env(safe-area-inset-bottom, 0px))`, // Responsive height with safe area
+                zIndex: 1001,
+                pointerEvents: 'none',
+                // Add subtle background for better visibility at bottom
+                background: 'linear-gradient(to top, rgba(11, 18, 21, 0.9) 0%, rgba(11, 18, 21, 0.7) 50%, transparent 100%)'
             }}>
                 {/* Game Stats */}
                 <div style={{

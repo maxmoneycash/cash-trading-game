@@ -551,7 +551,7 @@ const CandlestickChart = () => {
                 // Add safe area offset for timer positioning
                 const safeAreaTop = 50; // Estimate for safe area height
                 const timerY = chartArea.y + 15 + safeAreaTop; // Position below safe area
-                
+
                 p.fill(0, 0, 0, 150);
                 p.noStroke();
                 p.rect(timerX, timerY, timerWidth, timerHeight, 8);
@@ -560,7 +560,7 @@ const CandlestickChart = () => {
                 p.fill(255, 255, 255, 255);
                 p.textAlign(p.CENTER, p.CENTER);
                 p.textSize(isMobile ? 14 : 16);
-                p.text(seconds + "s", timerX + timerWidth/2, timerY + timerHeight/2 - 3);
+                p.text(seconds + "s", timerX + timerWidth / 2, timerY + timerHeight / 2 - 3);
 
                 // Progress bar
                 const progress = remaining / roundDuration;
@@ -1054,27 +1054,27 @@ const CandlestickChart = () => {
                     // Only allow new positions during active rounds
                     if (currentPosition || candles.length === 0 || !isRoundActive || isHistoricalView) return;
 
-                const lastCandle = candles[candles.length - 1];
-                const currentBalance = balance;
+                    const lastCandle = candles[candles.length - 1];
+                    const currentBalance = balance;
 
-                // Calculate position size (use 20% of balance) - reduced for more realistic trading
-                const positionSize = currentBalance * 0.2;
-                const shares = positionSize / lastCandle.close;
+                    // Calculate position size (use 20% of balance) - reduced for more realistic trading
+                    const positionSize = currentBalance * 0.2;
+                    const shares = positionSize / lastCandle.close;
 
-                currentPosition = {
-                    entryPrice: lastCandle.close,
-                    shares: shares,
-                    positionSize: positionSize,
-                    candlesElapsed: 0 // Track how many candles have passed since entry
-                };
+                    currentPosition = {
+                        entryPrice: lastCandle.close,
+                        shares: shares,
+                        positionSize: positionSize,
+                        candlesElapsed: 0 // Track how many candles have passed since entry
+                    };
 
-                isHoldingPosition = true;
-                setIsHolding(true);
-                currentPnl = 0;
-                setPnl(0);
+                    isHoldingPosition = true;
+                    setIsHolding(true);
+                    currentPnl = 0;
+                    setPnl(0);
 
-                // Force immediate redraw to show the line
-                p.redraw();
+                    // Force immediate redraw to show the line
+                    p.redraw();
                 } catch (error) {
                     console.error('❌ Error in startPosition:', error);
                 }
@@ -1084,52 +1084,52 @@ const CandlestickChart = () => {
                 try {
                     if (!currentPosition || !isHoldingPosition) return;
 
-                isHoldingPosition = false;
-                setIsHolding(false);
+                    isHoldingPosition = false;
+                    setIsHolding(false);
 
-                // Calculate profit and update balance
-                const profit = currentPnl;
+                    // Calculate profit and update balance
+                    const profit = currentPnl;
 
-                // Apply a small trading fee (0.2% of position size)
-                const tradingFee = currentPosition.positionSize * 0.002;
-                const netProfit = profit - tradingFee;
+                    // Apply a small trading fee (0.2% of position size)
+                    const tradingFee = currentPosition.positionSize * 0.002;
+                    const netProfit = profit - tradingFee;
 
-                // Save the completed trade
-                completedTrades.push({
-                    ...currentPosition,
-                    exitPrice: candles[candles.length - 1].close,
-                    profit: profit,
-                    netProfit: netProfit,
-                    exitElapsed: 0
-                });
+                    // Save the completed trade
+                    completedTrades.push({
+                        ...currentPosition,
+                        exitPrice: candles[candles.length - 1].close,
+                        profit: profit,
+                        netProfit: netProfit,
+                        exitElapsed: 0
+                    });
 
-                // Update balance immediately in React state
-                setBalance(prevBalance => {
-                    const newBalance = prevBalance + netProfit;
-                    return newBalance;
-                });
+                    // Update balance immediately in React state
+                    setBalance(prevBalance => {
+                        const newBalance = prevBalance + netProfit;
+                        return newBalance;
+                    });
 
-                // Show fireworks and trigger money explosion for profit (after fees)
-                if (netProfit > 0) {
-                    setShowFireworks(true);
-                    setTimeout(() => setShowFireworks(false), 1000);
+                    // Show fireworks and trigger money explosion for profit (after fees)
+                    if (netProfit > 0) {
+                        setShowFireworks(true);
+                        setTimeout(() => setShowFireworks(false), 1000);
 
-                    // Trigger money emoji explosion
-                    if (pnlLineEndPos) {
-                        shouldExplodeEmojis = true;
-                        explosionCenter = { x: pnlLineEndPos.x, y: pnlLineEndPos.y };
+                        // Trigger money emoji explosion
+                        if (pnlLineEndPos) {
+                            shouldExplodeEmojis = true;
+                            explosionCenter = { x: pnlLineEndPos.x, y: pnlLineEndPos.y };
+                        }
+
+                        // Play cash sound
+                        const cashSound = new Audio('https://assets.mixkit.co/active_storage/sfx/2003/2003-preview.mp3');
+                        cashSound.volume = 0.7;
+                        cashSound.play().catch(err => console.log('Could not play cash sound:', err));
                     }
 
-                    // Play cash sound
-                    const cashSound = new Audio('https://assets.mixkit.co/active_storage/sfx/2003/2003-preview.mp3');
-                    cashSound.volume = 0.7;
-                    cashSound.play().catch(err => console.log('Could not play cash sound:', err));
-                }
-
-                currentPosition = null;
-                currentPnl = 0;
-                setPnl(0);
-                pnlLineEndPos = null; // Clear PNL line position
+                    currentPosition = null;
+                    currentPnl = 0;
+                    setPnl(0);
+                    pnlLineEndPos = null; // Clear PNL line position
                 } catch (error) {
                     console.error('❌ Error in closePosition:', error);
                 }
@@ -1145,7 +1145,7 @@ const CandlestickChart = () => {
                 const rightMargin = isMobile ? 42 : 58; // Keep right margin for price labels
                 // Keep same margins - safe area handled by HTML padding now
                 const topMargin = isMobile ? 10 : 8; // Minimal top margin
-                const bottomMargin = isMobile ? 50 : 10; // Account for iOS PWA white section on mobile
+                const bottomMargin = isMobile ? 0 : 10; // Account for iOS PWA white section on mobile
 
                 chartArea = {
                     x: leftMargin,
@@ -1275,7 +1275,7 @@ const CandlestickChart = () => {
                 const leftMargin = isMobile ? 4 : 8; // Minimal left margin for maximum width
                 const rightMargin = isMobile ? 42 : 58; // Keep right margin for price labels
                 const topMargin = isMobile ? 10 : 8; // Minimal top margin - chart almost to screen edge
-                const bottomMargin = isMobile ? 50 : 10; // Account for iOS PWA white section on mobile
+                const bottomMargin = isMobile ? 0 : 10; // Account for iOS PWA white section on mobile
 
                 chartArea = {
                     x: leftMargin,
@@ -1412,15 +1412,10 @@ const CandlestickChart = () => {
             right: 0,
             bottom: 0,
             width: '100vw',
-            height: '100vh',
-            minHeight: '100vh',
-            maxHeight: 'none',
+            height: 'calc(100vh + env(safe-area-inset-bottom))',
+            minHeight: '100svh',
             overflow: 'hidden',
-            background: 'linear-gradient(135deg, #0B1215 0%, #1a1a1a 50%, #0f0f0f 100%)',
-            border: '5px solid red',
-            // Force extension beyond viewport
-            paddingBottom: '100px',
-            marginBottom: '-100px'
+            background: 'linear-gradient(135deg, #0B1215 0%, #1a1a1a 50%, #0f0f0f 100%)', // Put background back
             userSelect: 'none',
             WebkitUserSelect: 'none',
             MozUserSelect: 'none',
@@ -1591,12 +1586,21 @@ const CandlestickChart = () => {
                 </div>
             )}
 
-            {/* Bottom background extension REMOVED - was creating gray background */}
+            {/* Bottom background extension to cover iOS home indicator area */}
+            <div style={{
+                position: 'fixed',
+                bottom: '-50px', // Extend below viewport
+                left: 0,
+                right: 0,
+                height: '100px', // Tall enough to cover any white space
+                background: 'linear-gradient(135deg, #0B1215 0%, #1a1a1a 50%, #0f0f0f 100%)',
+                zIndex: -1 // Below all UI elements
+            }}></div>
 
             {/* Bottom UI Container - Positioned above iOS PWA white section */}
             <div style={{
                 position: 'fixed',
-                bottom: window.innerWidth < 768 ? '40px' : '0px', // Lift above white section on mobile
+                bottom: 'env(safe-area-inset-bottom)',
                 left: 0,
                 right: 0,
                 display: 'flex',
@@ -1613,7 +1617,7 @@ const CandlestickChart = () => {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    background: 'transparent', // DIAGNOSTIC: Remove dark background
+                    background: 'rgba(0,0,0,0.3)',
                     color: 'white',
                     padding: '0 16px',
                     borderRadius: '12px',
@@ -1636,7 +1640,7 @@ const CandlestickChart = () => {
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        background: 'transparent', // DIAGNOSTIC: Remove dark background
+                        background: 'rgba(0,0,0,0.3)',
                         color: 'white',
                         padding: '0 16px',
                         borderRadius: '12px',

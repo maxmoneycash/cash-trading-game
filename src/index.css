@@ -23,7 +23,6 @@ html {
   max-height: 100svh;
   background: linear-gradient(135deg, #0B1215 0%, #1a1a1a 50%, #0f0f0f 100%);
   background-attachment: fixed;
-  /* Diagnostic border removed */
 }
 
 body {
@@ -44,7 +43,6 @@ body {
   /* Prevent elastic scrolling on iOS */
   touch-action: none;
   background-attachment: fixed;
-  /* Diagnostic border removed */
 }
 
 /* Prevent any highlighting on interactive elements */

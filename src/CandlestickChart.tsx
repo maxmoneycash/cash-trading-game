@@ -1144,7 +1144,7 @@ const CandlestickChart = () => {
                 const leftMargin = isMobile ? 4 : 8; // Minimal left margin for maximum width
                 const rightMargin = isMobile ? 42 : 58; // Keep right margin for price labels
                 // Keep same margins - safe area handled by HTML padding now
-                const topMargin = isMobile ? 10 : 8; // Minimal top margin
+                const topMargin = isMobile ? 50 : 40; // Increased to avoid top overlap
                 const bottomMargin = isMobile ? 0 : 10; // Account for iOS PWA white section on mobile
 
                 chartArea = {
@@ -1192,8 +1192,8 @@ const CandlestickChart = () => {
                     // Expand chart area for historical view
                     chartArea.x = 10;
                     chartArea.width = p.windowWidth - 20;
-                    chartArea.y = 60;
-                    chartArea.height = p.windowHeight - 80;
+                    chartArea.y = 20; // Start lower to match active view
+                    chartArea.height = p.windowHeight - 40; // Reduced height
                 }
 
                 updatePriceScale(visible);
@@ -1274,7 +1274,7 @@ const CandlestickChart = () => {
                 const isMobile = p.windowWidth < 768;
                 const leftMargin = isMobile ? 4 : 8; // Minimal left margin for maximum width
                 const rightMargin = isMobile ? 42 : 58; // Keep right margin for price labels
-                const topMargin = isMobile ? 10 : 8; // Minimal top margin - chart almost to screen edge
+                const topMargin = isMobile ? 50 : 40; // Increased to avoid top overlap
                 const bottomMargin = isMobile ? 0 : 10; // Account for iOS PWA white section on mobile
 
                 chartArea = {
@@ -1586,27 +1586,20 @@ const CandlestickChart = () => {
                 </div>
             )}
 
-            {/* Bottom background extension to cover iOS home indicator area */}
+            {/* Bottom UI Container - Positioned at very bottom for iOS PWA */}
             <div style={{
                 position: 'fixed',
-                bottom: '-50px', // Extend below viewport
-                left: 0,
-                right: 0,
-                height: '100px', // Tall enough to cover any white space
-                background: 'linear-gradient(135deg, #0B1215 0%, #1a1a1a 50%, #0f0f0f 100%)',
-                zIndex: -1 // Below all UI elements
-            }}></div>
-
-            {/* Bottom UI Container - Positioned above iOS PWA white section */}
-            <div style={{
-                position: 'fixed',
-                bottom: 'env(safe-area-inset-bottom)',
+                bottom: 0,
                 left: 0,
                 right: 0,
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'flex-end',
-                padding: '0 20px 10px 20px',
+                padding: '0 20px',
+                paddingBottom: `calc(10px + env(safe-area-inset-bottom) + 20px)`, // Extend into safe area
+                background: 'linear-gradient(135deg, #0B1215 0%, #1a1a1a 50%, #0f0f0f 100%)',
+                height: 'auto',
+                minHeight: `calc(60px + env(safe-area-inset-bottom))`,
                 zIndex: 1001,
                 pointerEvents: 'none'
             }}>
@@ -1625,7 +1618,7 @@ const CandlestickChart = () => {
                     fontWeight: 'bold',
                     backdropFilter: 'blur(20px)',
                     border: '1px solid rgba(255, 255, 255, 0.1)',
-                    pointerEvents: 'auto', // Enable interactions
+                    pointerEvents: 'auto', // Enable interaction
                     whiteSpace: 'nowrap', // Prevent text wrapping
                     overflow: 'hidden', // Hide overflow if needed
                     textOverflow: 'ellipsis' // Ellipsis for very long text

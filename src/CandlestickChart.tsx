@@ -1,6 +1,129 @@
 import React, { useRef, useEffect, useState } from 'react';
 import p5 from 'p5';
 
+// Define lightweight footer for balance & instructions
+interface FooterProps {
+    balance: number;
+    isHolding: boolean;
+}
+
+const Footer: React.FC<FooterProps> = ({ balance, isHolding }) => (
+    <div
+        style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            padding: '0 20px',
+            paddingBottom: `calc(env(safe-area-inset-bottom) + 10px)`,
+            background: 'linear-gradient(135deg,#0B1215 0%,#1a1a1a 50%,#0f0f0f 100%)',
+            flexShrink: 0,
+            zIndex: 1000,
+        }}
+    >
+        {/* Balance */}
+        <div
+            style={{
+                color: '#fff',
+                fontWeight: 'bold',
+                fontSize: '14px',
+                whiteSpace: 'nowrap',
+            }}
+        >
+            Balance: ${balance.toFixed(0)}
+        </div>
+        {/* Instructions */}
+        {!isHolding && (
+            <div
+                style={{
+                    color: '#fff',
+                    fontSize: '12px',
+                    textAlign: 'center',
+                    lineHeight: 1.3,
+                    maxWidth: '140px',
+                }}
+            >
+                Hold to Buy<br />Release to Sell
+            </div>
+        )}
+    </div>
+);
+
+// Lightweight overlay to show P&L like earlier design
+interface PnlOverlayProps {
+    pnl: number;
+    displayPnl: number;
+    isHolding: boolean;
+}
+
+const PnlOverlay: React.FC<PnlOverlayProps> = ({ pnl, displayPnl, isHolding }) => {
+    const isMobile = typeof window !== 'undefined' ? window.innerWidth < 768 : true;
+
+    // Colors based on profit / loss
+    const greenGrad = 'rgba(0,255,136';
+    const redGrad = 'rgba(255,68,68';
+
+    const bgGradient = `linear-gradient(135deg, ${pnl >= 0 ? `${greenGrad},0.15)` : `${redGrad},0.15)`} 0%, ${pnl >= 0 ? `${greenGrad},0.05)` : `${redGrad},0.05)`} 100%)`;
+
+    return (
+        <div
+            style={{
+                position: 'absolute',
+                top: `calc(${isMobile ? 25 : 23}px + env(safe-area-inset-top, 0px))`,
+                left: isMobile ? 19 : 23,
+                width: isMobile ? 140 : 180,
+                height: isMobile ? 80 : 95,
+                background: bgGradient,
+                backdropFilter: 'blur(20px) saturate(180%)',
+                border: `1px solid ${pnl >= 0 ? 'rgba(0,255,136,0.3)' : 'rgba(255,68,68,0.3)'}`,
+                borderRadius: 16,
+                padding: isMobile ? '12px 16px' : '16px 20px',
+                boxShadow: `0 10px 40px ${pnl >= 0 ? 'rgba(0,255,136,0.1)' : 'rgba(255,68,68,0.1)'} inset 0 1px 1px ${pnl >= 0 ? 'rgba(0,255,136,0.2)' : 'rgba(255,68,68,0.2)'}`,
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center',
+                zIndex: 1500,
+            }}
+        >
+            <div
+                style={{
+                    fontSize: isMobile ? 12 : 14,
+                    color: 'rgba(255,255,255,0.6)',
+                    marginBottom: 4,
+                    fontWeight: 500,
+                    textAlign: 'center',
+                    textTransform: 'uppercase',
+                }}
+            >
+                P&L
+            </div>
+            <div
+                style={{
+                    fontSize: isMobile ? 24 : 32,
+                    fontWeight: 700,
+                    color: pnl >= 0 ? '#00FF88' : '#FF4444',
+                    textAlign: 'center',
+                    letterSpacing: -0.5,
+                }}
+            >
+                {displayPnl >= 0 ? '+' : ''}${displayPnl.toFixed(2)}
+            </div>
+            <div
+                style={{
+                    fontSize: isMobile ? 10 : 11,
+                    color: 'rgba(255,255,255,0.5)',
+                    marginTop: 6,
+                    fontWeight: 500,
+                    textAlign: 'center',
+                    opacity: isHolding ? 1 : 0,
+                    transition: 'opacity 0.3s ease',
+                }}
+            >
+                ACTIVE POSITION
+            </div>
+        </div>
+    );
+};
+
 const CandlestickChart = () => {
     const chartRef = useRef();
     const p5InstanceRef = useRef();
@@ -1405,364 +1528,20 @@ const CandlestickChart = () => {
     };
 
     return (
-        <div style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            width: '100vw',
-            minHeight: '100svh',
-            overflow: 'hidden',
-            background: 'linear-gradient(135deg, #0B1215 0%, #1a1a1a 50%, #0f0f0f 100%)',
-            userSelect: 'none',
-            WebkitUserSelect: 'none',
-            MozUserSelect: 'none',
-            msUserSelect: 'none',
-            touchAction: 'none',
-            WebkitTouchCallout: 'none',
-            WebkitTapHighlightColor: 'transparent',
-            cursor: 'pointer'
-        }}>
-            <div ref={chartRef} style={{
-                width: '100%',
-                height: '100%',
-                userSelect: 'none',
-                WebkitUserSelect: 'none',
-                MozUserSelect: 'none',
-                msUserSelect: 'none',
-                touchAction: 'none',
-                WebkitTouchCallout: 'none',
-                WebkitTapHighlightColor: 'transparent'
-            }}></div>
-
-            {/* Fancy PNL Display - Always Visible inside chart grid */}
-            <div style={{
-                position: 'absolute',
-                top: `calc(${window.innerWidth < 768 ? '25px' : '23px'} + env(safe-area-inset-top, 0px))`, // Add safe area offset
-                left: window.innerWidth < 768 ? '19px' : '23px', // Position inside chart area
-                width: window.innerWidth < 768 ? '140px' : '180px', // Fixed width to prevent resizing
-                height: window.innerWidth < 768 ? '80px' : '95px', // Fixed height to prevent shape changes
-                background: `linear-gradient(135deg, ${pnl >= 0 ? 'rgba(0, 255, 136, 0.15)' : 'rgba(255, 68, 68, 0.15)'} 0%, ${pnl >= 0 ? 'rgba(0, 255, 136, 0.05)' : 'rgba(255, 68, 68, 0.05)'} 100%)`,
-                backdropFilter: 'blur(20px) saturate(180%)',
-                border: `1px solid ${pnl >= 0 ? 'rgba(0, 255, 136, 0.3)' : 'rgba(255, 68, 68, 0.3)'}`,
-                borderRadius: '16px',
-                padding: window.innerWidth < 768 ? '12px 16px' : '16px 20px',
-                boxShadow: `
-                    0 10px 40px ${pnl >= 0 ? 'rgba(0, 255, 136, 0.1)' : 'rgba(255, 68, 68, 0.1)'},
-                    inset 0 1px 1px ${pnl >= 0 ? 'rgba(0, 255, 136, 0.2)' : 'rgba(255, 68, 68, 0.2)'},
-                    0 0 80px ${pnl >= 0 ? 'rgba(0, 255, 136, 0.05)' : 'rgba(255, 68, 68, 0.05)'}
-                `,
-                transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-                transform: isHolding ? 'scale(1.05)' : 'scale(1)',
-                zIndex: 1000,
+        <div
+            style={{
                 display: 'flex',
                 flexDirection: 'column',
-                justifyContent: 'center' // Center content vertically
-            }}>
-                <div style={{
-                    fontSize: window.innerWidth < 768 ? '12px' : '14px',
-                    color: 'rgba(255, 255, 255, 0.6)',
-                    marginBottom: '4px',
-                    fontWeight: '500',
-                    letterSpacing: '0.5px',
-                    textTransform: 'uppercase',
-                    textAlign: 'center'
-                }}>
-                    P&L
-                </div>
-                <div style={{
-                    fontSize: window.innerWidth < 768 ? '24px' : '32px',
-                    fontWeight: '700',
-                    color: pnl >= 0 ? '#00FF88' : '#FF4444',
-                    textShadow: `0 0 20px ${pnl >= 0 ? 'rgba(0, 255, 136, 0.5)' : 'rgba(255, 68, 68, 0.5)'}`,
-                    lineHeight: 1,
-                    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace',
-                    letterSpacing: '-0.5px',
-                    position: 'relative',
-                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                    textAlign: 'center' // Center the numbers within the fixed width
-                }}>
-                    <span style={{
-                        display: 'inline-block',
-                        transform: displayPnl !== 0 ? 'scale(1)' : 'scale(0.95)',
-                        transition: 'transform 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55)'
-                    }}>
-                        {displayPnl >= 0 ? '+' : ''}${formatPnl(Math.abs(displayPnl))}
-                    </span>
-                </div>
-                <div style={{
-                    fontSize: window.innerWidth < 768 ? '10px' : '11px',
-                    color: 'rgba(255, 255, 255, 0.5)',
-                    marginTop: '6px',
-                    fontWeight: '500',
-                    letterSpacing: '0.3px',
-                    textAlign: 'center',
-                    opacity: isHolding ? 1 : 0, // Always reserve space, just hide/show
-                    transition: 'opacity 0.3s ease'
-                }}>
-                    ACTIVE POSITION
-                </div>
-            </div>
-
-            {/* Liquidation Effect */}
-            {showLiquidation && (
-                <div style={{
-                    position: 'absolute',
-                    inset: 0,
-                    background: `linear-gradient(135deg, rgba(255,0,0,0.2) 0%, rgba(139,0,0,0.1) 100%)`,
-                    backdropFilter: 'blur(20px) saturate(180%)',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    zIndex: 1000,
-                    animation: 'liquidationPulse 0.5s ease-in-out infinite alternate',
-                    boxShadow: `
-                        0 10px 40px rgba(255,0,0,0.1),
-                        inset 0 1px 1px rgba(255,68,68,0.2),
-                        0 0 80px rgba(255,68,68,0.05)
-                    `,
-                    transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)'
-                }}>
-                    <div style={{
-                        fontSize: window.innerWidth < 768 ? '32px' : '48px',
-                        fontWeight: 'bold',
-                        color: '#ffffff',
-                        textShadow: '0 0 20px rgba(255,0,0,0.8)',
-                        marginBottom: '20px',
-                        animation: 'shake 0.3s ease-in-out infinite',
-                        letterSpacing: '-0.5px'
-                    }}>
-                        {rugpullType === 'rugpull' ? '💥 GET RUGGED 💥' : '🔥 LIQUIDATED 🔥'}
-                    </div>
-
-                    <div style={{
-                        fontSize: window.innerWidth < 768 ? '18px' : '24px',
-                        color: '#ffffff',
-                        textAlign: 'center',
-                        marginBottom: '10px',
-                        textShadow: '0 0 10px rgba(255,0,0,0.4)',
-                        letterSpacing: '0.5px'
-                    }}>
-                        {rugpullType === 'rugpull' && '📈💀 MARKET CRASHED'}
-                        {rugpullType === 'instant' && '⚡ FLASH CRASH'}
-                        {rugpullType === 'gradual' && '📉 DEATH SPIRAL'}
-                        {rugpullType === 'deadcat' && '🐱‍💀 DEAD CAT BOUNCE'}
-                    </div>
-
-                    <div style={{
-                        fontSize: window.innerWidth < 768 ? '14px' : '18px',
-                        color: '#ffcccc',
-                        textAlign: 'center',
-                        textShadow: '0 0 5px rgba(255,0,0,0.3)',
-                        letterSpacing: '0.3px'
-                    }}>
-                        {rugpullType === 'rugpull'
-                            ? 'Game Over • Starting new round...'
-                            : 'All positions closed • Starting new round...'
-                        }
-                    </div>
-
-                    {/* Red particles effect */}
-                    {[...Array(20)].map((_, i) => (
-                        <div
-                            key={i}
-                            style={{
-                                position: 'absolute',
-                                left: `${Math.random() * 100}%`,
-                                top: `${Math.random() * 100}%`,
-                                width: '6px',
-                                height: '6px',
-                                background: '#ff0000',
-                                borderRadius: '50%',
-                                animation: `fall ${1 + Math.random() * 2}s linear infinite`,
-                                opacity: 0.7,
-                                boxShadow: '0 0 10px rgba(255,0,0,0.5)'
-                            }}
-                        />
-                    ))}
-                </div>
-            )}
-
-            {/* Bottom UI Container as footer */}
-            <div style={{
-                position: 'fixed',
-                bottom: 0,
-                left: 0,
-                right: 0,
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'flex-end',
-                padding: '0 20px',
-                paddingBottom: `calc(10px + 3 * env(safe-area-inset-bottom) + 50px)`,
-                background: 'linear-gradient(135deg, #080f12 0%, #141414 50%, #0a0a0a 100%)',
-                height: 'auto',
-                minHeight: `calc(60px + 3 * env(safe-area-inset-bottom))`,
-                zIndex: 1001,
-                pointerEvents: 'none'
-            }}>
-                {/* Game Stats */}
-                <div style={{
-                    width: window.innerWidth < 768 ? '140px' : '180px', // Fixed width matching PNL
-                    height: '40px', // Fixed height for consistency
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    background: 'rgba(0,0,0,0.3)',
-                    color: 'white',
-                    padding: '0 16px',
-                    borderRadius: '12px',
-                    fontSize: window.innerWidth < 768 ? '14px' : '16px',
-                    fontWeight: 'bold',
-                    backdropFilter: 'blur(20px)',
-                    border: '1px solid rgba(255, 255, 255, 0.1)',
-                    pointerEvents: 'auto', // Enable interaction
-                    whiteSpace: 'nowrap', // Prevent text wrapping
-                    overflow: 'hidden', // Hide overflow if needed
-                    textOverflow: 'ellipsis' // Ellipsis for very long text
-                }}>
-                    Balance: ${balance.toFixed(0)}
-                </div>
-
-                {/* Instructions */}
-                {!isHolding && (
-                    <div style={{
-                        height: '40px', // Fixed height matching balance
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        background: 'rgba(0,0,0,0.3)',
-                        color: 'white',
-                        padding: '0 16px',
-                        borderRadius: '12px',
-                        fontSize: window.innerWidth < 768 ? '12px' : '14px',
-                        fontWeight: '500',
-                        backdropFilter: 'blur(20px)',
-                        border: '1px solid rgba(255, 255, 255, 0.1)',
-                        textAlign: 'center',
-                        pointerEvents: 'auto',
-                        maxWidth: '140px',
-                        lineHeight: 1.3
-                    }}>
-                        Hold to Buy<br />Release to Sell
-                    </div>
-                )}
-            </div>
-
-            <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Bai+Jamjuree:wght@400;500;600;700&display=swap');
-        
-        * {
-          font-family: 'Bai Jamjuree', sans-serif !important;
-        }
-        
-        html, body {
-          font-family: 'Bai Jamjuree', sans-serif !important;
-        }
-        
-        @keyframes pulse {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.7; }
-        }
-        
-        @keyframes numberChange {
-          0% { 
-            transform: scale(1) translateY(0);
-            filter: blur(0px);
-          }
-          50% { 
-            transform: scale(1.1) translateY(-2px);
-            filter: blur(0.5px);
-          }
-          100% { 
-            transform: scale(1) translateY(0);
-            filter: blur(0px);
-          }
-        }
-        
-        @keyframes glow {
-          0%, 100% { 
-            box-shadow: 0 0 5px currentColor, 0 0 10px currentColor;
-          }
-          50% { 
-            box-shadow: 0 0 10px currentColor, 0 0 20px currentColor, 0 0 30px currentColor;
-          }
-        }
-        
-        @keyframes liquidationPulse {
-          0% { background: linear-gradient(45deg, rgba(255,0,0,0.7), rgba(139,0,0,0.8)); }
-          100% { background: linear-gradient(45deg, rgba(255,50,50,0.9), rgba(180,0,0,0.9)); }
-        }
-        
-        @keyframes shake {
-          0%, 100% { transform: translateX(0); }
-          25% { transform: translateX(-5px); }
-          75% { transform: translateX(5px); }
-        }
-        
-        @keyframes fall {
-          0% { 
-            transform: translateY(-100vh) rotate(0deg); 
-            opacity: 1; 
-          }
-          100% { 
-            transform: translateY(100vh) rotate(360deg); 
-            opacity: 0; 
-          }
-        }
-        
-        /* Prevent text selection and Safari highlighting */
-        * {
-          -webkit-touch-callout: none;
-          -webkit-user-select: none;
-          -khtml-user-select: none;
-          -moz-user-select: none;
-          -ms-user-select: none;
-          user-select: none;
-          -webkit-tap-highlight-color: transparent;
-        }
-        
-        /* Prevent image dragging */
-        img {
-          -webkit-user-drag: none;
-          -khtml-user-drag: none;
-          -moz-user-drag: none;
-          -o-user-drag: none;
-          user-drag: none;
-        }
-        
-        /* Ensure the entire app prevents selection */
-        html, body {
-          -webkit-touch-callout: none;
-          -webkit-user-select: none;
-          -khtml-user-select: none;
-          -moz-user-select: none;
-          -ms-user-select: none;
-          user-select: none;
-          -webkit-tap-highlight-color: transparent;
-          overflow: hidden;
-          position: fixed;
-          width: 100%;
-          height: 100%;
-        }
-        
-        /* Mobile Safari specific fixes */
-        @supports (padding: max(0px)) {
-          .mobile-safe-area {
-            padding-bottom: max(20px, env(safe-area-inset-bottom));
-          }
-        }
-        
-        /* Force viewport height on mobile Safari */
-        @media screen and (max-width: 768px) {
-          html, body {
-            height: -webkit-fill-available;
-            height: 100vh;
-            height: 100svh; /* Small viewport height for newer browsers */
-          }
-        }
-      `}</style>
+                height: '100svh', // exact viewport height so footer always visible
+                width: '100vw',
+                background: 'linear-gradient(135deg,#0B1215 0%,#1a1a1a 50%,#0f0f0f 100%)',
+                overflow: 'hidden',
+                position: 'relative',
+            }}
+        >
+            <div ref={chartRef} style={{ flex: '1 1 auto' }} />
+            <PnlOverlay pnl={pnl} displayPnl={displayPnl} isHolding={isHolding} />
+            <Footer balance={balance} isHolding={isHolding} />
         </div>
     );
 };

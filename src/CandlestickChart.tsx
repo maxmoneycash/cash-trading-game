@@ -1406,10 +1406,13 @@ const CandlestickChart = () => {
 
     return (
         <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            minHeight: '100svh',
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
             width: '100vw',
+            minHeight: '100svh',
             overflow: 'hidden',
             background: 'linear-gradient(135deg, #0B1215 0%, #1a1a1a 50%, #0f0f0f 100%)',
             userSelect: 'none',
@@ -1422,8 +1425,8 @@ const CandlestickChart = () => {
             cursor: 'pointer'
         }}>
             <div ref={chartRef} style={{
-                flexGrow: 1,
                 width: '100%',
+                height: '100%',
                 userSelect: 'none',
                 WebkitUserSelect: 'none',
                 MozUserSelect: 'none',
@@ -1584,13 +1587,18 @@ const CandlestickChart = () => {
 
             {/* Bottom UI Container as footer */}
             <div style={{
-                flexShrink: 0,
+                position: 'fixed',
+                bottom: 0,
+                left: 0,
+                right: 0,
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'flex-end',
-                padding: '0 20px 10px',
-                paddingBottom: `calc(env(safe-area-inset-bottom) + 10px)`,
+                padding: '0 20px',
+                paddingBottom: `calc(10px + 3 * env(safe-area-inset-bottom) + 50px)`,
                 background: 'linear-gradient(135deg, #080f12 0%, #141414 50%, #0a0a0a 100%)',
+                height: 'auto',
+                minHeight: `calc(60px + 3 * env(safe-area-inset-bottom))`,
                 zIndex: 1001,
                 pointerEvents: 'none'
             }}>

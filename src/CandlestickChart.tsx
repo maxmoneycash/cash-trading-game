@@ -10,14 +10,18 @@ interface FooterProps {
 const Footer: React.FC<FooterProps> = ({ balance, isHolding }) => (
     <div
         style={{
+            position: 'absolute',
+            left: 0,
+            right: 0,
+            bottom: 0,
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
             padding: '0 20px',
-            paddingBottom: `calc(env(safe-area-inset-bottom) + 10px)`,
+            paddingBottom: `calc(env(safe-area-inset-bottom) + 8px)`,
+            minHeight: 60,
             background: 'linear-gradient(135deg,#0B1215 0%,#1a1a1a 50%,#0f0f0f 100%)',
-            flexShrink: 0,
-            zIndex: 1000,
+            zIndex: 2000,
         }}
     >
         {/* Balance */}

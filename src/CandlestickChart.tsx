@@ -1596,10 +1596,10 @@ const CandlestickChart = () => {
                 justifyContent: 'space-between',
                 alignItems: 'flex-end',
                 padding: '0 20px',
-                paddingBottom: `calc(10px + env(safe-area-inset-bottom) + 20px)`, // Extend into safe area
-                background: 'linear-gradient(135deg, #0B1215 0%, #1a1a1a 50%, #0f0f0f 100%)',
+                paddingBottom: `calc(10px + 2 * env(safe-area-inset-bottom) + 30px)`, // Increased buffer
+                background: 'linear-gradient(135deg, #080f12 0%, #141414 50%, #0a0a0a 100%)',
                 height: 'auto',
-                minHeight: `calc(60px + env(safe-area-inset-bottom))`,
+                minHeight: `calc(60px + 2 * env(safe-area-inset-bottom))`,
                 zIndex: 1001,
                 pointerEvents: 'none'
             }}>

@@ -1,6 +1,9 @@
 import React, { useRef, useEffect, useState } from 'react';
 import p5 from 'p5';
 
+// Enable debug mode via URL ?debug or localStorage flag
+const DEBUG_MODE = typeof window !== 'undefined' && window.location.search.includes('debug');
+
 // Read CSS custom property for safe-area bottom inset
 const getSafeBottom = () =>
     parseFloat(
@@ -1405,6 +1408,20 @@ const CandlestickChart = () => {
 
                 // Draw in optimal order for smoothness
                 drawGrid();
+
+                // Debug overlay to visualize canvas and chartArea bounds
+                if (DEBUG_MODE) {
+                    // Canvas border
+                    p.noFill();
+                    p.stroke(255, 0, 255, 180);
+                    p.strokeWeight(2);
+                    p.rect(0, 0, p.width - 1, p.height - 1);
+
+                    // chartArea border
+                    p.stroke(0, 255, 0, 180);
+                    p.rect(chartArea.x, chartArea.y, chartArea.width, chartArea.height);
+                }
+
                 drawCandles(visible, currentCandleWidth, currentCandleSpacing);
 
                 // Hide price line and labels during historical view on mobile to save space

@@ -1353,11 +1353,13 @@ const CandlestickChart = () => {
                     // Save original chart area
                     originalChartArea = { ...chartArea };
 
-                    // Expand chart area for historical view
+                    const bottomInsetHist = getSafeBottom();
+
+                    // Expand width only, keep same top alignment, and include safe-area inset in height
                     chartArea.x = 10;
                     chartArea.width = p.windowWidth - 20;
-                    chartArea.y = 20; // Start lower to match active view
-                    chartArea.height = p.windowHeight - 40; // Reduced height
+                    // chartArea.y remains unchanged so top gridline doesn’t jump
+                    chartArea.height = p.windowHeight - chartArea.y + bottomInsetHist; // full height
                 }
 
                 updatePriceScale(visible);

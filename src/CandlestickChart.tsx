@@ -103,7 +103,7 @@ const PnlOverlay: React.FC<PnlOverlayProps> = ({ pnl, displayPnl, isHolding }) =
         <div
             style={{
                 position: 'absolute',
-                top: `${(window.innerWidth < 768 ? 50 : 40) + 10}px`,
+                top: `${(window.innerWidth < 768 ? 60 : 50) + 10}px`,
                 left: isMobile ? 19 : 23,
                 width: isMobile ? 140 : 180,
                 height: isMobile ? 80 : 95,
@@ -1198,7 +1198,8 @@ const CandlestickChart = () => {
                 const labelWidth = p.width < 768 ? 30 : 35; // Match the width of the orange price tracker box
 
                 for (let i = 0; i <= labelCount; i++) {
-                    const y = chartArea.y + (chartArea.height * i / labelCount);
+                    let y = chartArea.y + (chartArea.height * i / labelCount);
+                    if (i === labelCount) y -= 6; // lift bottom label above edge
                     const price = p.map(i, 0, labelCount, priceScale.max, priceScale.min);
                     const priceText = price < 100 ? price.toFixed(2) : price.toFixed(0);
                     // Position Y-axis labels to align with the right edge of the orange box
@@ -1303,7 +1304,7 @@ const CandlestickChart = () => {
                 const leftMargin = isMobile ? 4 : 8; // Minimal left margin for maximum width
                 const rightMargin = isMobile ? 42 : 58; // Keep right margin for price labels
                 // Keep same margins - safe area handled by HTML padding now
-                const topMargin = isMobile ? 50 : 40; // Increased to avoid top overlap
+                const topMargin = isMobile ? 60 : 50; // Lowered grid away from dynamic island
                 const bottomInset = getSafeBottom();
                 const bottomMargin = 0; // grid should extend to real bottom; inset handled by canvas size
 
@@ -1437,7 +1438,7 @@ const CandlestickChart = () => {
                 const isMobile = p.windowWidth < 768;
                 const leftMargin = isMobile ? 4 : 8; // Minimal left margin for maximum width
                 const rightMargin = isMobile ? 42 : 58; // Keep right margin for price labels
-                const topMargin = isMobile ? 50 : 40; // Increased to avoid top overlap
+                const topMargin = isMobile ? 60 : 50;
                 const bottomInset = getSafeBottom();
                 const bottomMargin = 0;
 
@@ -1585,7 +1586,14 @@ const CandlestickChart = () => {
                 overflow: 'hidden',
             }}
         >
-            <div ref={chartRef} style={{ flex: '1 1 auto' }} />
+            <div
+                ref={chartRef}
+                style={{
+                    flex: '0 0 auto',
+                    height: 'calc(100% + env(safe-area-inset-bottom))',
+                    marginBottom: 'calc(-1 * env(safe-area-inset-bottom))',
+                }}
+            />
             <PnlOverlay pnl={pnl} displayPnl={displayPnl} isHolding={isHolding} />
             <Footer balance={balance} isHolding={isHolding} />
         </div>

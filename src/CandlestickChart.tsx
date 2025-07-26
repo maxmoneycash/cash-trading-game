@@ -44,7 +44,7 @@ const Footer: React.FC<FooterProps> = ({ balance, isHolding }) => (
             position: 'absolute',
             left: 0,
             right: 0,
-            bottom: `calc(env(safe-area-inset-bottom) + ${typeof window !== 'undefined' && window.innerWidth < 768 ? 32 : 0}px)`,
+            bottom: `calc(env(safe-area-inset-bottom) + ${typeof window !== 'undefined' && window.innerWidth < 768 ? 8 : 0}px)`,
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'flex-end',
@@ -1384,7 +1384,7 @@ const CandlestickChart = () => {
                     // Expand width only, keep same top alignment, and include safe-area inset in height
                     chartArea.x = 10;
                     chartArea.width = p.windowWidth - 20;
-                    // chartArea.y remains unchanged so top gridline doesn’t jump
+                    // chartArea.y remains unchanged so top gridline doesn't jump
                     chartArea.height = p.windowHeight - chartArea.y + bottomInsetHist - 75; // raise bottom gridline in historical view
                 }
 

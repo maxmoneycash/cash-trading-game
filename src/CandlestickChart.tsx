@@ -722,7 +722,7 @@ const CandlestickChart = () => {
                 const isMobile = p.windowWidth < 768;
                 const timerWidth = isMobile ? 60 : 70;
                 const timerHeight = isMobile ? 35 : 40;
-                const timerX = chartArea.x + chartArea.width - timerWidth - 15; // Position inside chart area, avoiding price labels
+                const timerX = chartArea.x + chartArea.width - timerWidth - 10; // Position inside chart area, avoiding price labels
                 // Add safe area offset for timer positioning
                 const timerY = chartArea.y + 10; // 10px inside grid top
 
@@ -1329,7 +1329,7 @@ const CandlestickChart = () => {
                     x: leftMargin,
                     y: topMargin,
                     width: p.windowWidth - leftMargin - rightMargin,
-                    height: p.windowHeight - topMargin + bottomInset - 15 // raised bottom gridline by 8px
+                    height: p.windowHeight - topMargin + bottomInset - 20 // raised bottom gridline by 8px
                 };
 
                 // extend canvas into safe area so grid reaches bottom
@@ -1376,7 +1376,7 @@ const CandlestickChart = () => {
                     chartArea.x = 10;
                     chartArea.width = p.windowWidth - 20;
                     // chartArea.y remains unchanged so top gridline doesn’t jump
-                    chartArea.height = p.windowHeight - chartArea.y + bottomInsetHist - 15; // raise bottom gridline in historical view
+                    chartArea.height = p.windowHeight - chartArea.y + bottomInsetHist - 20; // raise bottom gridline in historical view
                 }
 
                 updatePriceScale(visible);
@@ -1480,7 +1480,7 @@ const CandlestickChart = () => {
                     x: leftMargin,
                     y: topMargin,
                     width: p.windowWidth - leftMargin - rightMargin,
-                    height: p.windowHeight - topMargin + bottomInset - 15 // raised bottom gridline by 8px on resize
+                    height: p.windowHeight - topMargin + bottomInset - 20 // raised bottom gridline by 8px on resize
                 };
 
                 p.resizeCanvas(p.windowWidth, p.windowHeight + bottomInset);

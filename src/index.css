@@ -103,11 +103,7 @@ button:hover {
 
 /* iOS PWA specific fixes */
 @supports (padding: max(0px)) {
-  #root {
-    /* Extend background behind safe areas on iOS */
-    padding-bottom: max(env(safe-area-inset-bottom, 0), 10px);
-    min-height: calc(100vh + env(safe-area-inset-bottom, 0));
-  }
+  /* Padding on root removed so content can extend fully. Footer handles safe area now */
 }
 
 /* Remove conflicting PWA rules - let the main hack handle everything */

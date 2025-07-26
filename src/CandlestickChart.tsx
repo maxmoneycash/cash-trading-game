@@ -34,7 +34,7 @@ const Footer: React.FC<FooterProps> = ({ balance, isHolding }) => (
                 background: 'rgba(0,0,0,0.45)',
                 backdropFilter: 'blur(12px)',
                 border: '1px solid rgba(255,255,255,0.12)',
-                borderRadius: 12,
+                borderRadius: 8,
                 padding: '6px 14px',
                 color: '#fff',
                 fontWeight: 600,
@@ -57,7 +57,7 @@ const Footer: React.FC<FooterProps> = ({ balance, isHolding }) => (
                     background: 'rgba(0,0,0,0.45)',
                     backdropFilter: 'blur(12px)',
                     border: '1px solid rgba(255,255,255,0.12)',
-                    borderRadius: 12,
+                    borderRadius: 8,
                     padding: '6px 14px',
                     color: '#fff',
                     fontSize: 12,
@@ -92,14 +92,14 @@ const PnlOverlay: React.FC<PnlOverlayProps> = ({ pnl, displayPnl, isHolding }) =
         <div
             style={{
                 position: 'absolute',
-                top: `calc(${isMobile ? 25 : 23}px + env(safe-area-inset-top, 0px))`,
+                top: `calc(${isMobile ? 60 : 50}px + env(safe-area-inset-top, 0px))`,
                 left: isMobile ? 19 : 23,
                 width: isMobile ? 140 : 180,
                 height: isMobile ? 80 : 95,
                 background: bgGradient,
                 backdropFilter: 'blur(20px) saturate(180%)',
                 border: `1px solid ${pnl >= 0 ? 'rgba(0,255,136,0.3)' : 'rgba(255,68,68,0.3)'}`,
-                borderRadius: 16,
+                borderRadius: 8,
                 padding: isMobile ? '12px 16px' : '16px 20px',
                 boxShadow: `0 10px 40px ${pnl >= 0 ? 'rgba(0,255,136,0.1)' : 'rgba(255,68,68,0.1)'} inset 0 1px 1px ${pnl >= 0 ? 'rgba(0,255,136,0.2)' : 'rgba(255,68,68,0.2)'}`,
                 display: 'flex',
@@ -696,8 +696,7 @@ const CandlestickChart = () => {
                 const timerHeight = isMobile ? 35 : 40;
                 const timerX = chartArea.x + chartArea.width - timerWidth - 15; // Position inside chart area, avoiding price labels
                 // Add safe area offset for timer positioning
-                const safeAreaTop = 50; // Estimate for safe area height
-                const timerY = chartArea.y + 15 + safeAreaTop; // Position below safe area
+                const timerY = chartArea.y + 10; // 10px inside grid top
 
                 p.fill(0, 0, 0, 150);
                 p.noStroke();
@@ -1554,13 +1553,16 @@ const CandlestickChart = () => {
     return (
         <div
             style={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
                 display: 'flex',
                 flexDirection: 'column',
-                height: '100svh', // exact viewport height so footer always visible
                 width: '100vw',
                 background: 'linear-gradient(135deg,#0B1215 0%,#1a1a1a 50%,#0f0f0f 100%)',
                 overflow: 'hidden',
-                position: 'relative',
             }}
         >
             <div ref={chartRef} style={{ flex: '1 1 auto' }} />

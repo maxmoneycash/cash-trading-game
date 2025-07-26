@@ -1204,6 +1204,7 @@ const CandlestickChart = () => {
             };
 
             const drawPriceLabels = () => {
+                if (visible.length === 0) return; // skip when no data
                 const fontSize = p.width < 768 ? 8 : 10; // Slightly larger for better readability
                 const labelCount = p.width < 768 ? 5 : 7;
 
@@ -1363,6 +1364,14 @@ const CandlestickChart = () => {
                 }
 
                 const visible = isHistoricalView ? allRoundCandles : candles;
+
+                // Fail-safe: if round is active but no candles for >1s, force one candle
+                if (isRoundActive && !isHistoricalView && candles.length === 0 && p.millis() - roundStartTime > 1000) {
+                    if (currentIndex < bitcoinData.length) {
+                        addCandle(bitcoinData[currentIndex]);
+                        currentIndex++;
+                    }
+                }
 
                 // Temporarily adjust chart area for historical view on mobile
                 let originalChartArea = null;

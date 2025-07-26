@@ -3,16 +3,16 @@ import p5 from 'p5';
 
 // Enable debug mode via URL ?debug or localStorage flag
 if (typeof window !== 'undefined') {
-  const urlDebug = window.location.search.includes('debug');
-  if (urlDebug) {
-    try { localStorage.setItem('debug', '1'); } catch (e) {}
-  }
+    const urlDebug = window.location.search.includes('debug');
+    if (urlDebug) {
+        try { localStorage.setItem('debug', '1'); } catch (e) { }
+    }
 }
 
 const DEBUG = (() => {
-  if (typeof window === 'undefined') return false;
-  if (window.location.search.includes('debug')) return true;
-  try { return localStorage.getItem('debug') === '1'; } catch (e) { return false; }
+    if (typeof window === 'undefined') return false;
+    if (window.location.search.includes('debug')) return true;
+    try { return localStorage.getItem('debug') === '1'; } catch (e) { return false; }
 })();
 
 const DEBUG_MODE = DEBUG;
@@ -1614,7 +1614,7 @@ const CandlestickChart = () => {
                 display: 'flex',
                 flexDirection: 'column',
                 width: '100vw',
-                background: 'linear-gradient(135deg,#0B1215 0%,#1a1a1a 50%,#0f0f0f 100%)',
+                background: 'transparent',
                 overflow: 'hidden',
             }}
         >

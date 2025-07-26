@@ -103,7 +103,7 @@ const PnlOverlay: React.FC<PnlOverlayProps> = ({ pnl, displayPnl, isHolding }) =
         <div
             style={{
                 position: 'absolute',
-                top: `calc(${(window.innerWidth < 768 ? 50 : 40) + 10}px + env(safe-area-inset-top, 0px))`,
+                top: `${(window.innerWidth < 768 ? 50 : 40) + 10}px`,
                 left: isMobile ? 19 : 23,
                 width: isMobile ? 140 : 180,
                 height: isMobile ? 80 : 95,
@@ -1311,7 +1311,7 @@ const CandlestickChart = () => {
                     x: leftMargin,
                     y: topMargin,
                     width: p.windowWidth - leftMargin - rightMargin,
-                    height: p.windowHeight - topMargin
+                    height: p.windowHeight - topMargin + bottomInset
                 };
 
                 // extend canvas into safe area so grid reaches bottom
@@ -1445,7 +1445,7 @@ const CandlestickChart = () => {
                     x: leftMargin,
                     y: topMargin,
                     width: p.windowWidth - leftMargin - rightMargin,
-                    height: p.windowHeight - topMargin
+                    height: p.windowHeight - topMargin + bottomInset
                 };
 
                 p.resizeCanvas(p.windowWidth, p.windowHeight + bottomInset);

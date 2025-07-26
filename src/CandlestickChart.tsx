@@ -1610,7 +1610,8 @@ const CandlestickChart = () => {
                 top: 0,
                 left: 0,
                 right: 0,
-                bottom: 0,
+                height: 'calc(100% + env(safe-area-inset-bottom))',
+                marginBottom: 'calc(-1 * env(safe-area-inset-bottom))',
                 display: 'flex',
                 flexDirection: 'column',
                 width: '100vw',
@@ -1618,14 +1619,7 @@ const CandlestickChart = () => {
                 overflow: 'hidden',
             }}
         >
-            <div
-                ref={chartRef}
-                style={{
-                    flex: '0 0 auto',
-                    height: 'calc(100% + env(safe-area-inset-bottom))',
-                    marginBottom: 'calc(-1 * env(safe-area-inset-bottom))',
-                }}
-            />
+            <div ref={chartRef} style={{ flex: '1 1 auto' }} />
             <PnlOverlay pnl={pnl} displayPnl={displayPnl} isHolding={isHolding} />
             <Footer balance={balance} isHolding={isHolding} />
         </div>

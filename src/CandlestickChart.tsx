@@ -607,6 +607,9 @@ const CandlestickChart = () => {
                 // No more fixed liquidation scheduling - now dynamic based on position duration
                 liquidationCandleCreated = false;
                 console.log(`✅ Round started - liquidation risk increases with position duration`);
+
+                currentIndex = 0;           // restart candle stream
+                lastUpdate = p.millis();    // reset timer so first candle spawns promptly
             };
 
             // Check if round should end
@@ -1384,7 +1387,7 @@ const CandlestickChart = () => {
                     // Expand width only, keep same top alignment, and include safe-area inset in height
                     chartArea.x = 10;
                     chartArea.width = p.windowWidth - 20;
-                    // chartArea.y remains unchanged so top gridline doesn’t jump
+                    // chartArea.y remains unchanged so top gridline doesn't jump
                     chartArea.height = p.windowHeight - chartArea.y + bottomInsetHist; // full height
                 }
 
@@ -1449,8 +1452,10 @@ const CandlestickChart = () => {
 
                 // Hide price line and labels during historical view on mobile to save space
                 if (!(isHistoricalView && p.windowWidth < 768)) {
-                    drawPriceLine(visible); // Draw price label before PNL line
-                    drawPriceLabels(); // Y-axis labels back for professional look
+                    if (visible.length > 0) {
+                        drawPriceLine(visible); // Draw price label before PNL line
+                        drawPriceLabels(); // Y-axis labels back for professional look
+                    }
                 }
 
                 drawPNLLine(currentCandleWidth, currentCandleSpacing, visible); // Draw PNL line last so it's on top

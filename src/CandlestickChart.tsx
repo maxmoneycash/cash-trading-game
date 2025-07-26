@@ -584,11 +584,12 @@ const CandlestickChart = () => {
 
                 // Show effects and restart (3s overlay)
                 setTimeout(() => {
-                    setShowLiquidation(false);
-                    setRugpullType(null);
                     // Start completely new round after rugpull/liquidation
                     setTimeout(() => {
                         currentIndex = 0; // Reset to start of data
+                        // Clear liquidation states at the exact moment new round starts
+                        setShowLiquidation(false);
+                        setRugpullType(null);
                         startRound();
                     }, 1000);
                 }, 3000); // 3s overlay duration

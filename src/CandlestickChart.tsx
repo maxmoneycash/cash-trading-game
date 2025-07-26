@@ -2,7 +2,20 @@ import React, { useRef, useEffect, useState } from 'react';
 import p5 from 'p5';
 
 // Enable debug mode via URL ?debug or localStorage flag
-const DEBUG_MODE = typeof window !== 'undefined' && window.location.search.includes('debug');
+if (typeof window !== 'undefined') {
+  const urlDebug = window.location.search.includes('debug');
+  if (urlDebug) {
+    try { localStorage.setItem('debug', '1'); } catch (e) {}
+  }
+}
+
+const DEBUG = (() => {
+  if (typeof window === 'undefined') return false;
+  if (window.location.search.includes('debug')) return true;
+  try { return localStorage.getItem('debug') === '1'; } catch (e) { return false; }
+})();
+
+const DEBUG_MODE = DEBUG;
 
 // Read CSS custom property for safe-area bottom inset
 const getSafeBottom = () =>

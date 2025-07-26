@@ -1329,7 +1329,7 @@ const CandlestickChart = () => {
                     x: leftMargin,
                     y: topMargin,
                     width: p.windowWidth - leftMargin - rightMargin,
-                    height: p.windowHeight - topMargin + bottomInset - 8 // raised bottom gridline by 8px
+                    height: p.windowHeight - topMargin + bottomInset - 10 // raised bottom gridline by 8px
                 };
 
                 // extend canvas into safe area so grid reaches bottom
@@ -1480,7 +1480,7 @@ const CandlestickChart = () => {
                     x: leftMargin,
                     y: topMargin,
                     width: p.windowWidth - leftMargin - rightMargin,
-                    height: p.windowHeight - topMargin + bottomInset - 8 // raised bottom gridline by 8px on resize
+                    height: p.windowHeight - topMargin + bottomInset - 10 // raised bottom gridline by 8px on resize
                 };
 
                 p.resizeCanvas(p.windowWidth, p.windowHeight + bottomInset);

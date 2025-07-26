@@ -44,7 +44,7 @@ const Footer: React.FC<FooterProps> = ({ balance, isHolding }) => (
             position: 'absolute',
             left: 0,
             right: 0,
-            bottom: `calc(env(safe-area-inset-bottom) + ${typeof window !== 'undefined' && window.innerWidth < 768 ? (isStandalone ? 32 : 8) : 0}px)`,
+            bottom: `calc(env(safe-area-inset-bottom) + ${typeof window !== 'undefined' && window.innerWidth < 768 ? 8 : 0}px)`,
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'flex-end',
@@ -894,29 +894,31 @@ const CandlestickChart = () => {
             const drawGrid = () => {
                 p.stroke(255, 255, 255, gridAlpha * 0.38); // Increased from 0.25 to 0.38 for more visible grid
                 p.strokeWeight(0.5);
-                // Dash pattern: 4px line, 4px gap
-                // @ts-ignore
-                p.drawingContext.setLineDash([4, 4]);
 
-                // Use a common spacing so cells are roughly square on all screens
-                const cellSpacing = p.width < 768 ? 60 : 100; // px between vertical grid lines
+                // Set dashed line pattern: [dash length, gap length]
+                p.drawingContext.setLineDash([5, 3]);
 
-                // Vertical lines
-                const verticalLines = Math.floor(chartArea.width / cellSpacing);
+                const gridLines = p.width < 768 ? 5 : 8;
+
+                // Draw main horizontal grid lines (these have Y-axis labels)
+                for (let i = 0; i <= gridLines; i++) {
+                    const y = chartArea.y + (chartArea.height * i / gridLines);
+                    p.line(chartArea.x, y, chartArea.x + chartArea.width, y);
+                }
+
+                // Draw intermediate horizontal grid lines (between existing ones, no labels)
+                for (let i = 0; i < gridLines; i++) {
+                    const y = chartArea.y + (chartArea.height * (i + 0.5) / gridLines);
+                    p.line(chartArea.x, y, chartArea.x + chartArea.width, y);
+                }
+
+                const verticalLines = Math.floor(p.width / (p.width < 768 ? 60 : 100));
                 for (let i = 0; i <= verticalLines; i++) {
                     const x = chartArea.x + (chartArea.width * i / verticalLines);
                     p.line(x, chartArea.y, x, chartArea.y + chartArea.height);
                 }
 
-                // Horizontal lines – match the same spacing to keep squares
-                const horizontalLines = Math.floor(chartArea.height / cellSpacing);
-                for (let i = 0; i <= horizontalLines; i++) {
-                    const y = chartArea.y + (chartArea.height * i / horizontalLines);
-                    p.line(chartArea.x, y, chartArea.x + chartArea.width, y);
-                }
-
-                // Reset to solid for subsequent drawing
-                // @ts-ignore
+                // Reset to solid lines
                 p.drawingContext.setLineDash([]);
             };
 
@@ -1349,7 +1351,7 @@ const CandlestickChart = () => {
                     x: leftMargin,
                     y: topMargin,
                     width: p.windowWidth - leftMargin - rightMargin,
-                    height: p.windowHeight - topMargin + bottomInset - 75 // raised bottom gridline by 8px
+                    height: p.windowHeight - topMargin + bottomInset - 30 // raised bottom gridline by 8px
                 };
 
                 // extend canvas into safe area so grid reaches bottom
@@ -1396,7 +1398,7 @@ const CandlestickChart = () => {
                     chartArea.x = 10;
                     chartArea.width = p.windowWidth - 20;
                     // chartArea.y remains unchanged so top gridline doesn't jump
-                    chartArea.height = p.windowHeight - chartArea.y + bottomInsetHist - 75; // raise bottom gridline in historical view
+                    chartArea.height = p.windowHeight - chartArea.y + bottomInsetHist - 30; // raise bottom gridline in historical view
                 }
 
                 updatePriceScale(visible);
@@ -1500,7 +1502,7 @@ const CandlestickChart = () => {
                     x: leftMargin,
                     y: topMargin,
                     width: p.windowWidth - leftMargin - rightMargin,
-                    height: p.windowHeight - topMargin + bottomInset - 75 // raised bottom gridline by 8px on resize
+                    height: p.windowHeight - topMargin + bottomInset - 30 // raised bottom gridline by 8px on resize
                 };
 
                 p.resizeCanvas(p.windowWidth, p.windowHeight + bottomInset);

@@ -1351,7 +1351,7 @@ const CandlestickChart = () => {
                     x: leftMargin,
                     y: topMargin,
                     width: p.windowWidth - leftMargin - rightMargin,
-                    height: p.windowHeight - topMargin + bottomInset - 30 // raised bottom gridline by 8px
+                    height: p.windowHeight - topMargin + bottomInset - 75 // raised bottom gridline by 8px
                 };
 
                 // extend canvas into safe area so grid reaches bottom
@@ -1398,7 +1398,7 @@ const CandlestickChart = () => {
                     chartArea.x = 10;
                     chartArea.width = p.windowWidth - 20;
                     // chartArea.y remains unchanged so top gridline doesn't jump
-                    chartArea.height = p.windowHeight - chartArea.y + bottomInsetHist - 30; // raise bottom gridline in historical view
+                    chartArea.height = p.windowHeight - chartArea.y + bottomInsetHist - 75; // raise bottom gridline in historical view
                 }
 
                 updatePriceScale(visible);
@@ -1502,7 +1502,7 @@ const CandlestickChart = () => {
                     x: leftMargin,
                     y: topMargin,
                     width: p.windowWidth - leftMargin - rightMargin,
-                    height: p.windowHeight - topMargin + bottomInset - 30 // raised bottom gridline by 8px on resize
+                    height: p.windowHeight - topMargin + bottomInset - 75 // raised bottom gridline by 8px on resize
                 };
 
                 p.resizeCanvas(p.windowWidth, p.windowHeight + bottomInset);

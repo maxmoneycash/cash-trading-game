@@ -36,56 +36,44 @@ const getSafeBottom = () =>
 interface FooterProps {
     balance: number;
     isHolding: boolean;
+    showLiquidation: boolean;
+    rugpullType: string | null;
 }
 
-const Footer: React.FC<FooterProps> = ({ balance, isHolding }) => (
-    <div
-        style={{
-            position: 'absolute',
-            left: 0,
-            right: 0,
-            bottom: `calc(env(safe-area-inset-bottom) + ${isStandalone && typeof window !== 'undefined' && window.innerWidth < 768 ? 40 : 8}px)`,
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'flex-end',
-            padding: '0 20px',
-            paddingBottom: 8,
-            minHeight: 50,
-            zIndex: 2000,
-            pointerEvents: 'none',
-        }}
-    >
-        {/* Balance box */}
+const Footer: React.FC<FooterProps> = ({ balance, isHolding, showLiquidation, rugpullType }) => {
+    const isMobile = typeof window !== 'undefined' ? window.innerWidth < 768 : true;
+    // Align with PNL box: 15px from chart grid + chart grid left margin
+    const leftPadding = isMobile ? (4 + 15) : (8 + 15); // Same distance from grid as PNL box
+    // Align with timer: 10px from chart grid + chart grid right margin
+    const rightPadding = isMobile ? (42 + 10) : (58 + 10); // Same distance from grid as timer
+
+    // Hide instructions during liquidation/rugpull events
+    const isLiquidationEvent = showLiquidation || rugpullType !== null;
+
+    return (
         <div
             style={{
-                pointerEvents: 'auto',
+                position: 'absolute',
+                left: 0,
+                right: 0,
+                bottom: `calc(env(safe-area-inset-bottom) + ${isStandalone && typeof window !== 'undefined' && window.innerWidth < 768 ? 40 : 8}px)`,
                 display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                background: 'rgba(0,0,0,0.45)',
-                backdropFilter: 'blur(12px)',
-                border: '1px solid rgba(255,255,255,0.12)',
-                borderRadius: 8,
-                padding: '6px 14px',
-                height: 50,
+                justifyContent: 'space-between',
+                alignItems: 'flex-end',
+                paddingLeft: leftPadding,
+                paddingRight: rightPadding,
+                paddingBottom: 8,
                 minHeight: 50,
-                color: '#fff',
-                fontWeight: 600,
-                fontSize: 14,
-                whiteSpace: 'nowrap',
-                fontFamily: 'Bai Jamjuree, sans-serif',
+                zIndex: 2000,
+                pointerEvents: 'none',
             }}
         >
-            Balance: ${balance.toFixed(0)}
-        </div>
 
-        {/* Instructions box (hidden while holding) */}
-        {!isHolding && (
+            {/* Balance box */}
             <div
                 style={{
                     pointerEvents: 'auto',
                     display: 'flex',
-                    flexDirection: 'column',
                     alignItems: 'center',
                     justifyContent: 'center',
                     background: 'rgba(0,0,0,0.45)',
@@ -96,17 +84,44 @@ const Footer: React.FC<FooterProps> = ({ balance, isHolding }) => (
                     height: 50,
                     minHeight: 50,
                     color: '#fff',
-                    fontSize: 12,
-                    maxWidth: 140,
-                    textAlign: 'center',
+                    fontWeight: 600,
+                    fontSize: 14,
+                    whiteSpace: 'nowrap',
                     fontFamily: 'Bai Jamjuree, sans-serif',
                 }}
             >
-                Hold to Buy<br />Release to Sell
+                Balance: ${balance.toFixed(0)}
             </div>
-        )}
-    </div>
-);
+
+            {/* Instructions box (hidden while holding or during liquidation events) */}
+            {!isHolding && !isLiquidationEvent && (
+                <div
+                    style={{
+                        pointerEvents: 'auto',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        background: 'rgba(0,0,0,0.45)',
+                        backdropFilter: 'blur(12px)',
+                        border: '1px solid rgba(255,255,255,0.12)',
+                        borderRadius: 8,
+                        padding: '6px 14px',
+                        height: 50,
+                        minHeight: 50,
+                        color: '#fff',
+                        fontSize: 12,
+                        maxWidth: 140,
+                        textAlign: 'center',
+                        fontFamily: 'Bai Jamjuree, sans-serif',
+                    }}
+                >
+                    Hold to Buy<br />Release to Sell
+                </div>
+            )}
+        </div>
+    );
+};
 
 // Lightweight overlay to show P&L like earlier design
 interface PnlOverlayProps {
@@ -1645,7 +1660,7 @@ const CandlestickChart = () => {
         >
             <div ref={chartRef} style={{ flex: '1 1 auto' }} />
             <PnlOverlay pnl={pnl} displayPnl={displayPnl} isHolding={isHolding} />
-            <Footer balance={balance} isHolding={isHolding} />
+            <Footer balance={balance} isHolding={isHolding} showLiquidation={showLiquidation} rugpullType={rugpullType} />
         </div>
     );
 };

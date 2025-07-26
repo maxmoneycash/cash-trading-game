@@ -45,7 +45,7 @@ const Footer: React.FC<FooterProps> = ({ balance, isHolding, showLiquidation, ru
     // Align with PNL box: 15px from chart grid + chart grid left margin
     const leftPadding = isMobile ? (4 + 15) : (8 + 15); // Same distance from grid as PNL box
     // Align with timer: 10px from chart grid + chart grid right margin
-    const rightPadding = isMobile ? (42 + 10) : (58 + 10); // Same distance from grid as timer
+    const rightPadding = isMobile ? (34 + 10) : (46 + 10); // Same distance from grid as timer
 
     // Hide instructions during liquidation/rugpull events
     const isLiquidationEvent = showLiquidation || rugpullType !== null;
@@ -1247,18 +1247,21 @@ const CandlestickChart = () => {
                 const labelCount = p.width < 768 ? 5 : 7;
 
                 p.fill(255, 255, 255, 120); // Slightly brighter
-                p.textAlign(p.LEFT, p.CENTER);
+                p.textAlign(p.CENTER, p.CENTER); // Center alignment for better positioning
                 p.textSize(fontSize);
 
-                const labelWidth = p.width < 768 ? 30 : 35; // Match the width of the orange price tracker box
+                // Calculate center position in the right margin space
+                const rightMargin = p.width < 768 ? 34 : 46;
+                const chartRightEdge = chartArea.x + chartArea.width;
+                const labelCenterX = chartRightEdge + (rightMargin / 2); // Center of available space
 
                 for (let i = 0; i <= labelCount; i++) {
                     let y = chartArea.y + (chartArea.height * i / labelCount);
                     if (i === labelCount) y -= 6; // lift bottom label above edge
                     const price = p.map(i, 0, labelCount, priceScale.max, priceScale.min);
                     const priceText = price < 100 ? price.toFixed(2) : price.toFixed(0);
-                    // Position Y-axis labels to align with the right edge of the orange box
-                    p.text(`$${priceText}`, p.width - labelWidth - 2, y);
+                    // Center Y-axis labels in the right margin space
+                    p.text(`$${priceText}`, labelCenterX, y);
                 }
             };
 
@@ -1362,7 +1365,7 @@ const CandlestickChart = () => {
                 // Optimize chart area for mobile vs desktop - Chart extends to screen edges
                 const isMobile = p.windowWidth < 768;
                 const leftMargin = isMobile ? 4 : 8; // Minimal left margin for maximum width
-                const rightMargin = isMobile ? 42 : 58; // Keep right margin for price labels
+                const rightMargin = isMobile ? 34 : 46; // Reduced right margin for more compact Y-axis labels
                 const topMargin = getTopMargin();
                 const bottomInset = getSafeBottom();
                 const bottomVisualMargin = 0;
@@ -1513,7 +1516,7 @@ const CandlestickChart = () => {
                 // Optimize chart area for mobile vs desktop - Chart extends to screen edges
                 const isMobile = p.windowWidth < 768;
                 const leftMargin = isMobile ? 4 : 8; // Minimal left margin for maximum width
-                const rightMargin = isMobile ? 42 : 58; // Keep right margin for price labels
+                const rightMargin = isMobile ? 34 : 46; // Reduced right margin for more compact Y-axis labels
                 const topMargin = getTopMargin();
                 const bottomInset = getSafeBottom();
                 const bottomVisualMargin = 0;

@@ -894,6 +894,9 @@ const CandlestickChart = () => {
             const drawGrid = () => {
                 p.stroke(255, 255, 255, gridAlpha * 0.38); // Increased from 0.25 to 0.38 for more visible grid
                 p.strokeWeight(0.5);
+                // Dash pattern: 4px line, 4px gap
+                // @ts-ignore
+                p.drawingContext.setLineDash([4, 4]);
 
                 // Use a common spacing so cells are roughly square on all screens
                 const cellSpacing = p.width < 768 ? 60 : 100; // px between vertical grid lines
@@ -911,6 +914,10 @@ const CandlestickChart = () => {
                     const y = chartArea.y + (chartArea.height * i / horizontalLines);
                     p.line(chartArea.x, y, chartArea.x + chartArea.width, y);
                 }
+
+                // Reset to solid for subsequent drawing
+                // @ts-ignore
+                p.drawingContext.setLineDash([]);
             };
 
             const drawPNLLine = (currentCandleWidth, currentCandleSpacing, visible) => {

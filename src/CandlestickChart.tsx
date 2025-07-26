@@ -1340,8 +1340,13 @@ const CandlestickChart = () => {
                     }
 
                     currentPosition = null;
-                    currentPnl = 0;
-                    setPnl(0);
+
+                    // Don't reset PNL to 0 during liquidation - keep showing the loss
+                    if (!liquidationCandleCreated && !rugpullActive) {
+                        currentPnl = 0;
+                        setPnl(0);
+                    }
+
                     pnlLineEndPos = null; // Clear PNL line position
                 } catch (error) {
                     console.error('❌ Error in closePosition:', error);

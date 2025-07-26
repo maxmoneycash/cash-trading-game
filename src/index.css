@@ -25,7 +25,7 @@ html {
   height: 100svh; /* Small viewport height - excludes browser UI */
   min-height: 100svh;
   max-height: 100svh;
-  background: linear-gradient(135deg, #0B1215 0%, #1a1a1a 50%, #0f0f0f 100%);
+  background: rgb(12, 12, 12);
   background-attachment: fixed;
   font-family: 'Bai Jamjuree', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
@@ -33,7 +33,7 @@ html {
 body {
   margin: 0;
   padding: 0;
-  background: linear-gradient(135deg, #0B1215 0%, #1a1a1a 50%, #0f0f0f 100%);
+  background: rgb(12, 12, 12);
   font-family: 'Bai Jamjuree', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   overflow: hidden;
   /* Apply same iOS hack as HTML */

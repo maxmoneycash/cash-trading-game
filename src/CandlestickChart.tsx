@@ -9,6 +9,23 @@ const DEBUG = (() => {
 
 const DEBUG_MODE = DEBUG;
 
+// Detect iOS/Android standalone (PWA) mode once so we can share between React and p5
+const isStandalone = typeof window !== 'undefined' && (
+    window.matchMedia('(display-mode: standalone)').matches ||
+    // @ts-ignore - older iOS Safari exposes navigator.standalone
+    (window.navigator && (window.navigator as any).standalone)
+);
+
+// Helper to get the dynamic top margin that both the chart grid and P&L overlay use
+const getTopMargin = () => {
+    if (typeof window === 'undefined') return 50; // SSR fallback
+    const isMobile = window.innerWidth < 768;
+    if (isMobile) {
+        return isStandalone ? 60 : 10; // extra for dynamic-island in standalone, small spacer in Safari
+    }
+    return 50; // desktop
+};
+
 // Read CSS custom property for safe-area bottom inset
 const getSafeBottom = () =>
     parseFloat(
@@ -100,6 +117,7 @@ interface PnlOverlayProps {
 
 const PnlOverlay: React.FC<PnlOverlayProps> = ({ pnl, displayPnl, isHolding }) => {
     const isMobile = typeof window !== 'undefined' ? window.innerWidth < 768 : true;
+    const topOffset = getTopMargin() + 10; // align with timer (chartArea.y + 10)
 
     // Colors based on profit / loss
     const greenGrad = 'rgba(0,255,136';
@@ -111,7 +129,7 @@ const PnlOverlay: React.FC<PnlOverlayProps> = ({ pnl, displayPnl, isHolding }) =
         <div
             style={{
                 position: 'absolute',
-                top: `${(window.innerWidth < 768 ? 60 : 50) + 10}px`,
+                top: `${topOffset}px`,
                 left: isMobile ? 19 : 23,
                 width: isMobile ? 140 : 180,
                 height: isMobile ? 80 : 95,
@@ -1311,9 +1329,7 @@ const CandlestickChart = () => {
                 const isMobile = p.windowWidth < 768;
                 const leftMargin = isMobile ? 4 : 8; // Minimal left margin for maximum width
                 const rightMargin = isMobile ? 42 : 58; // Keep right margin for price labels
-                // Detect if we are running as iOS PWA (standalone) to leave space for Dynamic Island
-                const isStandalone = (typeof window !== 'undefined') && (window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone);
-                const topMargin = isMobile ? (isStandalone ? 60 : 0) : 50; // No extra gap in Safari browser
+                const topMargin = getTopMargin();
                 const bottomInset = getSafeBottom();
                 const bottomVisualMargin = 0;
                 const bottomMargin = bottomInset;
@@ -1464,8 +1480,7 @@ const CandlestickChart = () => {
                 const isMobile = p.windowWidth < 768;
                 const leftMargin = isMobile ? 4 : 8; // Minimal left margin for maximum width
                 const rightMargin = isMobile ? 42 : 58; // Keep right margin for price labels
-                const isStandalone = (typeof window !== 'undefined') && (window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone);
-                const topMargin = isMobile ? (isStandalone ? 60 : 0) : 50;
+                const topMargin = getTopMargin();
                 const bottomInset = getSafeBottom();
                 const bottomVisualMargin = 0;
                 const bottomMargin = bottomInset;

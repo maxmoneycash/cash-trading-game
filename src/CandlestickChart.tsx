@@ -1,18 +1,10 @@
 import React, { useRef, useEffect, useState } from 'react';
 import p5 from 'p5';
 
-// Enable debug mode via URL ?debug or localStorage flag
-if (typeof window !== 'undefined') {
-    const urlDebug = window.location.search.includes('debug');
-    if (urlDebug) {
-        try { localStorage.setItem('debug', '1'); } catch (e) { }
-    }
-}
-
+// Enable debug mode via URL ?debug (no persistence)
 const DEBUG = (() => {
     if (typeof window === 'undefined') return false;
-    if (window.location.search.includes('debug')) return true;
-    try { return localStorage.getItem('debug') === '1'; } catch (e) { return false; }
+    return window.location.search.includes('debug');
 })();
 
 const DEBUG_MODE = DEBUG;
@@ -1319,8 +1311,9 @@ const CandlestickChart = () => {
                 const isMobile = p.windowWidth < 768;
                 const leftMargin = isMobile ? 4 : 8; // Minimal left margin for maximum width
                 const rightMargin = isMobile ? 42 : 58; // Keep right margin for price labels
-                // Keep same margins - safe area handled by HTML padding now
-                const topMargin = isMobile ? 60 : 50; // Lowered grid away from dynamic island
+                // Detect if we are running as iOS PWA (standalone) to leave space for Dynamic Island
+                const isStandalone = (typeof window !== 'undefined') && (window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone);
+                const topMargin = isMobile ? (isStandalone ? 60 : 0) : 50; // No extra gap in Safari browser
                 const bottomInset = getSafeBottom();
                 const bottomVisualMargin = 0;
                 const bottomMargin = bottomInset;
@@ -1423,8 +1416,8 @@ const CandlestickChart = () => {
                 // Draw in optimal order for smoothness
                 drawGrid();
 
-                // Debug overlay to visualize canvas and chartArea bounds
-                if (DEBUG_MODE) {
+                // Debug overlay to visualize canvas and chartArea bounds (only when ?debuggrid present)
+                if (DEBUG_MODE && window.location.search.includes('debuggrid')) {
                     // Canvas border
                     p.noFill();
                     p.stroke(255, 0, 255, 180);
@@ -1471,7 +1464,8 @@ const CandlestickChart = () => {
                 const isMobile = p.windowWidth < 768;
                 const leftMargin = isMobile ? 4 : 8; // Minimal left margin for maximum width
                 const rightMargin = isMobile ? 42 : 58; // Keep right margin for price labels
-                const topMargin = isMobile ? 60 : 50;
+                const isStandalone = (typeof window !== 'undefined') && (window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone);
+                const topMargin = isMobile ? (isStandalone ? 60 : 0) : 50;
                 const bottomInset = getSafeBottom();
                 const bottomVisualMargin = 0;
                 const bottomMargin = bottomInset;

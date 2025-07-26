@@ -44,7 +44,7 @@ const Footer: React.FC<FooterProps> = ({ balance, isHolding }) => (
             position: 'absolute',
             left: 0,
             right: 0,
-            bottom: `calc(env(safe-area-inset-bottom) + ${typeof window !== 'undefined' && window.innerWidth < 768 ? 8 : 0}px)`,
+            bottom: `calc(env(safe-area-inset-bottom) + ${typeof window !== 'undefined' && window.innerWidth < 768 ? (isStandalone ? 32 : 8) : 0}px)`,
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'flex-end',

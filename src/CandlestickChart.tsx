@@ -895,17 +895,21 @@ const CandlestickChart = () => {
                 p.stroke(255, 255, 255, gridAlpha * 0.38); // Increased from 0.25 to 0.38 for more visible grid
                 p.strokeWeight(0.5);
 
-                const gridLines = p.width < 768 ? 5 : 8;
+                // Use a common spacing so cells are roughly square on all screens
+                const cellSpacing = p.width < 768 ? 60 : 100; // px between vertical grid lines
 
-                for (let i = 0; i <= gridLines; i++) {
-                    const y = chartArea.y + (chartArea.height * i / gridLines);
-                    p.line(chartArea.x, y, chartArea.x + chartArea.width, y);
-                }
-
-                const verticalLines = Math.floor(p.width / (p.width < 768 ? 60 : 100));
+                // Vertical lines
+                const verticalLines = Math.floor(chartArea.width / cellSpacing);
                 for (let i = 0; i <= verticalLines; i++) {
                     const x = chartArea.x + (chartArea.width * i / verticalLines);
                     p.line(x, chartArea.y, x, chartArea.y + chartArea.height);
+                }
+
+                // Horizontal lines – match the same spacing to keep squares
+                const horizontalLines = Math.floor(chartArea.height / cellSpacing);
+                for (let i = 0; i <= horizontalLines; i++) {
+                    const y = chartArea.y + (chartArea.height * i / horizontalLines);
+                    p.line(chartArea.x, y, chartArea.x + chartArea.width, y);
                 }
             };
 

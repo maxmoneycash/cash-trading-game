@@ -80,9 +80,10 @@ const Footer: React.FC<FooterProps> = ({ balance, isHolding, showLiquidation, ru
                     backdropFilter: 'blur(12px)',
                     border: '1px solid rgba(255,255,255,0.12)',
                     borderRadius: 8,
-                    padding: '6px 14px',
+                    padding: '6px 24px', // More generous horizontal padding
                     height: 50,
                     minHeight: 50,
+                    width: isMobile ? 140 : 160, // Much wider to accommodate larger balance numbers
                     color: '#fff',
                     fontWeight: 600,
                     fontSize: 14,
@@ -443,6 +444,7 @@ const CandlestickChart = () => {
             let pnlLineEndPos = null; // Track the end position of PNL line
             let shouldExplodeEmojis = false;
             let explosionCenter = null;
+            let lastEmojiTime = 0; // Cooldown tracking for performance
 
             const bitcoinData = generateBitcoinData();
 
@@ -453,23 +455,38 @@ const CandlestickChart = () => {
                     this.y = y;
                     this.vx = (Math.random() - 0.5) * 8; // Horizontal velocity
                     this.vy = -Math.random() * 10 - 5; // Initial upward velocity
-                    this.scale = 0.5 + Math.random() * 0.5;
+                    this.scale = 0.8 + Math.random() * 0.6; // Bigger emojis: 0.8-1.4x scale (was 0.5-1.0x)
                     this.rotation = Math.random() * 360;
                     this.rotationSpeed = (Math.random() - 0.5) * 20;
                     this.opacity = 255;
                     this.gravity = 0.5;
                     this.drag = 0.98;
                     this.lifetime = 0;
-                    this.maxLifetime = 2000; // Reduced from 3000 to make them disappear faster
+                    // Dynamic lifetime based on current emoji count - longer when fewer emojis
+                    this.maxLifetime = this.calculateLifetime();
                     this.exploding = false;
                     this.explosionVx = 0;
                     this.explosionVy = 0;
                 }
 
+                calculateLifetime() {
+                    const emojiCount = activeMoneyEmojis.length;
+                    // Base lifetime scales with fewer emojis: 2.5s when alone, down to 1s when crowded
+                    if (emojiCount <= 3) return 2500; // Longer when very few
+                    if (emojiCount <= 6) return 2000; // Still longer when few
+                    if (emojiCount <= 10) return 1500; // Medium when moderate
+                    return 1000; // Shortest when many
+                }
+
                 explode(centerX, centerY) {
                     this.exploding = true;
-                    const angle = Math.atan2(this.y - centerY, this.x - centerX);
-                    const force = 15 + Math.random() * 10;
+                    // Bias explosion towards left side of screen for better spread
+                    const baseAngle = Math.atan2(this.y - centerY, this.x - centerX);
+                    const leftBias = -Math.PI * 0.3; // 54 degrees towards left
+                    const randomSpread = (Math.random() - 0.5) * Math.PI * 1.2; // 108 degree spread
+                    const angle = baseAngle + leftBias + randomSpread;
+
+                    const force = 20 + Math.random() * 15; // Stronger force for wider spread
                     this.explosionVx = Math.cos(angle) * force;
                     this.explosionVy = Math.sin(angle) * force;
                     this.gravity = 0.8;
@@ -485,8 +502,15 @@ const CandlestickChart = () => {
                         this.explosionVy *= 0.95;
                     }
 
+                    // Dynamic gravity - lighter when fewer emojis for more floating effect
+                    const emojiCount = activeMoneyEmojis.length;
+                    let currentGravity = this.gravity;
+                    if (emojiCount <= 3) currentGravity *= 0.4; // Much lighter gravity when very few
+                    else if (emojiCount <= 6) currentGravity *= 0.6; // Lighter when few
+                    else if (emojiCount <= 10) currentGravity *= 0.8; // Slightly lighter when moderate
+
                     // Physics
-                    this.vy += this.gravity;
+                    this.vy += currentGravity;
                     this.vx *= this.drag;
                     this.vy *= this.drag;
 
@@ -509,7 +533,7 @@ const CandlestickChart = () => {
                     p.rotate(p.radians(this.rotation));
                     p.scale(this.scale);
                     p.textAlign(p.CENTER, p.CENTER);
-                    p.textSize(40);
+                    p.textSize(45); // Bigger text size to match bigger scale
                     p.fill(255, 255, 255, this.opacity);
                     p.text('💵', 0, 0);
                     p.pop();
@@ -527,21 +551,45 @@ const CandlestickChart = () => {
                     return !shouldRemove;
                 });
 
+                // Much more aggressive performance protection
+                const maxEmojis = 15; // Much lower hard limit for performance
+                if (activeMoneyEmojis.length > maxEmojis) {
+                    activeMoneyEmojis = activeMoneyEmojis.slice(-maxEmojis); // Keep only the newest ones
+                }
+
+                // Performance-based acceleration: only kick in when really crowded
+                if (activeMoneyEmojis.length > 12) {
+                    // Force older emojis to disappear faster only when really crowded
+                    activeMoneyEmojis.forEach(emoji => {
+                        emoji.maxLifetime = Math.max(800, emoji.maxLifetime * 0.8); // 20% faster disappearance, less aggressive
+                    });
+                }
+
                 // Handle explosion when closing profitable position
                 if (shouldExplodeEmojis && explosionCenter) {
-                    // Dynamic number based on current active emojis to prevent overload
-                    let numEmojis = 15; // Reduced base from 25
-                    if (activeMoneyEmojis.length > 40) numEmojis = 8;
-                    if (activeMoneyEmojis.length > 70) numEmojis = 4;
+                    const currentTime = p.millis();
+                    const cooldownPeriod = 200; // 200ms cooldown between emoji bursts
 
-                    // Create explosion effect with dynamic number
-                    for (let i = 0; i < numEmojis; i++) {
-                        const emoji = new MoneyEmoji(
-                            explosionCenter.x + (Math.random() - 0.5) * 30,
-                            explosionCenter.y + (Math.random() - 0.5) * 30
-                        );
-                        emoji.explode(explosionCenter.x, explosionCenter.y);
-                        activeMoneyEmojis.push(emoji);
+                    // Only create emojis if cooldown has passed
+                    if (currentTime - lastEmojiTime > cooldownPeriod) {
+                        // Dynamic emoji creation based on current count
+                        let numEmojis = 4; // Base amount per profitable trade
+                        if (activeMoneyEmojis.length > 6) numEmojis = 3; // Slight reduction when moderate
+                        if (activeMoneyEmojis.length > 10) numEmojis = 2; // More reduction when getting crowded
+                        if (activeMoneyEmojis.length > 15) numEmojis = 1; // Minimal when very crowded
+                        if (activeMoneyEmojis.length > 18) numEmojis = 0; // Stop when extremely crowded
+
+                        // Create explosion effect with conservative number
+                        for (let i = 0; i < numEmojis; i++) {
+                            const emoji = new MoneyEmoji(
+                                explosionCenter.x + (Math.random() - 0.5) * 60, // Wider initial spread: 60px vs 30px
+                                explosionCenter.y + (Math.random() - 0.5) * 40  // Slightly wider vertical spread: 40px vs 30px
+                            );
+                            emoji.explode(explosionCenter.x, explosionCenter.y);
+                            activeMoneyEmojis.push(emoji);
+                        }
+
+                        lastEmojiTime = currentTime; // Update cooldown timer
                     }
                     shouldExplodeEmojis = false;
                 }
@@ -797,7 +845,7 @@ const CandlestickChart = () => {
                 const patterns = ['instant', 'gradual', 'deadcat'];
                 rugpullPattern = patterns[Math.floor(Math.random() * patterns.length)];
 
-                rugpullTargetPrice = Math.random() * 2; // Crash to $0-2
+                rugpullTargetPrice = 0; // Always crash to exactly $0
 
                 // Set rugpull type for UI (but don't show liquidation overlay yet)
                 setRugpullType(rugpullPattern);
@@ -820,13 +868,13 @@ const CandlestickChart = () => {
                 liquidationCandleCreated = true; // Mark that we've created the liquidation candle
                 rugpullActive = false; // Stop rugpull processing immediately
 
-                // Create single liquidation candle
+                // Create single liquidation candle - complete crash to zero
                 return {
                     ...data,
-                    open: data.open,
-                    high: data.open,
-                    low: rugpullTargetPrice,
-                    close: rugpullTargetPrice,
+                    open: data.open, // Keep original open to show where it started
+                    high: data.open, // High is same as open (no upward movement)
+                    low: 0, // Always crash to exactly $0
+                    close: 0, // Always close at exactly $0
                     isLiquidation: true // Mark as liquidation candle
                 };
             };
@@ -1067,6 +1115,9 @@ const CandlestickChart = () => {
                     p.fill(255, 255, 255, 255);
                     p.noStroke();
                     p.ellipse(immediateStartX, immediateY, 8, 8);
+
+                    // No exit point for new positions - only show when trade is completed
+
                     return; // Skip the complex logic for brand new positions
                 }
 
@@ -1095,6 +1146,13 @@ const CandlestickChart = () => {
                     p.fill(255, 255, 255, alpha);
                     p.noStroke();
                     p.ellipse(lineStartX, lineStartY, 8, 8);
+                }
+
+                // Exit point - only show for completed trades
+                if (isCompleted) {
+                    p.fill(255, 255, 255, alpha);
+                    p.noStroke();
+                    p.ellipse(finalEndX, lineEndY, 8, 8);
                 }
             };
 
@@ -1209,8 +1267,8 @@ const CandlestickChart = () => {
                 const priceLineY = p.map(lastCandle.close, priceScale.min, priceScale.max,
                     chartArea.y + chartArea.height, chartArea.y);
 
-                // Increase the width of the orange box
-                const labelWidth = p.width < 768 ? 50 : 60; // Adjusted width
+                // Make orange box significantly more compact
+                const labelWidth = p.width < 768 ? 44 : 55; // Much more compact width
                 const labelHeight = p.width < 768 ? 18 : 22; // Made taller
                 const fontSize = p.width < 768 ? 10 : 12; // Increased font size
 

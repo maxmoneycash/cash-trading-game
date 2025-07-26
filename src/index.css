@@ -1,3 +1,7 @@
+/* Add Google font for Bai Jamjuree */
+@import url('https://fonts.googleapis.com/css2?family=Bai+Jamjuree:wght@400;600;700&display=swap');
+
+/* Reset + global rules */
 * {
   margin: 0;
   padding: 0;
@@ -23,13 +27,14 @@ html {
   max-height: 100svh;
   background: linear-gradient(135deg, #0B1215 0%, #1a1a1a 50%, #0f0f0f 100%);
   background-attachment: fixed;
+  font-family: 'Bai Jamjuree', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
 body {
   margin: 0;
   padding: 0;
   background: linear-gradient(135deg, #0B1215 0%, #1a1a1a 50%, #0f0f0f 100%);
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-family: 'Bai Jamjuree', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   overflow: hidden;
   /* Apply same iOS hack as HTML */
   min-height: calc(100% + env(safe-area-inset-top));
@@ -125,3 +130,5 @@ button:hover {
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.5);
 }
+
+:root { --sat: env(safe-area-inset-bottom); }

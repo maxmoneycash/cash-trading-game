@@ -1,6 +1,12 @@
 import React, { useRef, useEffect, useState } from 'react';
 import p5 from 'p5';
 
+// Read CSS custom property for safe-area bottom inset
+const getSafeBottom = () =>
+    parseFloat(
+        getComputedStyle(document.documentElement).getPropertyValue('--sat') || '0'
+    );
+
 // Define lightweight footer for balance & instructions
 interface FooterProps {
     balance: number;
@@ -18,8 +24,8 @@ const Footer: React.FC<FooterProps> = ({ balance, isHolding }) => (
             justifyContent: 'space-between',
             alignItems: 'flex-end',
             padding: '0 20px',
-            paddingBottom: `calc(env(safe-area-inset-bottom) + 6px)`,
-            minHeight: 60,
+            paddingBottom: `calc(env(safe-area-inset-bottom) + 8px)`,
+            minHeight: 50,
             zIndex: 2000,
             pointerEvents: 'none',
         }}
@@ -36,10 +42,13 @@ const Footer: React.FC<FooterProps> = ({ balance, isHolding }) => (
                 border: '1px solid rgba(255,255,255,0.12)',
                 borderRadius: 8,
                 padding: '6px 14px',
+                height: 50,
+                minHeight: 50,
                 color: '#fff',
                 fontWeight: 600,
                 fontSize: 14,
                 whiteSpace: 'nowrap',
+                fontFamily: 'Bai Jamjuree, sans-serif',
             }}
         >
             Balance: ${balance.toFixed(0)}
@@ -59,11 +68,13 @@ const Footer: React.FC<FooterProps> = ({ balance, isHolding }) => (
                     border: '1px solid rgba(255,255,255,0.12)',
                     borderRadius: 8,
                     padding: '6px 14px',
+                    height: 50,
+                    minHeight: 50,
                     color: '#fff',
                     fontSize: 12,
-                    lineHeight: 1.25,
                     maxWidth: 140,
                     textAlign: 'center',
+                    fontFamily: 'Bai Jamjuree, sans-serif',
                 }}
             >
                 Hold to Buy<br />Release to Sell
@@ -92,7 +103,7 @@ const PnlOverlay: React.FC<PnlOverlayProps> = ({ pnl, displayPnl, isHolding }) =
         <div
             style={{
                 position: 'absolute',
-                top: `calc(${isMobile ? 60 : 50}px + env(safe-area-inset-top, 0px))`,
+                top: `calc(${(window.innerWidth < 768 ? 50 : 40) + 10}px + env(safe-area-inset-top, 0px))`,
                 left: isMobile ? 19 : 23,
                 width: isMobile ? 140 : 180,
                 height: isMobile ? 80 : 95,
@@ -106,6 +117,7 @@ const PnlOverlay: React.FC<PnlOverlayProps> = ({ pnl, displayPnl, isHolding }) =
                 flexDirection: 'column',
                 justifyContent: 'center',
                 zIndex: 1500,
+                fontFamily: 'Bai Jamjuree, sans-serif',
             }}
         >
             <div
@@ -1283,6 +1295,7 @@ const CandlestickChart = () => {
 
             p.setup = () => {
                 p.createCanvas(p.windowWidth, p.windowHeight);
+                p.textFont('Bai Jamjuree');
                 p.strokeCap(p.ROUND);
 
                 // Optimize chart area for mobile vs desktop - Chart extends to screen edges
@@ -1291,14 +1304,18 @@ const CandlestickChart = () => {
                 const rightMargin = isMobile ? 42 : 58; // Keep right margin for price labels
                 // Keep same margins - safe area handled by HTML padding now
                 const topMargin = isMobile ? 50 : 40; // Increased to avoid top overlap
-                const bottomMargin = isMobile ? 0 : 10; // Account for iOS PWA white section on mobile
+                const bottomInset = getSafeBottom();
+                const bottomMargin = 0; // grid should extend to real bottom; inset handled by canvas size
 
                 chartArea = {
                     x: leftMargin,
                     y: topMargin,
                     width: p.windowWidth - leftMargin - rightMargin,
-                    height: p.windowHeight - topMargin - bottomMargin
+                    height: p.windowHeight - topMargin
                 };
+
+                // extend canvas into safe area so grid reaches bottom
+                p.resizeCanvas(p.windowWidth, p.windowHeight + bottomInset);
 
                 // Recalculate candle dimensions and max candles for the new area
                 candleWidth = isMobile ? 4 : 6;
@@ -1421,14 +1438,17 @@ const CandlestickChart = () => {
                 const leftMargin = isMobile ? 4 : 8; // Minimal left margin for maximum width
                 const rightMargin = isMobile ? 42 : 58; // Keep right margin for price labels
                 const topMargin = isMobile ? 50 : 40; // Increased to avoid top overlap
-                const bottomMargin = isMobile ? 0 : 10; // Account for iOS PWA white section on mobile
+                const bottomInset = getSafeBottom();
+                const bottomMargin = 0;
 
                 chartArea = {
                     x: leftMargin,
                     y: topMargin,
                     width: p.windowWidth - leftMargin - rightMargin,
-                    height: p.windowHeight - topMargin - bottomMargin
+                    height: p.windowHeight - topMargin
                 };
+
+                p.resizeCanvas(p.windowWidth, p.windowHeight + bottomInset);
 
                 // Recalculate candle dimensions and max candles for the new area
                 candleWidth = isMobile ? 4 : 6;

@@ -16,34 +16,54 @@ const Footer: React.FC<FooterProps> = ({ balance, isHolding }) => (
             bottom: 0,
             display: 'flex',
             justifyContent: 'space-between',
-            alignItems: 'center',
+            alignItems: 'flex-end',
             padding: '0 20px',
-            paddingBottom: `calc(env(safe-area-inset-bottom) + 8px)`,
+            paddingBottom: `calc(env(safe-area-inset-bottom) + 6px)`,
             minHeight: 60,
-            background: 'linear-gradient(135deg,#0B1215 0%,#1a1a1a 50%,#0f0f0f 100%)',
             zIndex: 2000,
+            pointerEvents: 'none',
         }}
     >
-        {/* Balance */}
+        {/* Balance box */}
         <div
             style={{
+                pointerEvents: 'auto',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: 'rgba(0,0,0,0.45)',
+                backdropFilter: 'blur(12px)',
+                border: '1px solid rgba(255,255,255,0.12)',
+                borderRadius: 12,
+                padding: '6px 14px',
                 color: '#fff',
-                fontWeight: 'bold',
-                fontSize: '14px',
+                fontWeight: 600,
+                fontSize: 14,
                 whiteSpace: 'nowrap',
             }}
         >
             Balance: ${balance.toFixed(0)}
         </div>
-        {/* Instructions */}
+
+        {/* Instructions box (hidden while holding) */}
         {!isHolding && (
             <div
                 style={{
+                    pointerEvents: 'auto',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: 'rgba(0,0,0,0.45)',
+                    backdropFilter: 'blur(12px)',
+                    border: '1px solid rgba(255,255,255,0.12)',
+                    borderRadius: 12,
+                    padding: '6px 14px',
                     color: '#fff',
-                    fontSize: '12px',
+                    fontSize: 12,
+                    lineHeight: 1.25,
+                    maxWidth: 140,
                     textAlign: 'center',
-                    lineHeight: 1.3,
-                    maxWidth: '140px',
                 }}
             >
                 Hold to Buy<br />Release to Sell

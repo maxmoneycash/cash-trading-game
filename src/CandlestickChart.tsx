@@ -35,7 +35,7 @@ const Footer: React.FC<FooterProps> = ({ balance, isHolding }) => (
             position: 'absolute',
             left: 0,
             right: 0,
-            bottom: `calc(env(safe-area-inset-bottom) + ${typeof window !== 'undefined' && window.innerWidth < 768 ? 24 : 10}px)`,
+            bottom: `calc(env(safe-area-inset-bottom) + ${typeof window !== 'undefined' && window.innerWidth < 768 ? 24 : 0}px)`,
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'flex-end',
@@ -607,9 +607,6 @@ const CandlestickChart = () => {
                 // No more fixed liquidation scheduling - now dynamic based on position duration
                 liquidationCandleCreated = false;
                 console.log(`✅ Round started - liquidation risk increases with position duration`);
-
-                currentIndex = 0;           // restart candle stream
-                lastUpdate = p.millis();    // reset timer so first candle spawns promptly
             };
 
             // Check if round should end
@@ -1207,7 +1204,6 @@ const CandlestickChart = () => {
             };
 
             const drawPriceLabels = () => {
-                if (visible.length === 0) return; // skip when no data
                 const fontSize = p.width < 768 ? 8 : 10; // Slightly larger for better readability
                 const labelCount = p.width < 768 ? 5 : 7;
 
@@ -1368,14 +1364,6 @@ const CandlestickChart = () => {
 
                 const visible = isHistoricalView ? allRoundCandles : candles;
 
-                // Fail-safe: if round is active but no candles for >1s, force one candle
-                if (isRoundActive && !isHistoricalView && candles.length === 0 && p.millis() - roundStartTime > 1000) {
-                    if (currentIndex < bitcoinData.length) {
-                        addCandle(bitcoinData[currentIndex]);
-                        currentIndex++;
-                    }
-                }
-
                 // Temporarily adjust chart area for historical view on mobile
                 let originalChartArea = null;
                 if (isHistoricalView && p.windowWidth < 768) {
@@ -1387,7 +1375,7 @@ const CandlestickChart = () => {
                     // Expand width only, keep same top alignment, and include safe-area inset in height
                     chartArea.x = 10;
                     chartArea.width = p.windowWidth - 20;
-                    // chartArea.y remains unchanged so top gridline doesn't jump
+                    // chartArea.y remains unchanged so top gridline doesn’t jump
                     chartArea.height = p.windowHeight - chartArea.y + bottomInsetHist; // full height
                 }
 
@@ -1452,10 +1440,8 @@ const CandlestickChart = () => {
 
                 // Hide price line and labels during historical view on mobile to save space
                 if (!(isHistoricalView && p.windowWidth < 768)) {
-                    if (visible.length > 0) {
-                        drawPriceLine(visible); // Draw price label before PNL line
-                        drawPriceLabels(); // Y-axis labels back for professional look
-                    }
+                    drawPriceLine(visible); // Draw price label before PNL line
+                    drawPriceLabels(); // Y-axis labels back for professional look
                 }
 
                 drawPNLLine(currentCandleWidth, currentCandleSpacing, visible); // Draw PNL line last so it's on top

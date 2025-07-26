@@ -35,7 +35,7 @@ const Footer: React.FC<FooterProps> = ({ balance, isHolding }) => (
             position: 'absolute',
             left: 0,
             right: 0,
-            bottom: 'env(safe-area-inset-bottom)',
+            bottom: `calc(env(safe-area-inset-bottom) + ${typeof window !== 'undefined' && window.innerWidth < 768 ? 20 : 10}px)`,
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'flex-end',
@@ -1322,13 +1322,14 @@ const CandlestickChart = () => {
                 // Keep same margins - safe area handled by HTML padding now
                 const topMargin = isMobile ? 60 : 50; // Lowered grid away from dynamic island
                 const bottomInset = getSafeBottom();
-                const bottomMargin = 0; // grid should extend to real bottom; inset handled by canvas size
+                const bottomVisualMargin = topMargin; // keep same distance as top
+                const bottomMargin = bottomVisualMargin + bottomInset;
 
                 chartArea = {
                     x: leftMargin,
                     y: topMargin,
                     width: p.windowWidth - leftMargin - rightMargin,
-                    height: p.windowHeight - topMargin + bottomInset
+                    height: p.windowHeight - topMargin - bottomVisualMargin
                 };
 
                 // extend canvas into safe area so grid reaches bottom
@@ -1472,13 +1473,14 @@ const CandlestickChart = () => {
                 const rightMargin = isMobile ? 42 : 58; // Keep right margin for price labels
                 const topMargin = isMobile ? 60 : 50;
                 const bottomInset = getSafeBottom();
-                const bottomMargin = 0;
+                const bottomVisualMargin = topMargin;
+                const bottomMargin = bottomVisualMargin + bottomInset;
 
                 chartArea = {
                     x: leftMargin,
                     y: topMargin,
                     width: p.windowWidth - leftMargin - rightMargin,
-                    height: p.windowHeight - topMargin + bottomInset
+                    height: p.windowHeight - topMargin - bottomVisualMargin
                 };
 
                 p.resizeCanvas(p.windowWidth, p.windowHeight + bottomInset);

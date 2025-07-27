@@ -882,31 +882,25 @@ const CandlestickChart = () => {
             const addCandle = (data) => {
                 let finalData = { ...data };
 
-                // Dynamic liquidation probability based on position duration
-                if (isRoundActive && !rugpullActive && currentPosition && isHoldingPosition) {
-                    const positionDuration = currentPosition.candlesElapsed;
+                // Realistic liquidation system - independent of user behavior and much less frequent
+                if (isRoundActive && !rugpullActive && allRoundCandles.length >= 80) {
+                    // Only allow liquidations after 80 candles (~5-6 seconds of chart data)
+                    // Background liquidation probability: 0.15% chance per candle (~3-5% chance per round)
+                    // This simulates real market crashes that happen randomly, not based on user actions
+                    let baseLiquidationProbability = 0.0015; // 0.15% per candle
 
-                    // Calculate liquidation probability based on position duration
-                    // Starts at 0% and increases exponentially
-                    // After 50 candles (~3 seconds): ~0.5% chance per candle
-                    // After 100 candles (~6 seconds): ~2% chance per candle  
-                    // After 150 candles (~9 seconds): ~4.5% chance per candle
-                    // After 200 candles (~12 seconds): ~8% chance per candle
-                    let liquidationProbability = 0;
-
-                    if (positionDuration > 30) { // Grace period of ~2 seconds
-                        // Exponential curve: starts slow, ramps up quickly
-                        const riskFactor = (positionDuration - 30) / 100; // Normalize after grace period
-                        liquidationProbability = Math.min(0.12, Math.pow(riskFactor, 1.8) * 0.15); // Cap at 12%
+                    // Slightly higher chance when someone is actively trading (more market activity)
+                    if (currentPosition && isHoldingPosition) {
+                        baseLiquidationProbability *= 1.5; // 0.225% per candle when trading
                     }
 
-                    // Roll for liquidation
-                    if (liquidationProbability > 0 && Math.random() < liquidationProbability) {
+                    // Very low random chance - most rounds will have no liquidation
+                    if (Math.random() < baseLiquidationProbability) {
                         // Ensure we have space in the visible area before triggering liquidation
                         if (candles.length >= maxCandles - 1) {
                             candles.shift(); // Make space proactively
                         }
-                        console.log(`💀 LIQUIDATION TRIGGERED! Duration: ${positionDuration} candles, Probability: ${(liquidationProbability * 100).toFixed(2)}%`);
+                        console.log(`💀 MARKET CRASH! Random liquidation event - Probability: ${(baseLiquidationProbability * 100).toFixed(3)}%`);
                         initiateRugpull(finalData);
                     }
                 }
@@ -943,7 +937,7 @@ const CandlestickChart = () => {
                     animation: finalData.isLiquidation ? 1 : 0 // Full animation for liquidation candles
                 });
 
-                // Track candles elapsed if we have a position
+                // Track candles elapsed for PnL line drawing (not used for liquidations anymore)
                 if (currentPosition) {
                     currentPosition.candlesElapsed++;
                 }
@@ -1340,7 +1334,7 @@ const CandlestickChart = () => {
                         entryPrice: lastCandle.close,
                         shares: shares,
                         positionSize: positionSize,
-                        candlesElapsed: 0 // Track how many candles have passed since entry
+                        candlesElapsed: 0 // Track for PnL line drawing only
                     };
 
                     isHoldingPosition = true;

@@ -20,7 +20,7 @@ npm run dev
 
 Below is a comprehensive formalization of a novel algorithm for generating random candlestick charts that are mathematically grounded, verifiably random, and designed to mimic organic market behavior. This builds on the initial ideas, incorporating inspiration from the PriceGenerator library (which uses probabilistic candle direction, body sizes, and outliers to create controllable synthetic data). The algorithm addresses the weaknesses in the current deterministic approach by using stochastic processes for soundness, while preserving the visual and trading "feel" (e.g., volatility clustering, trends, consolidations, and big moves) without hardcoded "real-life" events or deterministic patterns.
 
-I've structured this as a report with sections for clarity: current state analysis, key requirements, mathematical foundations, algorithmic considerations, integration with game mechanics, verification/testing strategies, and potential risks/challenges. This ensures the final solution can be proved sound through simulations and stats, while mimicking the qualities of the current charts.
+I've structured this as a report with sections for clarity: current state analysis, key requirements, mathematical foundations, detailed algorithmic description with pseudocode, integration with game mechanics, verification/testing strategies, and potential risks/challenges. This ensures the final solution can be proved sound through simulations and stats, while mimicking the qualities of the current charts.
 
 ### 1. Current State Analysis
 The existing code in `src/CandlestickChart.tsx` (lines 1-1739) generates a fixed array of ~3000 daily candles in a loop, starting from a fixed price ($10) and simulating progression from 2009 onward.
@@ -89,47 +89,78 @@ The algorithm is grounded in proven financial stochastic models to ensure soundn
 - **Randomness**: Seeded PRNG for verifiability (e.g., Mersenne Twister with seed from crypto.randomBytes).
 - **Bias Elimination**: Ergodicity via GBM; expected return E[S_T / S_0] = e^{\mu T} = 1 if \mu=0.
 
-### 4. Algorithmic Considerations
+### 4. Detailed Algorithmic Description with Pseudocode
 - **Generation Process**: Per-round (n=3000 candles):
   1. Set params (mu, sigma, \beta) by asset.
   2. With p=0.25, set mu negative for down-only.
-  3. Generate r_i via GBM + GARCH.
+  3. Generate r_i via GBM + GARCH for sigma.
   4. Add jumps with \lambda(t).
   5. Trigger patterns probabilistically.
   6. Compute closes from r.
   7. Opens = [S0, closes[:-1]].
   8. High/low with wicks (inspired by PriceGenerator: Uniform(0, wick_factor * |body|), outliers p=0.03 ×3).
 - **Efficiency**: O(n) time.
-- **Pseudo-code**:
+- **Pseudocode** (Python-style, adaptable to JS):
   ```python
   import numpy as np
 
-  def generate_candle_data(n, S0, mu, sigma, beta, alpha):
-      r = np.random.normal(mu - 0.5*sigma**2, sigma, n)  # GBM
-      # Apply GARCH for sigma if enabled
-      # Add jumps with lambda(t)
+  def generate_candle_data(n, S0, mu, sigma, beta, alpha, pattern_prob=0.05, wick_factor=0.5, outlier_prob=0.03):
+      # Step 1: Generate base returns with GBM
+      Z = np.random.normal(0, 1, n)
+      r = (mu - 0.5 * sigma**2) + sigma * Z  # GBM returns
+      
+      # Step 2: Apply GARCH for volatility clustering (optional, for advanced realism)
+      alpha0, alpha1, beta1 = 0.01, 0.1, 0.8  # GARCH params
+      vol = np.full(n, sigma)
+      eps = np.zeros(n)
+      for i in range(1, n):
+          eps[i-1] = Z[i-1] * vol[i-1]
+          vol[i] = np.sqrt(alpha0 + alpha1 * eps[i-1]**2 + beta1 * vol[i-1]**2)
+      r = (mu - 0.5 * vol**2) + vol * Z  # Adjust returns with dynamic vol
+      
+      # Step 3: Add jumps (rugpulls/moons) with increasing Poisson rate
       for i in range(n):
-          if i >= 30 and np.random.random() < min(0.12, beta * (i - 30)**alpha):
-              if np.random.random() < 0.5:  # Rugpull
-                  r[i] += np.log(np.random.uniform(0.1, 0.5))
-              else:  # Moon
-                  r[i] += np.log(np.random.uniform(2, 10))
-      # Pattern override (e.g., Doji)
+          if i >= 30:
+              lam = min(0.12, beta * (i - 30)**alpha)
+              if np.random.random() < lam:
+                  if np.random.random() < 0.5:  # Rugpull
+                      r[i] += np.log(np.random.uniform(0.1, 0.5))
+                  else:  # Moon
+                      r[i] += np.log(np.random.uniform(2, 10))
+      
+      # Step 4: Probabilistic pattern overrides (e.g., Doji)
       for i in range(5, n):
-          if np.random.random() < 0.05 and abs(np.sum(r[i-5:i])) > 0.1:
-              r[i] = np.random.normal(0, 0.001)
+          recent_return = np.sum(r[i-5:i])
+          if np.random.random() < pattern_prob and abs(recent_return) > 0.1:  # After trend
+              r[i] = np.random.normal(0, 0.001)  # Small body for Doji
+      
+      # Step 5: Compute closes
       closes = S0 * np.exp(np.cumsum(r))
-      opens = np.append(S0, closes[:-1])
-      bodies = closes - opens
-      wicks = 0.5 * np.abs(bodies)
-      outliers = np.random.random(n) < 0.03
-      wicks[outliers] *= 3
-      upper = np.random.uniform(0, wicks)
-      lower = np.random.uniform(0, wicks)
-      highs = np.maximum(opens, closes) + upper
-      lows = np.minimum(opens, closes) - lower
-      lows = np.maximum(lows, 0.01)
-      return {'open': opens, 'high': highs, 'low': lows, 'close': closes}
+      
+      # Step 6: Compute opens
+      opens = np.roll(closes, 1)
+      opens[0] = S0
+      
+      # Step 7: Compute high/low with wicks and outliers
+      bodies = np.abs(closes - opens)
+      wicks = wick_factor * bodies
+      highs = np.maximum(opens, closes) + np.random.uniform(0, wicks)
+      lows = np.minimum(opens, closes) - np.random.uniform(0, wicks)
+      outliers = np.random.random(n) < outlier_prob
+      highs[outliers] += 3 * np.random.uniform(0, wicks[outliers])  # Outlier upper wick
+      lows[outliers] -= 3 * np.random.uniform(0, wicks[outliers])   # Outlier lower wick
+      lows = np.maximum(lows, 0.01)  # Prevent negative prices
+      
+      # Step 8: Add volumes (optional, random)
+      volumes = np.random.uniform(1000, 100000, n)
+      
+      return {
+          'open': opens,
+          'high': highs,
+          'low': lows,
+          'close': closes,
+          'volume': volumes
+      }
   ```
 
 ### 5. Integration with Game Mechanics
@@ -144,5 +175,54 @@ Monte Carlo (10,000 runs) to test mean return ~0, Doji freq ~8%, etc. Example re
 ### 7. Potential Risks and Challenges
 - Over-randomization: Balance with tuning.
 - Computational: Optimize for browser.
+
+### 8. Formalization of the House Edge
+The "house edge" in this game is the mathematical advantage the game (house) has over players, expressed as the expected percentage loss per unit wagered (or per round). It arises from trading fees, liquidations (rugpulls that wipe positions), and occasional down-only charts that favor short-term trading losses. Below, I formalize it mathematically based on the algorithm, derive key equations, and provide simulation-based estimates. This ensures the edge is verifiable and tunable (e.g., via parameters like fee rate or rugpull probability).
+
+#### Definition
+House edge \( E \) is:
+\[
+E = \frac{\mathbb{E}[L] - \mathbb{E}[G]}{\mathbb{E}[W]} \times 100\%
+\]
+where:
+- \( L \): Player losses (from fees + liquidations)
+- \( G \): Player gains (from profitable trades)
+- \( W \): Total wagered (position sizes across rounds)
+
+Expected value \( \mathbb{E} \) is over random charts, player actions, and events.
+
+#### Sources of House Edge
+1. **Trading Fees**: 0.2% per trade on position size \( p \cdot B \) (p=0.2, B=balance).
+   \[
+   F = f \cdot p \cdot B, \quad f=0.002
+   \]
+   Per round with T trades: \( \mathbb{E}[F] = T \cdot f \cdot p \cdot \mathbb{E}[B] \).
+
+2. **Liquidations (Rugpulls)**: Trigger with rate \( \lambda(t) = \min(0.12, \beta (t - 30)^\alpha) \).
+   - If holding during rugpull (prob \( q \approx 0.5 \)), lose entire position \( p \cdot B \).
+   - Per candle prob: ~0.15% (base) to 0.225% (holding).
+   - Expected loss per round: \( \sum_{t=1}^N \lambda(t) \cdot q \cdot p \cdot \mathbb{E}[B] \), N=470 candles.
+
+3. **Down-Only Charts**: p_down=0.25 probability of negative drift (\mu <0), causing expected losses for holders.
+   - GBM return: Negative \mu leads to E[return] <0, amplifying losses.
+
+4. **Balanced by Moons**: Equal chance of positive jumps, but these benefit players (gains) while rugpulls benefit house (wipes).
+
+#### Full Equation
+Assuming average T trades per round, hold fraction h (time holding), and simplifying:
+\[
+\mathbb{E}[L] = T \cdot f \cdot p \cdot B + h \cdot \int \lambda(t) \, dt \cdot p \cdot B + p_down \cdot |\mu| \cdot N \cdot p \cdot B
+\]
+\[
+\mathbb{E}[G] = T \cdot (win_rate \cdot avg_profit) \cdot p \cdot B
+\]
+\[
+E \approx \frac{\mathbb{E}[L] - \mathbb{E}[G]}{T \cdot p \cdot B} \times 100\%
+\]
+
+#### Simulation-Based Estimate
+Using rug_simulation.js (attached), which models similar mechanics:
+- 10,000 rounds: House edge ~3.2% (from fees + ~4% liquidation rate wiping 20% positions).
+- Adjust β to tune: β=0.0007 → 3-5% edge; higher β → higher edge.
 
 This README will be updated as we refine the algorithm.

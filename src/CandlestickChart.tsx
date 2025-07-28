@@ -950,7 +950,7 @@ const CandlestickChart = () => {
             };
 
             const drawGrid = () => {
-                p.stroke(255, 255, 255, gridAlpha * 0.38); // Increased from 0.25 to 0.38 for more visible grid
+                p.stroke(255, 255, 255, gridAlpha * 0.55); // Increased from 0.38 to 0.55 for better visibility
                 p.strokeWeight(0.5);
 
                 // Set dashed line pattern: [dash length, gap length]

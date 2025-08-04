@@ -38,10 +38,13 @@ interface FooterProps {
     isHolding: boolean;
     showLiquidation: boolean;
     rugpullType: string | null;
+    isModalOpen: boolean;
+    setIsModalOpen: (open: boolean) => void;
 }
 
-const Footer: React.FC<FooterProps> = ({ balance, isHolding, showLiquidation, rugpullType }) => {
+const Footer: React.FC<FooterProps> = ({ balance, isHolding, showLiquidation, rugpullType, isModalOpen, setIsModalOpen }) => {
     const isMobile = typeof window !== 'undefined' ? window.innerWidth < 768 : true;
+
     // Align with PNL box: 15px from chart grid + chart grid left margin
     const leftPadding = isMobile ? (4 + 15) : (8 + 15); // Same distance from grid as PNL box
     // Align with timer: 10px from chart grid + chart grid right margin
@@ -70,54 +73,183 @@ const Footer: React.FC<FooterProps> = ({ balance, isHolding, showLiquidation, ru
         >
 
             {/* Balance box */}
-            <div
+            <div className="glass-container"
+                onClick={() => setIsModalOpen(true)}
                 style={{
                     pointerEvents: 'auto',
+                    cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    background: 'rgba(0,0,0,0.45)',
-                    backdropFilter: 'blur(12px)',
-                    border: '1px solid rgba(255,255,255,0.12)',
-                    borderRadius: 8,
-                    padding: '6px 24px', // More generous horizontal padding
+                    padding: '6px 24px',
                     height: 50,
                     minHeight: 50,
-                    width: isMobile ? 140 : 160, // Much wider to accommodate larger balance numbers
+                    width: isMobile ? 140 : 160,
+                    borderRadius: 8,
+                    fontFamily: 'Bai Jamjuree, sans-serif',
+                    // Ultra-transparent background for more glass effect
+                    background: 'rgba(255, 255, 255, 0.008)',
+                    boxShadow: '0 6px 6px rgba(0, 0, 0, 0.2), 0 0 20px rgba(0, 0, 0, 0.1)',
+                }}
+            >
+                <div className="glass-filter"></div>
+                <div className="glass-overlay"></div>
+                <div className="glass-specular"></div>
+                <div className="glass-content" style={{
                     color: '#fff',
                     fontWeight: 600,
                     fontSize: 14,
                     whiteSpace: 'nowrap',
-                    fontFamily: 'Bai Jamjuree, sans-serif',
-                }}
-            >
-                Balance: ${balance.toFixed(0)}
+                }}>
+                    Balance: ${balance.toFixed(0)}
+                </div>
             </div>
 
             {/* Instructions box (hidden while holding or during liquidation events) */}
             {!isHolding && !isLiquidationEvent && (
-                <div
+                <div className="glass-container"
                     style={{
                         pointerEvents: 'auto',
                         display: 'flex',
                         flexDirection: 'column',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        background: 'rgba(0,0,0,0.45)',
-                        backdropFilter: 'blur(12px)',
-                        border: '1px solid rgba(255,255,255,0.12)',
-                        borderRadius: 8,
                         padding: '6px 14px',
                         height: 50,
                         minHeight: 50,
-                        color: '#fff',
-                        fontSize: 12,
                         maxWidth: 140,
-                        textAlign: 'center',
+                        borderRadius: 8,
                         fontFamily: 'Bai Jamjuree, sans-serif',
+                        // Neutral background - no color tint like PnL
+                        background: 'rgba(255, 255, 255, 0.02)',
+                        boxShadow: '0 6px 6px rgba(0, 0, 0, 0.2), 0 0 20px rgba(0, 0, 0, 0.1)',
                     }}
                 >
-                    Hold to Buy<br />Release to Sell
+                    <div className="glass-filter"></div>
+                    <div className="glass-overlay"></div>
+                    <div className="glass-specular"></div>
+                    <div className="glass-content" style={{
+                        color: '#fff',
+                        fontSize: 12,
+                        textAlign: 'center',
+                    }}>
+                        Hold to Buy<br />Release to Sell
+                    </div>
+                </div>
+            )}
+
+            {/* Balance Modal */}
+            {isModalOpen && (
+                <div
+                    style={{
+                        position: 'fixed',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        zIndex: 9999,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        backdropFilter: 'blur(8px)',
+                        WebkitBackdropFilter: 'blur(8px)',
+                        background: 'rgba(0, 0, 0, 0.01)', // Barely visible overlay
+                    }}
+                    onClick={() => setIsModalOpen(false)}
+                >
+                    <div
+                        className="glass-container"
+                        style={{
+                            width: '90vw',
+                            height: '80vh',
+                            maxWidth: '800px',
+                            maxHeight: '600px',
+                            borderRadius: '8px',
+                            background: 'transparent',
+                            // Sophisticated multi-layer shadows for depth and definition
+                            boxShadow: `
+                                0 0 0 1px rgba(255, 255, 255, 0.08),
+                                0 2px 4px rgba(0, 0, 0, 0.1),
+                                0 8px 16px rgba(0, 0, 0, 0.15),
+                                0 16px 32px rgba(0, 0, 0, 0.1),
+                                0 0 80px rgba(255, 255, 255, 0.03)
+                            `,
+                            fontFamily: 'Bai Jamjuree, sans-serif',
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div
+                            className="glass-filter"
+                            style={{
+                                backdropFilter: 'blur(6px) saturate(120%) brightness(1.05)',
+                                WebkitBackdropFilter: 'blur(6px) saturate(120%) brightness(1.05)',
+                            }}
+                        ></div>
+                        <div
+                            className="glass-overlay"
+                            style={{
+                                background: 'rgba(255, 255, 255, 0.002)', // Barely visible
+                            }}
+                        ></div>
+                        <div
+                            className="glass-specular"
+                            style={{
+                                // Sophisticated edge-lit glass effect
+                                boxShadow: `
+                                    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+                                    inset 1px 0 0 rgba(255, 255, 255, 0.06),
+                                    inset 0 -1px 0 rgba(255, 255, 255, 0.02),
+                                    inset -1px 0 0 rgba(255, 255, 255, 0.02)
+                                `,
+                                // Premium glass refraction with multiple light sources
+                                background: `
+                                    radial-gradient(circle at 25% 25%, rgba(255, 255, 255, 0.04) 0%, transparent 50%),
+                                    radial-gradient(circle at 75% 25%, rgba(255, 255, 255, 0.02) 0%, transparent 40%),
+                                    radial-gradient(circle at 50% 80%, rgba(255, 255, 255, 0.015) 0%, transparent 60%),
+                                    linear-gradient(135deg, rgba(255, 255, 255, 0.01) 0%, transparent 50%)
+                                `,
+                            }}
+                        ></div>
+                        <div
+                            className="glass-content"
+                            style={{
+                                position: 'relative',
+                                zIndex: 3,
+                                display: 'flex',
+                                flexDirection: 'column',
+                                flex: '1 1 auto',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                padding: '2rem',
+                                color: '#ffffff',
+                                textAlign: 'center',
+                            }}
+                        >
+                            <h2 style={{
+                                margin: '0 0 1rem 0',
+                                fontSize: '2rem',
+                                fontWeight: 700,
+                            }}>
+                                Balance Details
+                            </h2>
+                            <div style={{
+                                fontSize: '3rem',
+                                fontWeight: 700,
+                                marginBottom: '2rem',
+                            }}>
+                                ${balance.toFixed(0)}
+                            </div>
+                            <p style={{
+                                fontSize: '0.875rem',
+                                opacity: 0.5,
+                                marginTop: '3rem',
+                                fontWeight: 500,
+                                letterSpacing: '0.05em',
+                            }}>
+                                Click anywhere outside to close
+                            </p>
+                        </div>
+                    </div>
                 </div>
             )}
         </div>
@@ -139,64 +271,80 @@ const PnlOverlay: React.FC<PnlOverlayProps> = ({ pnl, displayPnl, isHolding }) =
     const greenGrad = 'rgba(0,255,136';
     const redGrad = 'rgba(255,68,68';
 
-    const bgGradient = `linear-gradient(135deg, ${pnl >= 0 ? `${greenGrad},0.15)` : `${redGrad},0.15)`} 0%, ${pnl >= 0 ? `${greenGrad},0.05)` : `${redGrad},0.05)`} 100%)`;
+    const bgGradient = `linear-gradient(135deg, ${pnl >= 0 ? `${greenGrad},0.08)` : `${redGrad},0.08)`} 0%, ${pnl >= 0 ? `${greenGrad},0.03)` : `${redGrad},0.03)`} 100%)`;
 
     return (
         <div
+            className="glass-container"
             style={{
                 position: 'absolute',
                 top: `${topOffset}px`,
                 left: isMobile ? 19 : 23,
                 width: isMobile ? 140 : 180,
-                height: isMobile ? 80 : 95,
-                background: bgGradient,
-                backdropFilter: 'blur(20px) saturate(180%)',
-                border: `1px solid ${pnl >= 0 ? 'rgba(0,255,136,0.3)' : 'rgba(255,68,68,0.3)'}`,
+                height: isMobile ? 90 : 105,
                 borderRadius: 8,
-                padding: isMobile ? '12px 16px' : '16px 20px',
-                boxShadow: `0 10px 40px ${pnl >= 0 ? 'rgba(0,255,136,0.1)' : 'rgba(255,68,68,0.1)'} inset 0 1px 1px ${pnl >= 0 ? 'rgba(0,255,136,0.2)' : 'rgba(255,68,68,0.2)'}`,
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'center',
                 zIndex: 1500,
                 fontFamily: 'Bai Jamjuree, sans-serif',
+                // Keep your original glow effect + PnL background
+                background: bgGradient,
+                boxShadow: `0 10px 40px ${pnl >= 0 ? 'rgba(0,255,136,0.1)' : 'rgba(255,68,68,0.1)'}, 0 6px 6px rgba(0, 0, 0, 0.2), 0 0 20px rgba(0, 0, 0, 0.1)`,
             }}
         >
+            <div className="glass-filter"></div>
+            <div className="glass-overlay"></div>
             <div
+                className="glass-specular"
                 style={{
-                    fontSize: isMobile ? 12 : 14,
-                    color: 'rgba(255,255,255,0.6)',
-                    marginBottom: 4,
-                    fontWeight: 500,
-                    textAlign: 'center',
-                    textTransform: 'uppercase',
+                    // Minimal specular highlights - no outer glow
+                    boxShadow: `inset 0 0 4px ${pnl >= 0 ? 'rgba(0,255,136,0.08)' : 'rgba(255,68,68,0.08)'}`,
+                    // Subtle radial gradient with PnL color
+                    background: `radial-gradient(circle at center, ${pnl >= 0 ? 'rgba(0,255,136,0.06)' : 'rgba(255,68,68,0.06)'} 0%, transparent 70%)`,
+                }}
+            ></div>
+            <div
+                className="glass-content"
+                style={{
+                    flexDirection: 'column',
+                    justifyContent: 'center',
+                    padding: isMobile ? '12px 16px' : '16px 20px',
                 }}
             >
-                P&L
-            </div>
-            <div
-                style={{
-                    fontSize: isMobile ? 24 : 32,
-                    fontWeight: 700,
-                    color: pnl >= 0 ? '#00FF88' : '#FF4444',
-                    textAlign: 'center',
-                    letterSpacing: -0.5,
-                }}
-            >
-                {displayPnl >= 0 ? '+' : ''}${displayPnl.toFixed(2)}
-            </div>
-            <div
-                style={{
-                    fontSize: isMobile ? 10 : 11,
-                    color: 'rgba(255,255,255,0.5)',
-                    marginTop: 6,
-                    fontWeight: 500,
-                    textAlign: 'center',
-                    opacity: isHolding ? 1 : 0,
-                    transition: 'opacity 0.3s ease',
-                }}
-            >
-                ACTIVE POSITION
+                <div
+                    style={{
+                        fontSize: isMobile ? 12 : 14,
+                        color: 'rgba(255,255,255,0.6)',
+                        marginBottom: 4,
+                        fontWeight: 500,
+                        textAlign: 'center',
+                        textTransform: 'uppercase',
+                    }}
+                >
+                    P&L
+                </div>
+                <div
+                    style={{
+                        fontSize: isMobile ? 24 : 32,
+                        fontWeight: 700,
+                        color: pnl >= 0 ? '#00FF88' : '#FF4444',
+                        textAlign: 'center',
+                        letterSpacing: -0.5,
+                    }}
+                >
+                    {displayPnl >= 0 ? '+' : ''}${displayPnl.toFixed(2)}
+                </div>
+                <div
+                    style={{
+                        fontSize: isMobile ? 10 : 11,
+                        color: 'rgba(255,255,255,0.5)',
+                        marginTop: 6,
+                        fontWeight: 500,
+                        textAlign: 'center',
+                        opacity: isHolding ? 1 : 0,
+                        transition: 'opacity 0.3s ease',
+                    }}
+                >
+                    ACTIVE POSITION
+                </div>
             </div>
         </div>
     );
@@ -205,6 +353,7 @@ const PnlOverlay: React.FC<PnlOverlayProps> = ({ pnl, displayPnl, isHolding }) =
 const CandlestickChart = () => {
     const chartRef = useRef();
     const p5InstanceRef = useRef();
+    const modalOpenRef = useRef(false); // Ref to share modal state with p5 sketch
     const [currentPrice, setCurrentPrice] = useState(0);
     const [balance, setBalance] = useState(1000);
     const [pnl, setPnl] = useState(0);
@@ -214,6 +363,12 @@ const CandlestickChart = () => {
     const [showLiquidation, setShowLiquidation] = useState(false);
     const [rugpullType, setRugpullType] = useState(null);
     const [displayPnl, setDisplayPnl] = useState(0); // Animated display value
+    const [isModalOpen, setIsModalOpen] = useState(false);
+
+    // Keep modalOpenRef in sync with isModalOpen state
+    useEffect(() => {
+        modalOpenRef.current = isModalOpen;
+    }, [isModalOpen]);
 
     // Smooth PNL animation
     useEffect(() => {
@@ -1593,7 +1748,9 @@ const CandlestickChart = () => {
             let touchActive = false;
 
             p.mousePressed = () => {
-                // Don't do anything if p5 isn't ready
+                // Don't do anything if modal is open or p5 isn't ready
+                if (modalOpenRef.current) return false;
+
                 try {
                     if (!touchActive) { // Prevent double triggering with touch
                         startPosition();
@@ -1605,7 +1762,9 @@ const CandlestickChart = () => {
             };
 
             p.mouseReleased = () => {
-                // Don't do anything if p5 isn't ready
+                // Don't do anything if modal is open or p5 isn't ready
+                if (modalOpenRef.current) return false;
+
                 try {
                     if (!touchActive) { // Prevent double triggering with touch
                         closePosition();
@@ -1617,6 +1776,14 @@ const CandlestickChart = () => {
             };
 
             p.touchStarted = (event) => {
+                // Don't do anything if modal is open
+                if (modalOpenRef.current) {
+                    if (event && event.preventDefault) {
+                        event.preventDefault();
+                    }
+                    return false;
+                }
+
                 touchActive = true;
                 startPosition();
                 // Prevent all default behaviors
@@ -1636,6 +1803,14 @@ const CandlestickChart = () => {
             };
 
             p.touchEnded = (event) => {
+                // Don't do anything if modal is open
+                if (modalOpenRef.current) {
+                    if (event && event.preventDefault) {
+                        event.preventDefault();
+                    }
+                    return false;
+                }
+
                 touchActive = false;
                 closePosition();
                 // Prevent all default behaviors
@@ -1719,9 +1894,10 @@ const CandlestickChart = () => {
                 overflow: 'hidden',
             }}
         >
+
             <div ref={chartRef} style={{ flex: '1 1 auto' }} />
             <PnlOverlay pnl={pnl} displayPnl={displayPnl} isHolding={isHolding} />
-            <Footer balance={balance} isHolding={isHolding} showLiquidation={showLiquidation} rugpullType={rugpullType} />
+            <Footer balance={balance} isHolding={isHolding} showLiquidation={showLiquidation} rugpullType={rugpullType} isModalOpen={isModalOpen} setIsModalOpen={setIsModalOpen} />
         </div>
     );
 };

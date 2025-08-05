@@ -135,10 +135,11 @@ button:hover {
 
 /* Liquid Glass Variables */
 :root {
-  --lg-bg-color: rgba(255, 255, 255, 0.008); /* More transparent */
-  --lg-highlight: rgba(255, 255, 255, 0.15); /* Softer highlight */
-  --lg-glow: rgba(255, 255, 255, 0.12); /* New glow variable */
-  --lg-refraction: rgba(255, 255, 255, 0.06); /* Light refraction */
+  --lg-bg-color: rgba(255, 255, 255, 0.025); /* Increased for daylight visibility */
+  --lg-highlight: rgba(255, 255, 255, 0.20); /* Enhanced highlight */
+  --lg-glow: rgba(255, 255, 255, 0.15); /* Stronger glow */
+  --lg-refraction: rgba(255, 255, 255, 0.08); /* Enhanced refraction */
+  --lg-border: rgba(255, 255, 255, 0.12); /* New border variable for daylight contrast */
   --lg-text: #ffffff;
   --lg-red: #fb4268;
   --lg-grey: #444739;
@@ -151,13 +152,27 @@ button:hover {
   background: transparent; /* Remove background - let individual components handle it */
   overflow: hidden;
   border-radius: 8px;
-  /* NO BORDER - remove the extra outer border */
-  /* NO BOX SHADOW - remove the outer glow */
+  /* Subtle border for daylight visibility while maintaining premium look */
+  border: 1px solid var(--lg-border);
+  /* Subtle outer glow for depth and definition */
+  box-shadow: 
+    0 0 0 1px rgba(255, 255, 255, 0.04),
+    0 2px 8px rgba(0, 0, 0, 0.15),
+    0 4px 16px rgba(0, 0, 0, 0.08);
   transition: all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
 }
 
 .glass-container:hover {
   /* No hover effects on container - let glass layers handle it */
+}
+
+.glass-container:hover {
+  /* Enhanced container border on hover */
+  border-color: rgba(255, 255, 255, 0.18);
+  box-shadow: 
+    0 0 0 1px rgba(255, 255, 255, 0.08),
+    0 4px 12px rgba(0, 0, 0, 0.20),
+    0 8px 24px rgba(0, 0, 0, 0.12);
 }
 
 .glass-container:hover .glass-specular {
@@ -204,11 +219,14 @@ button:hover {
 
 .glass-specular {
   z-index: 2;
-  /* Enhanced glass effects with more glow and refraction */
+  /* Enhanced glass effects with more glow and refraction for daylight visibility */
   box-shadow: 
     /* Enhanced inner glow for light refraction */
     inset 0 0 8px var(--lg-glow),
     inset 0 0 16px var(--lg-refraction),
+    /* Subtle inner border highlight */
+    inset 0 1px 0 rgba(255, 255, 255, 0.15),
+    inset 1px 0 0 rgba(255, 255, 255, 0.08),
     /* Subtle outer glow for depth */
     0 0 12px rgba(255, 255, 255, 0.04),
     0 0 24px rgba(255, 255, 255, 0.02);

@@ -87,9 +87,11 @@ const Footer: React.FC<FooterProps> = ({ balance, isHolding, showLiquidation, ru
                     width: isMobile ? 140 : 160,
                     borderRadius: 8,
                     fontFamily: 'Bai Jamjuree, sans-serif',
-                    // Ultra-transparent background for more glass effect
-                    background: 'rgba(255, 255, 255, 0.008)',
+                    // Enhanced background for daylight visibility while maintaining glass effect
+                    background: 'rgba(255, 255, 255, 0.035)',
                     boxShadow: '0 6px 6px rgba(0, 0, 0, 0.2), 0 0 20px rgba(0, 0, 0, 0.1)',
+                    // Remove border since .glass-container now handles it
+                    border: 'none',
                 }}
             >
                 <div className="glass-filter"></div>
@@ -120,9 +122,11 @@ const Footer: React.FC<FooterProps> = ({ balance, isHolding, showLiquidation, ru
                         maxWidth: 140,
                         borderRadius: 8,
                         fontFamily: 'Bai Jamjuree, sans-serif',
-                        // Neutral background - no color tint like PnL
-                        background: 'rgba(255, 255, 255, 0.02)',
+                        // Enhanced neutral background for daylight visibility
+                        background: 'rgba(255, 255, 255, 0.035)',
                         boxShadow: '0 6px 6px rgba(0, 0, 0, 0.2), 0 0 20px rgba(0, 0, 0, 0.1)',
+                        // Remove border since .glass-container now handles it
+                        border: 'none',
                     }}
                 >
                     <div className="glass-filter"></div>
@@ -147,15 +151,34 @@ const Footer: React.FC<FooterProps> = ({ balance, isHolding, showLiquidation, ru
                         left: 0,
                         right: 0,
                         bottom: 0,
-                        zIndex: 9999,
+                        zIndex: 99999, // Higher z-index to ensure it's above everything
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         backdropFilter: 'blur(8px)',
                         WebkitBackdropFilter: 'blur(8px)',
-                        background: 'rgba(0, 0, 0, 0.01)', // Barely visible overlay
+                        background: 'rgba(0, 0, 0, 0.3)', // More transparent backdrop
+                        cursor: 'pointer',
+                        pointerEvents: 'auto', // Ensure pointer events work
                     }}
-                    onClick={() => setIsModalOpen(false)}
+                    onClick={(e) => {
+                        console.log('Backdrop clicked!'); // Debug log
+                        e.stopPropagation();
+                        e.preventDefault();
+                        setIsModalOpen(false);
+                    }}
+                    onMouseDown={(e) => {
+                        console.log('Backdrop mouse down!'); // Debug log
+                        e.stopPropagation();
+                        e.preventDefault();
+                        setIsModalOpen(false);
+                    }}
+                    onTouchStart={(e) => {
+                        console.log('Backdrop touch start!'); // Debug log
+                        e.stopPropagation();
+                        e.preventDefault();
+                        setIsModalOpen(false);
+                    }}
                 >
                     <div
                         className="glass-container"
@@ -166,17 +189,26 @@ const Footer: React.FC<FooterProps> = ({ balance, isHolding, showLiquidation, ru
                             maxHeight: '600px',
                             borderRadius: '8px',
                             background: 'transparent',
-                            // Sophisticated multi-layer shadows for depth and definition
+                            // Enhanced shadows for better daylight definition while maintaining elegance
                             boxShadow: `
-                                0 0 0 1px rgba(255, 255, 255, 0.08),
-                                0 2px 4px rgba(0, 0, 0, 0.1),
-                                0 8px 16px rgba(0, 0, 0, 0.15),
-                                0 16px 32px rgba(0, 0, 0, 0.1),
-                                0 0 80px rgba(255, 255, 255, 0.03)
+                                0 0 0 1px rgba(255, 255, 255, 0.12),
+                                0 4px 8px rgba(0, 0, 0, 0.15),
+                                0 12px 24px rgba(0, 0, 0, 0.20),
+                                0 20px 40px rgba(0, 0, 0, 0.15),
+                                0 0 80px rgba(255, 255, 255, 0.05)
                             `,
+                            // Remove border since .glass-container handles it
+                            border: 'none',
                             fontFamily: 'Bai Jamjuree, sans-serif',
+                            pointerEvents: 'auto', // Ensure modal content captures events
                         }}
-                        onClick={(e) => e.stopPropagation()}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                        }}
+                        onTouchEnd={(e) => {
+                            e.stopPropagation();
+                            e.preventDefault();
+                        }}
                     >
                         <div
                             className="glass-filter"
@@ -188,7 +220,7 @@ const Footer: React.FC<FooterProps> = ({ balance, isHolding, showLiquidation, ru
                         <div
                             className="glass-overlay"
                             style={{
-                                background: 'rgba(255, 255, 255, 0.002)', // Barely visible
+                                background: 'rgba(255, 255, 255, 0.008)', // More transparent
                             }}
                         ></div>
                         <div
@@ -225,6 +257,48 @@ const Footer: React.FC<FooterProps> = ({ balance, isHolding, showLiquidation, ru
                                 textAlign: 'center',
                             }}
                         >
+                            {/* Close button */}
+                            <button style={{
+                                position: 'absolute',
+                                top: '1rem',
+                                right: '1rem',
+                                width: '40px',
+                                height: '40px',
+                                borderRadius: '50%',
+                                background: 'rgba(255, 255, 255, 0.15)',
+                                border: '1px solid rgba(255, 255, 255, 0.2)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                cursor: 'pointer',
+                                fontSize: '1.5rem',
+                                fontWeight: 'bold',
+                                color: 'rgba(255, 255, 255, 0.9)',
+                                transition: 'all 0.2s ease',
+                                zIndex: 100001,
+                            }}
+                            onClick={(e) => {
+                                console.log('Close button clicked!'); // Debug log
+                                e.stopPropagation();
+                                e.preventDefault();
+                                setIsModalOpen(false);
+                            }}
+                            onMouseDown={(e) => {
+                                console.log('Close button mouse down!'); // Debug log
+                                e.stopPropagation();
+                                e.preventDefault();
+                                setIsModalOpen(false);
+                            }}
+                            onTouchStart={(e) => {
+                                console.log('Close button touch start!'); // Debug log
+                                e.stopPropagation();
+                                e.preventDefault();
+                                setIsModalOpen(false);
+                            }}
+                            >
+                                ×
+                            </button>
+                            
                             <h2 style={{
                                 margin: '0 0 1rem 0',
                                 fontSize: '2rem',
@@ -267,11 +341,31 @@ const PnlOverlay: React.FC<PnlOverlayProps> = ({ pnl, displayPnl, isHolding }) =
     const isMobile = typeof window !== 'undefined' ? window.innerWidth < 768 : true;
     const topOffset = getTopMargin() + 10; // align with timer (chartArea.y + 10)
 
-    // Colors based on profit / loss
-    const greenGrad = 'rgba(0,255,136';
-    const redGrad = 'rgba(255,68,68';
+    // Enhanced colors for better daylight visibility
+    const greenGrad = 'rgba(0,255,136'; // Keep original for consistency
+    const redGrad = 'rgba(255,68,68';   // Keep original for consistency
+    const neutralGrad = 'rgba(255,255,255'; // Neutral white for no position/zero PNL
 
-    const bgGradient = `linear-gradient(135deg, ${pnl >= 0 ? `${greenGrad},0.08)` : `${redGrad},0.08)`} 0%, ${pnl >= 0 ? `${greenGrad},0.03)` : `${redGrad},0.03)`} 100%)`;
+    // Dynamic color logic: neutral when no position or zero PNL, colored when profit/loss
+    const isNeutral = !isHolding || Math.abs(pnl) < 0.01; // Neutral when not holding or PNL is essentially zero
+    const isProfit = pnl > 0.01;
+    const isLoss = pnl < -0.01;
+
+    // Dynamic gradient intensity based on PNL amount (stronger color for bigger gains/losses)
+    const pnlIntensity = Math.min(Math.abs(pnl) / 100, 1); // Scale intensity based on PNL amount, max at $100
+    const baseIntensity = 0.08; // Minimum intensity
+    const maxIntensity = 0.20;  // Maximum intensity
+    const currentIntensity = baseIntensity + (pnlIntensity * (maxIntensity - baseIntensity));
+
+    // Background gradient based on state
+    let bgGradient;
+    if (isNeutral) {
+        bgGradient = `linear-gradient(135deg, ${neutralGrad},0.04) 0%, ${neutralGrad},0.02) 100%)`;
+    } else if (isProfit) {
+        bgGradient = `linear-gradient(135deg, ${greenGrad},${currentIntensity}) 0%, ${greenGrad},${currentIntensity * 0.5}) 100%)`;
+    } else {
+        bgGradient = `linear-gradient(135deg, ${redGrad},${currentIntensity}) 0%, ${redGrad},${currentIntensity * 0.5}) 100%)`;
+    }
 
     return (
         <div
@@ -285,9 +379,14 @@ const PnlOverlay: React.FC<PnlOverlayProps> = ({ pnl, displayPnl, isHolding }) =
                 borderRadius: 8,
                 zIndex: 1500,
                 fontFamily: 'Bai Jamjuree, sans-serif',
-                // Keep your original glow effect + PnL background
-                background: bgGradient,
-                boxShadow: `0 10px 40px ${pnl >= 0 ? 'rgba(0,255,136,0.1)' : 'rgba(255,68,68,0.1)'}, 0 6px 6px rgba(0, 0, 0, 0.2), 0 0 20px rgba(0, 0, 0, 0.1)`,
+                // Enhanced PnL background with stronger base visibility for daylight
+                background: `linear-gradient(135deg, 
+                    rgba(255, 255, 255, 0.08) 0%, 
+                    rgba(255, 255, 255, 0.04) 100%), 
+                    ${bgGradient}`,
+                boxShadow: `0 10px 40px ${isNeutral ? 'rgba(255,255,255,0.05)' : (isProfit ? `rgba(0,255,136,${currentIntensity})` : `rgba(255,68,68,${currentIntensity})`)}, 0 6px 6px rgba(0, 0, 0, 0.2), 0 0 20px rgba(0, 0, 0, 0.1)`,
+                // Keep the glass container border for daylight visibility
+                // border: handled by .glass-container class
             }}
         >
             <div className="glass-filter"></div>
@@ -295,10 +394,14 @@ const PnlOverlay: React.FC<PnlOverlayProps> = ({ pnl, displayPnl, isHolding }) =
             <div
                 className="glass-specular"
                 style={{
-                    // Minimal specular highlights - no outer glow
-                    boxShadow: `inset 0 0 4px ${pnl >= 0 ? 'rgba(0,255,136,0.08)' : 'rgba(255,68,68,0.08)'}`,
-                    // Subtle radial gradient with PnL color
-                    background: `radial-gradient(circle at center, ${pnl >= 0 ? 'rgba(0,255,136,0.06)' : 'rgba(255,68,68,0.06)'} 0%, transparent 70%)`,
+                    // Enhanced specular highlights with dynamic coloring
+                    boxShadow: `
+                        inset 0 0 8px ${isNeutral ? 'rgba(255,255,255,0.08)' : (isProfit ? `rgba(0,255,136,${currentIntensity * 0.8})` : `rgba(255,68,68,${currentIntensity * 0.8})`)},
+                        inset 0 1px 0 rgba(255, 255, 255, 0.2),
+                        inset 1px 0 0 rgba(255, 255, 255, 0.1)
+                    `,
+                    // Dynamic radial gradient based on PNL state
+                    background: `radial-gradient(circle at center, ${isNeutral ? 'rgba(255,255,255,0.04)' : (isProfit ? `rgba(0,255,136,${currentIntensity * 0.6})` : `rgba(255,68,68,${currentIntensity * 0.6})`)}, transparent 70%)`,
                 }}
             ></div>
             <div
@@ -325,7 +428,7 @@ const PnlOverlay: React.FC<PnlOverlayProps> = ({ pnl, displayPnl, isHolding }) =
                     style={{
                         fontSize: isMobile ? 24 : 32,
                         fontWeight: 700,
-                        color: pnl >= 0 ? '#00FF88' : '#FF4444',
+                        color: isNeutral ? 'rgba(255,255,255,0.9)' : (isProfit ? '#00FF99' : '#FF5555'), // Dynamic text color: neutral, green profit, red loss
                         textAlign: 'center',
                         letterSpacing: -0.5,
                     }}
@@ -368,6 +471,30 @@ const CandlestickChart = () => {
     // Keep modalOpenRef in sync with isModalOpen state
     useEffect(() => {
         modalOpenRef.current = isModalOpen;
+        
+        // Add escape key handler for modal
+        const handleEscape = (e) => {
+            if (e.key === 'Escape' && isModalOpen) {
+                setIsModalOpen(false);
+            }
+        };
+        
+        if (isModalOpen) {
+            document.addEventListener('keydown', handleEscape);
+            // Disable p5 canvas pointer events when modal is open
+            if (p5InstanceRef.current && p5InstanceRef.current.canvas) {
+                p5InstanceRef.current.canvas.style.pointerEvents = 'none';
+            }
+        } else {
+            // Re-enable p5 canvas pointer events when modal is closed
+            if (p5InstanceRef.current && p5InstanceRef.current.canvas) {
+                p5InstanceRef.current.canvas.style.pointerEvents = 'auto';
+            }
+        }
+        
+        return () => {
+            document.removeEventListener('keydown', handleEscape);
+        };
     }, [isModalOpen]);
 
     // Smooth PNL animation

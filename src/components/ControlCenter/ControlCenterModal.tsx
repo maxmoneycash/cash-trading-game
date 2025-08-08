@@ -91,30 +91,35 @@ const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
     return (
         <>
             <style>{`
-                /* Mobile styles */
-                @media (max-width: 768px) {
-                    .modal-container-responsive {
-                        width: calc(100vw - 1rem) !important;
-                        max-width: calc(100vw - 1rem) !important;
-                        margin: 0.5rem !important;
-                        maxHeight: calc(100vh - 1rem) !important;
+                /* Remove all media query overrides since modal is now fullscreen */
+                .modal-container-responsive {
+                    width: 100vw !important;
+                    height: 100vh !important;
+                    max-width: 100vw !important;
+                    max-height: 100vh !important;
+                    margin: 0 !important;
+                    border-radius: 0 !important;
+                }
+                
+                /* Liquid glass animation */
+                @keyframes liquidShimmer {
+                    0% {
+                        background-position: 0% 50%, 100% 50%, 50% 0%;
+                        opacity: 0.8;
+                    }
+                    50% {
+                        background-position: 100% 50%, 0% 50%, 50% 100%;
+                        opacity: 1;
+                    }
+                    100% {
+                        background-position: 0% 50%, 100% 50%, 50% 0%;
+                        opacity: 0.8;
                     }
                 }
                 
-                /* Desktop styles - responsive to width */
-                @media (min-width: 769px) {
-                    .modal-container-responsive {
-                        width: min(92vw, 1400px) !important;
-                        min-width: 600px !important;
-                    }
-                }
-                
-                /* Narrow desktop screens */
-                @media (min-width: 769px) and (max-width: 1200px) {
-                    .modal-container-responsive {
-                        width: calc(100vw - 2rem) !important;
-                        max-width: calc(100vw - 2rem) !important;
-                    }
+                .glass-overlay {
+                    animation: liquidShimmer 30s ease-in-out infinite;
+                    background-size: 200% 200%, 150% 150%, 180% 180%;
                 }
                 
                 /* Hide all scrollbars globally within the modal */
@@ -160,9 +165,9 @@ const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    backdropFilter: 'blur(8px)',
-                    WebkitBackdropFilter: 'blur(8px)',
-                    background: 'rgba(0, 0, 0, 0.5)',
+                    backdropFilter: 'blur(12px)',
+                    WebkitBackdropFilter: 'blur(12px)',
+                    background: 'rgba(0, 0, 0, 0.8)',
                     cursor: 'pointer',
                     pointerEvents: 'auto',
                 }}
@@ -177,18 +182,19 @@ const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                 <div
                     className="glass-container modal-container-responsive"
                     style={{
-                        width: isMobile ? 'calc(100vw - 1rem)' : '92vw',
-                        height: 'auto',
-                        maxWidth: isMobile ? 'calc(100vw - 1rem)' : '1400px',
-                        maxHeight: '85vh',
-                        borderRadius: '12px',
+                        width: '100vw',
+                        height: '100vh',
+                        maxWidth: '100vw',
+                        maxHeight: '100vh',
+                        borderRadius: '0',
                         background: 'transparent',
                         boxShadow: `
-                            0 0 0 1px rgba(255, 255, 255, 0.12),
-                            0 4px 8px rgba(0, 0, 0, 0.15),
-                            0 12px 24px rgba(0, 0, 0, 0.20),
-                            0 20px 40px rgba(0, 0, 0, 0.15),
-                            0 0 80px rgba(255, 255, 255, 0.05)
+                            inset 0 0 0 1px rgba(255, 255, 255, 0.06),
+                            0 0 0 1px rgba(255, 255, 255, 0.04),
+                            0 8px 32px rgba(0, 0, 0, 0.6),
+                            0 12px 48px rgba(0, 0, 0, 0.5),
+                            0 0 80px rgba(0, 0, 0, 0.4),
+                            inset 0 0 60px rgba(0, 0, 0, 0.3)
                         `,
                         border: 'none',
                         fontFamily: 'Bai Jamjuree, sans-serif',
@@ -196,7 +202,7 @@ const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                         display: 'flex',
                         flexDirection: 'column',
                         overflow: 'hidden',
-                        margin: isMobile ? '0.5rem' : '1rem',
+                        margin: '0',
                     }}
                     onClick={(e) => {
                         e.stopPropagation();
@@ -209,30 +215,42 @@ const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                     <div
                         className="glass-filter"
                         style={{
-                            backdropFilter: 'blur(12px) saturate(120%) brightness(1.05)',
-                            WebkitBackdropFilter: 'blur(12px) saturate(120%) brightness(1.05)',
+                            backdropFilter: 'blur(16px) saturate(100%) brightness(0.6)',
+                            WebkitBackdropFilter: 'blur(16px) saturate(100%) brightness(0.6)',
                         }}
                     />
                     <div
                         className="glass-overlay"
                         style={{
-                            background: 'rgba(255, 255, 255, 0.02)',
+                            background: `
+                                linear-gradient(135deg, 
+                                    rgba(255, 255, 255, 0.02) 0%, 
+                                    rgba(255, 255, 255, 0.01) 30%,
+                                    rgba(255, 255, 255, 0.015) 70%,
+                                    rgba(255, 255, 255, 0.03) 100%
+                                ),
+                                radial-gradient(circle at 20% 30%, rgba(255, 255, 255, 0.02) 0%, transparent 50%),
+                                radial-gradient(circle at 80% 80%, rgba(255, 255, 255, 0.01) 0%, transparent 50%),
+                                linear-gradient(to bottom, rgba(0, 0, 0, 0.2) 0%, rgba(0, 0, 0, 0.1) 100%)
+                            `,
                         }}
                     />
                     <div
                         className="glass-specular"
                         style={{
                             boxShadow: `
-                                inset 0 1px 0 rgba(255, 255, 255, 0.08),
-                                inset 1px 0 0 rgba(255, 255, 255, 0.06),
+                                inset 0 1px 0 rgba(255, 255, 255, 0.06),
+                                inset 1px 0 0 rgba(255, 255, 255, 0.04),
                                 inset 0 -1px 0 rgba(255, 255, 255, 0.02),
-                                inset -1px 0 0 rgba(255, 255, 255, 0.02)
+                                inset -1px 0 0 rgba(255, 255, 255, 0.02),
+                                inset 0 0 10px rgba(0, 0, 0, 0.2)
                             `,
                             background: `
-                                radial-gradient(circle at 25% 25%, rgba(255, 255, 255, 0.04) 0%, transparent 50%),
-                                radial-gradient(circle at 75% 25%, rgba(255, 255, 255, 0.02) 0%, transparent 40%),
-                                radial-gradient(circle at 50% 80%, rgba(255, 255, 255, 0.015) 0%, transparent 60%),
-                                linear-gradient(135deg, rgba(255, 255, 255, 0.01) 0%, transparent 50%)
+                                radial-gradient(ellipse at 30% 20%, rgba(255, 255, 255, 0.06) 0%, transparent 40%),
+                                radial-gradient(ellipse at 70% 40%, rgba(255, 255, 255, 0.03) 0%, transparent 40%),
+                                radial-gradient(ellipse at 50% 60%, rgba(255, 255, 255, 0.02) 0%, transparent 60%),
+                                radial-gradient(circle at 90% 10%, rgba(255, 255, 255, 0.04) 0%, transparent 30%),
+                                linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, transparent 20%, transparent 80%, rgba(0, 0, 0, 0.1) 100%)
                             `,
                         }}
                     />

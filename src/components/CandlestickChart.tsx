@@ -114,11 +114,12 @@ const CandlestickChart = () => {
         <div
             style={{
                 position: 'fixed',
-                top: 'env(safe-area-inset-top)',
+                top: 0,
                 left: 0,
                 right: 0,
                 bottom: 0,
-                height: 'calc(100vh - env(safe-area-inset-top))',
+                height: 'calc(100% + env(safe-area-inset-bottom))',
+                marginBottom: 'calc(-1 * env(safe-area-inset-bottom))',
                 display: 'flex',
                 flexDirection: 'column',
                 width: '100vw',

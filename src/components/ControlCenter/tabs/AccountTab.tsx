@@ -289,7 +289,7 @@ const AccountTab: React.FC<AccountTabProps> = ({ balance }) => {
                                         background: 'rgba(255, 255, 255, 0.02)',
                                     }}>
                                         <th style={{
-                                            padding: isMobile ? '0.5rem' : '1rem',
+                                            padding: '1rem',
                                             textAlign: 'left',
                                             fontWeight: 500,
                                             fontSize: '0.75rem',
@@ -300,7 +300,7 @@ const AccountTab: React.FC<AccountTabProps> = ({ balance }) => {
                                             Date
                                         </th>
                                         <th style={{
-                                            padding: isMobile ? '0.5rem' : '1rem',
+                                            padding: '1rem',
                                             textAlign: 'center',
                                             fontWeight: 500,
                                             fontSize: '0.75rem',
@@ -311,7 +311,7 @@ const AccountTab: React.FC<AccountTabProps> = ({ balance }) => {
                                             Size
                                         </th>
                                         <th style={{
-                                            padding: isMobile ? '0.5rem' : '1rem',
+                                            padding: '1rem',
                                             textAlign: 'right',
                                             fontWeight: 500,
                                             fontSize: '0.75rem',
@@ -322,7 +322,7 @@ const AccountTab: React.FC<AccountTabProps> = ({ balance }) => {
                                             Time In
                                         </th>
                                         <th style={{
-                                            padding: isMobile ? '0.5rem' : '1rem',
+                                            padding: '1rem',
                                             textAlign: 'right',
                                             fontWeight: 500,
                                             fontSize: '0.75rem',
@@ -333,7 +333,7 @@ const AccountTab: React.FC<AccountTabProps> = ({ balance }) => {
                                             %
                                         </th>
                                         <th style={{
-                                            padding: isMobile ? '0.5rem' : '1rem',
+                                            padding: '1rem',
                                             textAlign: 'right',
                                             fontWeight: 500,
                                             fontSize: '0.75rem',
@@ -361,7 +361,7 @@ const AccountTab: React.FC<AccountTabProps> = ({ balance }) => {
                                             }}
                                         >
                                             <td style={{
-                                                padding: isMobile ? '0.5rem' : '1rem',
+                                                padding: '1rem',
                                                 fontSize: isMobile ? '0.75rem' : '0.875rem',
                                                 color: 'rgba(255, 255, 255, 0.7)',
                                                 whiteSpace: 'nowrap',
@@ -374,7 +374,7 @@ const AccountTab: React.FC<AccountTabProps> = ({ balance }) => {
                                                 })}
                                             </td>
                                             <td style={{
-                                                padding: isMobile ? '0.5rem' : '1rem',
+                                                padding: '1rem',
                                                 textAlign: 'center',
                                                 fontSize: isMobile ? '0.75rem' : '0.875rem',
                                                 color: 'rgba(255, 255, 255, 0.7)',
@@ -384,7 +384,7 @@ const AccountTab: React.FC<AccountTabProps> = ({ balance }) => {
                                                 ${trade.tradeSize}
                                             </td>
                                             <td style={{
-                                                padding: isMobile ? '0.5rem' : '1rem',
+                                                padding: '1rem',
                                                 textAlign: 'right',
                                                 fontSize: isMobile ? '0.75rem' : '0.875rem',
                                                 color: 'rgba(255, 255, 255, 0.7)',
@@ -393,7 +393,7 @@ const AccountTab: React.FC<AccountTabProps> = ({ balance }) => {
                                                 {trade.timeInTrade}
                                             </td>
                                             <td style={{
-                                                padding: isMobile ? '0.5rem' : '1rem',
+                                                padding: '1rem',
                                                 textAlign: 'right',
                                                 fontSize: isMobile ? '0.75rem' : '0.875rem',
                                                 color: trade.percentGain >= 0 ? '#00FF88' : '#FF4444',
@@ -403,7 +403,7 @@ const AccountTab: React.FC<AccountTabProps> = ({ balance }) => {
                                                 {trade.percentGain >= 0 ? '+' : ''}{trade.percentGain.toFixed(1)}%
                                             </td>
                                             <td style={{
-                                                padding: isMobile ? '0.5rem' : '1rem',
+                                                padding: '1rem',
                                                 textAlign: 'right',
                                                 fontSize: isMobile ? '0.75rem' : '0.875rem',
                                                 color: trade.pnl >= 0 ? '#00FF88' : '#FF4444',

@@ -18,6 +18,8 @@ const tabs: TabConfig[] = [
 ];
 
 const ControlCenterTabs: React.FC<ControlCenterTabsProps> = ({ activeTab, onTabChange }) => {
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+
     return (
         <>
             <style>{`
@@ -59,10 +61,11 @@ const ControlCenterTabs: React.FC<ControlCenterTabsProps> = ({ activeTab, onTabC
                 {/* buttons-container */}
                 <div
                     style={{
-                        width: '370px', // Wider for better text spacing
+                        width: isMobile ? 'calc(100% - 2rem)' : '370px',
+                        maxWidth: '370px',
                         height: '52px',
-                        borderRadius: '16px', // Less rounded
-                        background: '#121212', // Slightly more contrasted
+                        borderRadius: '16px',
+                        background: '#121212',
                         boxShadow: 'inset 0 0 2px 2px rgba(0, 0, 0, 0.6)',
                     }}
                 >
@@ -90,14 +93,14 @@ const ControlCenterTabs: React.FC<ControlCenterTabsProps> = ({ activeTab, onTabC
                                     justifyContent: 'center',
                                     margin: '1px',
                                     height: '46px',
-                                    width: '120px', // Wider tabs for better text spacing
-                                    background: tab.id === activeTab ? '#0F0F0F' : '#1E1E1E', // Active darker (depressed)
-                                    borderTop: tab.id === activeTab ? '1px solid #0A0A0A' : '1px solid #383838', // Dark top border when active
-                                    borderBottom: tab.id === activeTab ? 'none' : '1px solid #2A2A2A', // Light bottom when inactive
+                                    width: '120px',
+                                    background: tab.id === activeTab ? '#0F0F0F' : '#1E1E1E',
+                                    borderTop: tab.id === activeTab ? '1px solid #0A0A0A' : '1px solid #383838',
+                                    borderBottom: tab.id === activeTab ? 'none' : '1px solid #2A2A2A',
                                     boxShadow: tab.id === activeTab
                                         ? 'inset 0 2px 8px 0 rgba(0, 0, 0, 0.6), inset 0 0 0 1px rgba(0, 0, 0, 0.3)'
                                         : '0 2px 8px 0 rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.05)',
-                                    borderTopLeftRadius: index === 0 ? '14px' : '0', // Less rounded
+                                    borderTopLeftRadius: index === 0 ? '14px' : '0',
                                     borderBottomLeftRadius: index === 0 ? '14px' : '0',
                                     borderTopRightRadius: index === tabs.length - 1 ? '14px' : '0',
                                     borderBottomRightRadius: index === tabs.length - 1 ? '14px' : '0',

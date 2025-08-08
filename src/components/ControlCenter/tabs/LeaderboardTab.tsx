@@ -49,7 +49,7 @@ const LeaderboardTab: React.FC = () => {
     return (
         <div style={{
             width: '100%',
-            boxSizing: 'border-box'
+            boxSizing: 'border-box',
         }}>
             <h3 style={{
                 margin: '0 0 1rem 0',
@@ -66,7 +66,9 @@ const LeaderboardTab: React.FC = () => {
                 overflow: 'hidden',
                 backdropFilter: 'blur(10px)',
             }}>
-                <div style={{ overflowX: 'auto' }}>
+                <div style={{
+                    overflowX: 'auto',
+                }}>
                     <table style={{
                         width: '100%',
                         borderCollapse: 'collapse',
@@ -78,7 +80,7 @@ const LeaderboardTab: React.FC = () => {
                                 background: 'rgba(255, 255, 255, 0.02)',
                             }}>
                                 <th style={{
-                                    padding: '1rem',
+                                    padding: isMobile ? '0.5rem' : '1rem',
                                     textAlign: 'left',
                                     fontWeight: 500,
                                     fontSize: '0.75rem',
@@ -89,7 +91,7 @@ const LeaderboardTab: React.FC = () => {
                                     Rank
                                 </th>
                                 <th style={{
-                                    padding: '1rem',
+                                    padding: isMobile ? '0.5rem' : '1rem',
                                     textAlign: 'left',
                                     fontWeight: 500,
                                     fontSize: '0.75rem',
@@ -100,7 +102,7 @@ const LeaderboardTab: React.FC = () => {
                                     Address
                                 </th>
                                 <th style={{
-                                    padding: '1rem',
+                                    padding: isMobile ? '0.5rem' : '1rem',
                                     textAlign: 'right',
                                     fontWeight: 500,
                                     fontSize: '0.75rem',
@@ -112,7 +114,7 @@ const LeaderboardTab: React.FC = () => {
                                 </th>
                                 {/* ALWAYS SHOW THESE ON MOBILE TOO */}
                                 <th style={{
-                                    padding: '1rem',
+                                    padding: isMobile ? '0.5rem' : '1rem',
                                     textAlign: 'center',
                                     fontWeight: 500,
                                     fontSize: '0.75rem',
@@ -123,7 +125,7 @@ const LeaderboardTab: React.FC = () => {
                                     Trades
                                 </th>
                                 <th style={{
-                                    padding: '1rem',
+                                    padding: isMobile ? '0.5rem' : '1rem',
                                     textAlign: 'center',
                                     fontWeight: 500,
                                     fontSize: '0.75rem',
@@ -155,7 +157,7 @@ const LeaderboardTab: React.FC = () => {
                                     borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
                                 }}>
                                     <td style={{
-                                        padding: isMobile ? '0.75rem' : '1rem',
+                                        padding: isMobile ? '0.5rem' : '0.75rem',
                                         fontSize: '0.875rem',
                                         fontWeight: 700,
                                         color: entry.rank === 1 ? '#FFD700' :
@@ -165,15 +167,16 @@ const LeaderboardTab: React.FC = () => {
                                         #{entry.rank}
                                     </td>
                                     <td style={{
-                                        padding: isMobile ? '0.75rem' : '1rem',
+                                        padding: isMobile ? '0.5rem' : '0.75rem',
                                         fontSize: isMobile ? '0.75rem' : '0.875rem',
                                         color: 'rgba(255, 255, 255, 0.7)',
                                         fontFamily: 'monospace',
+                                        whiteSpace: 'nowrap',
                                     }}>
                                         {formatAddress(entry.address)}
                                     </td>
                                     <td style={{
-                                        padding: isMobile ? '0.75rem' : '1rem',
+                                        padding: isMobile ? '0.5rem' : '0.75rem',
                                         textAlign: 'right',
                                         fontSize: isMobile ? '0.8125rem' : '0.875rem',
                                         fontWeight: 600,
@@ -183,7 +186,7 @@ const LeaderboardTab: React.FC = () => {
                                     </td>
                                     {/* ALWAYS SHOW THESE ON MOBILE TOO */}
                                     <td style={{
-                                        padding: isMobile ? '0.75rem' : '1rem',
+                                        padding: isMobile ? '0.5rem' : '0.75rem',
                                         textAlign: 'center',
                                         fontSize: isMobile ? '0.75rem' : '0.875rem',
                                         color: 'rgba(255, 255, 255, 0.5)',
@@ -191,7 +194,7 @@ const LeaderboardTab: React.FC = () => {
                                         {entry.trades}
                                     </td>
                                     <td style={{
-                                        padding: isMobile ? '0.75rem' : '1rem',
+                                        padding: isMobile ? '0.5rem' : '0.75rem',
                                         textAlign: 'center',
                                         fontSize: isMobile ? '0.75rem' : '0.875rem',
                                         color: entry.winRate >= 50 ? '#00FF88' : '#FF4444',

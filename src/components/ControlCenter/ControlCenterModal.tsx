@@ -40,13 +40,11 @@ const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
             <style>{`
                 @media (max-width: 768px) {
                     .modal-container-responsive {
-                        width: calc(100vw - 2rem) !important;
-                        margin: 1rem !important;
-                        border: 2px solid red !important; /* DEBUG: Should see red border on mobile */
+                        width: calc(100vw - 1rem) !important;
+                        margin: 0.5rem !important;
                     }
                     .modal-content-responsive {
-                        padding: 1rem !important;
-                        border: 2px solid blue !important; /* DEBUG: Should see blue border */
+                        padding: 0.75rem !important;
                     }
                 }
             `}</style>

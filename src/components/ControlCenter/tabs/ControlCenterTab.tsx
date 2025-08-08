@@ -224,6 +224,8 @@ const ControlCenterTab: React.FC = () => {
     const [doNotDisturb, setDoNotDisturb] = useState(false);
     const [darkMode, setDarkMode] = useState(true);
 
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+
     return (
         <div style={{
             display: 'flex',
@@ -236,7 +238,7 @@ const ControlCenterTab: React.FC = () => {
             {/* Top Controls Grid */}
             <div style={{
                 display: 'grid',
-                gridTemplateColumns: '1fr 1fr',
+                gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
                 gap: '1rem',
             }}>
                 {/* Connection Controls */}
@@ -529,7 +531,7 @@ const ControlCenterTab: React.FC = () => {
                     border: '1px solid rgba(0, 255, 136, 0.2)',
                     padding: '1.5rem',
                     display: 'grid',
-                    gridTemplateColumns: '60px 1fr',
+                    gridTemplateColumns: isMobile ? '1fr' : '60px 1fr',
                     gap: '1rem',
                     alignItems: 'center',
                 }}>
@@ -544,6 +546,7 @@ const ControlCenterTab: React.FC = () => {
                         fontSize: '1.75rem',
                         fontWeight: 'bold',
                         color: '#00FF88',
+                        margin: isMobile ? '0 auto' : '0',
                     }}>
                         C$
                     </div>

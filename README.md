@@ -224,5 +224,3 @@ E \approx \frac{\mathbb{E}[L] - \mathbb{E}[G]}{T \cdot p \cdot B} \times 100\%
 Using rug_simulation.js (attached), which models similar mechanics:
 - 10,000 rounds: House edge ~3.2% (from fees + ~4% liquidation rate wiping 20% positions).
 - Adjust β to tune: β=0.0007 → 3-5% edge; higher β → higher edge.
-
-This README will be updated as we refine the algorithm.

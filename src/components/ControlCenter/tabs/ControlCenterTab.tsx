@@ -267,6 +267,9 @@ const ControlCenterTab: React.FC = () => {
                     height: '100%',
                     overflow: 'auto',
                     WebkitOverflowScrolling: 'touch',
+                    msOverflowStyle: 'none',
+                    scrollbarWidth: 'none',
+                    touchAction: 'pan-y',
                 }}>
                 {/* Top Controls Grid */}
                 <div style={{

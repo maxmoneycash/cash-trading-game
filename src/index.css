@@ -47,8 +47,8 @@ body {
   -webkit-touch-callout: none;
   -webkit-user-select: none;
   user-select: none;
-  /* Prevent elastic scrolling on iOS */
-  touch-action: none;
+  /* Prevent elastic scrolling on iOS but allow scrolling in modals */
+  touch-action: manipulation;
   background-attachment: fixed;
 }
 
@@ -115,22 +115,23 @@ button:hover {
 
 /* Remove conflicting PWA rules - let the main hack handle everything */
 
-/* Scrollbar styling for webkit browsers */
+/* Scrollbar styling - COMPLETELY HIDE ALL SCROLLBARS */
 ::-webkit-scrollbar {
-  width: 8px;
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.1);
+    display: none !important;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.3);
-  border-radius: 4px;
+    display: none !important;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.5);
+    display: none !important;
 }
 
 /* Liquid Glass Variables */
@@ -333,4 +334,49 @@ button:hover {
 
 .custom-scroll::-webkit-scrollbar {
     display: none;
+}
+
+/* AGGRESSIVE GLOBAL SCROLLBAR HIDING */
+* {
+  -ms-overflow-style: none !important;  /* IE and Edge */
+  scrollbar-width: none !important;  /* Firefox */
+}
+
+*::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+/* Allow scrolling in modal content */
+.modal-content-responsive,
+.hide-scrollbar {
+  touch-action: pan-y !important;
+  -webkit-overflow-scrolling: touch !important;
+  overscroll-behavior: contain !important;
+}
+
+/* Ensure scrollable content in modals works on mobile */
+.modal-content-responsive > div,
+.hide-scrollbar > * {
+  touch-action: auto !important;
+}
+
+html, body, div, section, main, aside, nav, header, footer {
+  -ms-overflow-style: none !important;
+  scrollbar-width: none !important;
+}
+
+html::-webkit-scrollbar, 
+body::-webkit-scrollbar,
+div::-webkit-scrollbar,
+section::-webkit-scrollbar,
+main::-webkit-scrollbar,
+aside::-webkit-scrollbar,
+nav::-webkit-scrollbar,
+header::-webkit-scrollbar,
+footer::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
 }

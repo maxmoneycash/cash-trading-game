@@ -38,7 +38,6 @@ const formatAddress = (address: string) => {
 
 const LeaderboardTab: React.FC = () => {
     const [copiedAddress, setCopiedAddress] = useState<string | null>(null);
-    const [scrollDebug, setScrollDebug] = useState({ isScrolling: false, scrollTop: 0, scrollHeight: 0 });
     const isMobile = window.innerWidth <= 768;
     const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -48,285 +47,215 @@ const LeaderboardTab: React.FC = () => {
         setTimeout(() => setCopiedAddress(null), 2000);
     };
 
-    // Simple scroll debug handler
-    const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
-        const target = e.target as HTMLDivElement;
-        const scrollInfo = {
-            scrollTop: target.scrollTop,
-            scrollHeight: target.scrollHeight,
-            clientHeight: target.clientHeight,
-            canScroll: target.scrollHeight > target.clientHeight,
-            percentage: target.scrollHeight > target.clientHeight
-                ? Math.round((target.scrollTop / (target.scrollHeight - target.clientHeight)) * 100)
-                : 0
-        };
-
-        setScrollDebug({
-            isScrolling: true,
-            scrollTop: scrollInfo.scrollTop,
-            scrollHeight: scrollInfo.scrollHeight
-        });
-
-        console.log('📜 LeaderboardTab Scrolling:', scrollInfo);
-
-        // Hide debug after 1 second
-        setTimeout(() => {
-            setScrollDebug(prev => ({ ...prev, isScrolling: false }));
-        }, 1000);
-    };
-
-    // Test scroll capability on mount
-    useEffect(() => {
-        if (scrollContainerRef.current) {
-            const el = scrollContainerRef.current;
-            console.log('🔍 LeaderboardTab mounted:', {
-                canScroll: el.scrollHeight > el.clientHeight,
-                scrollHeight: el.scrollHeight,
-                clientHeight: el.clientHeight
-            });
-        }
-    }, []);
-
     return (
-        <>
-            {/* Debug Indicator */}
-            {scrollDebug.isScrolling && (
-                <>
-                    <div className="scroll-debug">
-                        Leaderboard Scrolling: {Math.round(scrollDebug.scrollTop)}px
-                    </div>
-                    {/* Visual Scroll Position Bar */}
-                    <div style={{
-                        position: 'fixed',
-                        right: '5px',
-                        top: '50%',
-                        transform: 'translateY(-50%)',
-                        height: '200px',
-                        width: '4px',
-                        background: 'rgba(255, 255, 255, 0.1)',
-                        borderRadius: '2px',
-                        zIndex: 999998,
-                    }}>
-                        <div style={{
-                            position: 'absolute',
-                            top: `${(scrollDebug.scrollTop / (scrollDebug.scrollHeight - 400)) * 100}%`,
-                            width: '100%',
-                            height: '20px',
-                            background: '#00FF88',
-                            borderRadius: '2px',
-                            transition: 'top 0.1s ease',
-                        }} />
-                    </div>
-                </>
-            )}
-
+        <div style={{
+            width: '100%',
+            height: '100%',
+            boxSizing: 'border-box',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+        }}>
+            <h3 style={{
+                margin: '0',
+                padding: isMobile ? '1rem 1rem 1rem 1rem' : '1.5rem 1.5rem 1rem 1.5rem',
+                fontSize: '1.125rem',
+                fontWeight: 600,
+                color: 'rgba(255, 255, 255, 0.9)',
+                flexShrink: 0,
+            }}>
+                Global Leaderboard
+            </h3>
             <div style={{
-                width: '100%',
-                height: '100%',
-                boxSizing: 'border-box',
+                background: 'rgba(255, 255, 255, 0.03)',
+                borderRadius: '0',
+                border: 'none',
+                borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+                overflow: 'hidden',
+                backdropFilter: 'blur(10px)',
+                flex: '1 1 auto',
                 display: 'flex',
                 flexDirection: 'column',
-                overflow: 'hidden',
+                minHeight: 0,
             }}>
-                <h3 style={{
-                    margin: '0',
-                    padding: isMobile ? '1rem 1rem 1rem 1rem' : '1.5rem 1.5rem 1rem 1.5rem',
-                    fontSize: '1.125rem',
-                    fontWeight: 600,
-                    color: 'rgba(255, 255, 255, 0.9)',
-                    flexShrink: 0,
-                }}>
-                    Global Leaderboard
-                </h3>
-                <div style={{
-                    background: 'rgba(255, 255, 255, 0.03)',
-                    borderRadius: '0',
-                    border: 'none',
-                    borderTop: '1px solid rgba(255, 255, 255, 0.08)',
-                    overflow: 'hidden',
-                    backdropFilter: 'blur(10px)',
-                    flex: '1 1 auto',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    minHeight: 0,
-                }}>
-                    <div
-                        ref={scrollContainerRef}
-                        className="hide-scrollbar"
-                        onScroll={handleScroll}
-                        style={{
-                            overflowX: 'auto',
-                            overflowY: 'auto',
-                            flex: '1 1 auto',
-                            WebkitOverflowScrolling: 'touch',
-                        }}>
-                        <table style={{
-                            width: '100%',
-                            borderCollapse: 'collapse',
-                            fontFamily: 'inherit',
-                            minWidth: '100%',
-                            tableLayout: 'fixed',
-                        }}>
-                            <thead>
-                                <tr style={{
-                                    borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-                                    background: 'rgba(255, 255, 255, 0.02)',
+                <div
+                    ref={scrollContainerRef}
+                    className="hide-scrollbar"
+                    style={{
+                        overflowX: 'auto',
+                        overflowY: 'auto',
+                        flex: '1 1 auto',
+                        WebkitOverflowScrolling: 'touch',
+                        msOverflowStyle: 'none',
+                        scrollbarWidth: 'none',
+                        touchAction: 'pan-y',
+                    }}>
+                    <table style={{
+                        width: '100%',
+                        borderCollapse: 'collapse',
+                        fontFamily: 'inherit',
+                        minWidth: '100%',
+                        tableLayout: 'fixed',
+                    }}>
+                        <thead>
+                            <tr style={{
+                                borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+                                background: 'rgba(255, 255, 255, 0.02)',
+                            }}>
+                                <th style={{
+                                    padding: isMobile ? '0.75rem 1rem' : '1rem 1.5rem',
+                                    textAlign: 'left',
+                                    fontWeight: 500,
+                                    fontSize: '0.75rem',
+                                    color: 'rgba(255, 255, 255, 0.5)',
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.05em',
                                 }}>
-                                    <th style={{
+                                    Rank
+                                </th>
+                                <th style={{
+                                    padding: isMobile ? '0.75rem 1rem' : '1rem 1.5rem',
+                                    textAlign: 'left',
+                                    fontWeight: 500,
+                                    fontSize: '0.75rem',
+                                    color: 'rgba(255, 255, 255, 0.5)',
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.05em',
+                                }}>
+                                    Address
+                                </th>
+                                <th style={{
+                                    padding: isMobile ? '0.75rem 1rem' : '1rem 1.5rem',
+                                    textAlign: 'right',
+                                    fontWeight: 500,
+                                    fontSize: '0.75rem',
+                                    color: 'rgba(255, 255, 255, 0.5)',
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.05em',
+                                }}>
+                                    P&L
+                                </th>
+                                {!isMobile && (
+                                    <>
+                                        <th style={{
+                                            padding: '1rem 1.5rem',
+                                            textAlign: 'center',
+                                            fontWeight: 500,
+                                            fontSize: '0.75rem',
+                                            color: 'rgba(255, 255, 255, 0.5)',
+                                            textTransform: 'uppercase',
+                                            letterSpacing: '0.05em',
+                                        }}>
+                                            Trades
+                                        </th>
+                                        <th style={{
+                                            padding: '1rem 1.5rem',
+                                            textAlign: 'center',
+                                            fontWeight: 500,
+                                            fontSize: '0.75rem',
+                                            color: 'rgba(255, 255, 255, 0.5)',
+                                            textTransform: 'uppercase',
+                                            letterSpacing: '0.05em',
+                                        }}>
+                                            Win Rate
+                                        </th>
+                                        <th style={{
+                                            padding: '1rem 1.5rem',
+                                            textAlign: 'right',
+                                            fontWeight: 500,
+                                            fontSize: '0.75rem',
+                                            color: 'rgba(255, 255, 255, 0.5)',
+                                            textTransform: 'uppercase',
+                                            letterSpacing: '0.05em',
+                                        }}>
+                                            Last Active
+                                        </th>
+                                    </>
+                                )}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {mockLeaderboard.map((entry) => (
+                                <tr key={entry.address} style={{
+                                    borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
+                                    transition: 'background 0.15s ease',
+                                }}
+                                    onMouseEnter={(e) => {
+                                        if (!isMobile) {
+                                            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.02)';
+                                        }
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        if (!isMobile) {
+                                            e.currentTarget.style.background = 'transparent';
+                                        }
+                                    }}
+                                >
+                                    <td style={{
                                         padding: isMobile ? '0.75rem 1rem' : '1rem 1.5rem',
-                                        textAlign: 'left',
-                                        fontWeight: 500,
-                                        fontSize: '0.75rem',
-                                        color: 'rgba(255, 255, 255, 0.5)',
-                                        textTransform: 'uppercase',
-                                        letterSpacing: '0.05em',
+                                        fontSize: isMobile ? '0.8125rem' : '0.875rem',
+                                        fontWeight: 700,
+                                        color: entry.rank === 1 ? '#FFD700' :
+                                            entry.rank === 2 ? '#C0C0C0' :
+                                                entry.rank === 3 ? '#CD7F32' : 'rgba(255, 255, 255, 0.9)',
                                     }}>
-                                        Rank
-                                    </th>
-                                    <th style={{
+                                        #{entry.rank}
+                                    </td>
+                                    <td style={{
                                         padding: isMobile ? '0.75rem 1rem' : '1rem 1.5rem',
-                                        textAlign: 'left',
-                                        fontWeight: 500,
-                                        fontSize: '0.75rem',
-                                        color: 'rgba(255, 255, 255, 0.5)',
-                                        textTransform: 'uppercase',
-                                        letterSpacing: '0.05em',
+                                        fontSize: isMobile ? '0.75rem' : '0.875rem',
+                                        color: 'rgba(255, 255, 255, 0.7)',
+                                        fontFamily: 'monospace',
+                                        whiteSpace: 'nowrap',
                                     }}>
-                                        Address
-                                    </th>
-                                    <th style={{
+                                        {formatAddress(entry.address)}
+                                    </td>
+                                    <td style={{
                                         padding: isMobile ? '0.75rem 1rem' : '1rem 1.5rem',
                                         textAlign: 'right',
-                                        fontWeight: 500,
-                                        fontSize: '0.75rem',
-                                        color: 'rgba(255, 255, 255, 0.5)',
-                                        textTransform: 'uppercase',
-                                        letterSpacing: '0.05em',
+                                        fontSize: isMobile ? '0.8125rem' : '0.875rem',
+                                        fontWeight: 600,
+                                        color: entry.pnl >= 0 ? '#00FF88' : '#FF4444',
+                                        whiteSpace: 'nowrap',
                                     }}>
-                                        P&L
-                                    </th>
+                                        ${entry.pnl >= 0 ? '+' : ''}{entry.pnl.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    </td>
                                     {!isMobile && (
                                         <>
-                                            <th style={{
+                                            <td style={{
                                                 padding: '1rem 1.5rem',
                                                 textAlign: 'center',
-                                                fontWeight: 500,
-                                                fontSize: '0.75rem',
+                                                fontSize: '0.875rem',
                                                 color: 'rgba(255, 255, 255, 0.5)',
-                                                textTransform: 'uppercase',
-                                                letterSpacing: '0.05em',
                                             }}>
-                                                Trades
-                                            </th>
-                                            <th style={{
+                                                {entry.trades}
+                                            </td>
+                                            <td style={{
                                                 padding: '1rem 1.5rem',
                                                 textAlign: 'center',
+                                                fontSize: '0.875rem',
+                                                color: entry.winRate >= 50 ? '#00FF88' : '#FF4444',
                                                 fontWeight: 500,
-                                                fontSize: '0.75rem',
-                                                color: 'rgba(255, 255, 255, 0.5)',
-                                                textTransform: 'uppercase',
-                                                letterSpacing: '0.05em',
                                             }}>
-                                                Win Rate
-                                            </th>
-                                            <th style={{
+                                                {entry.winRate}%
+                                            </td>
+                                            <td style={{
                                                 padding: '1rem 1.5rem',
                                                 textAlign: 'right',
-                                                fontWeight: 500,
                                                 fontSize: '0.75rem',
-                                                color: 'rgba(255, 255, 255, 0.5)',
-                                                textTransform: 'uppercase',
-                                                letterSpacing: '0.05em',
+                                                color: 'rgba(255, 255, 255, 0.4)',
                                             }}>
-                                                Last Active
-                                            </th>
+                                                {entry.lastActive}
+                                            </td>
                                         </>
                                     )}
                                 </tr>
-                            </thead>
-                            <tbody>
-                                {mockLeaderboard.map((entry) => (
-                                    <tr key={entry.address} style={{
-                                        borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
-                                        transition: 'background 0.15s ease',
-                                    }}
-                                        onMouseEnter={(e) => {
-                                            if (!isMobile) {
-                                                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.02)';
-                                            }
-                                        }}
-                                        onMouseLeave={(e) => {
-                                            if (!isMobile) {
-                                                e.currentTarget.style.background = 'transparent';
-                                            }
-                                        }}
-                                    >
-                                        <td style={{
-                                            padding: isMobile ? '0.75rem 1rem' : '1rem 1.5rem',
-                                            fontSize: isMobile ? '0.8125rem' : '0.875rem',
-                                            fontWeight: 700,
-                                            color: entry.rank === 1 ? '#FFD700' :
-                                                entry.rank === 2 ? '#C0C0C0' :
-                                                    entry.rank === 3 ? '#CD7F32' : 'rgba(255, 255, 255, 0.9)',
-                                        }}>
-                                            #{entry.rank}
-                                        </td>
-                                        <td style={{
-                                            padding: isMobile ? '0.75rem 1rem' : '1rem 1.5rem',
-                                            fontSize: isMobile ? '0.75rem' : '0.875rem',
-                                            color: 'rgba(255, 255, 255, 0.7)',
-                                            fontFamily: 'monospace',
-                                            whiteSpace: 'nowrap',
-                                        }}>
-                                            {formatAddress(entry.address)}
-                                        </td>
-                                        <td style={{
-                                            padding: isMobile ? '0.75rem 1rem' : '1rem 1.5rem',
-                                            textAlign: 'right',
-                                            fontSize: isMobile ? '0.8125rem' : '0.875rem',
-                                            fontWeight: 600,
-                                            color: entry.pnl >= 0 ? '#00FF88' : '#FF4444',
-                                            whiteSpace: 'nowrap',
-                                        }}>
-                                            ${entry.pnl >= 0 ? '+' : ''}{entry.pnl.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                        </td>
-                                        {!isMobile && (
-                                            <>
-                                                <td style={{
-                                                    padding: '1rem 1.5rem',
-                                                    textAlign: 'center',
-                                                    fontSize: '0.875rem',
-                                                    color: 'rgba(255, 255, 255, 0.5)',
-                                                }}>
-                                                    {entry.trades}
-                                                </td>
-                                                <td style={{
-                                                    padding: '1rem 1.5rem',
-                                                    textAlign: 'center',
-                                                    fontSize: '0.875rem',
-                                                    color: entry.winRate >= 50 ? '#00FF88' : '#FF4444',
-                                                    fontWeight: 500,
-                                                }}>
-                                                    {entry.winRate}%
-                                                </td>
-                                                <td style={{
-                                                    padding: '1rem 1.5rem',
-                                                    textAlign: 'right',
-                                                    fontSize: '0.75rem',
-                                                    color: 'rgba(255, 255, 255, 0.4)',
-                                                }}>
-                                                    {entry.lastActive}
-                                                </td>
-                                            </>
-                                        )}
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
+                            ))}
+                        </tbody>
+                    </table>
                 </div>
             </div>
-        </>
+        </div>
     );
 };
 

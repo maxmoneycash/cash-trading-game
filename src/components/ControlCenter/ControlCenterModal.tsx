@@ -201,6 +201,10 @@ const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                     onClick={(e) => {
                         e.stopPropagation();
                     }}
+                    onTouchMove={(e) => {
+                        // Allow touch scrolling inside the modal
+                        e.stopPropagation();
+                    }}
                 >
                     <div
                         className="glass-filter"

@@ -81,6 +81,7 @@ const AccountTab: React.FC<AccountTabProps> = ({ balance }) => {
                     WebkitOverflowScrolling: 'touch',
                     scrollbarWidth: 'none',
                     msOverflowStyle: 'none',
+                    touchAction: 'pan-y',
                 }}>
                 {/* Balance & Stats Section */}
                 <div style={{

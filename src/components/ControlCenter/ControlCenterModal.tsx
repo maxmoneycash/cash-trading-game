@@ -98,9 +98,6 @@ const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                         margin: 0.5rem !important;
                         maxHeight: calc(100vh - 1rem) !important;
                     }
-                    .modal-content-responsive {
-                        padding: 0.75rem !important;
-                    }
                 }
                 
                 /* Hide all scrollbars globally within the modal */
@@ -263,7 +260,7 @@ const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                             style={{
                                 flex: '1 1 auto',
                                 overflow: 'hidden',
-                                padding: '1.5rem',
+                                padding: isMobile ? '1rem' : '1.5rem',
                                 display: 'flex',
                                 flexDirection: 'column',
                                 minHeight: 0,

@@ -11,7 +11,7 @@ interface ControlCenterModalProps {
     // Add more props as needed for complex features
 }
 
-export type TabId = 'leaderboard' | 'account' | 'control-center';
+export type TabId = 'leaderboard' | 'account' | 'control-center' | 'close';
 
 const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
     isOpen,
@@ -35,7 +35,7 @@ const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
         }
     };
 
-    // Toggle debug mode with keyboard shortcut (Ctrl/Cmd + D)
+    // Toggle debug mode with keyboard shortcut (Ctrl/Cmd + D) and handle modal close
     useEffect(() => {
         const handleKeyPress = (e: KeyboardEvent) => {
             // Close modal on Escape key
@@ -84,14 +84,20 @@ const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
             }
         };
 
+        const handleCloseModal = () => {
+            onClose();
+        };
+
         if (isOpen) {
             document.addEventListener('keydown', handleKeyPress);
+            window.addEventListener('closeModal', handleCloseModal);
         }
 
         return () => {
             document.removeEventListener('keydown', handleKeyPress);
+            window.removeEventListener('closeModal', handleCloseModal);
         };
-    }, [isOpen, debugMode]);
+    }, [isOpen, debugMode, onClose]);
 
     // Move the early return AFTER all hooks
     if (!isOpen) return null;
@@ -291,52 +297,12 @@ const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                             overflow: 'hidden',
                         }}
                     >
-                        {/* Close Button */}
-                        <button
-                            className="modal-close-button"
-                            onClick={onClose}
-                            style={{
-                                position: 'absolute',
-                                top: '1rem',
-                                right: '1rem',
-                                width: '48px',
-                                height: '48px',
-                                borderRadius: '50%',
-                                border: '1px solid rgba(255, 255, 255, 0.1)',
-                                background: 'rgba(255, 255, 255, 0.05)',
-                                backdropFilter: 'blur(10px)',
-                                color: 'rgba(255, 255, 255, 0.7)',
-                                fontSize: '24px',
-                                fontWeight: 300,
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                cursor: 'pointer',
-                                transition: 'all 0.3s ease',
-                                zIndex: 1001,
-                                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
-                            }}
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
-                                e.currentTarget.style.color = 'rgba(255, 255, 255, 0.9)';
-                                e.currentTarget.style.transform = 'scale(1.05)';
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
-                                e.currentTarget.style.color = 'rgba(255, 255, 255, 0.7)';
-                                e.currentTarget.style.transform = 'scale(1)';
-                            }}
-                            aria-label="Close modal"
-                        >
-                            ✕
-                        </button>
-
                         {/* Debug Mode Indicator */}
                         {debugMode && (
                             <div style={{
                                 position: 'absolute',
                                 top: 10,
-                                right: 70,
+                                right: 10,
                                 background: 'rgba(0, 255, 0, 0.2)',
                                 border: '1px solid rgba(0, 255, 0, 0.5)',
                                 color: '#00FF88',

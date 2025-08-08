@@ -1,4 +1,4 @@
-import CandlestickChart from './CandlestickChart'
+import CandlestickChart from './components/CandlestickChart'
 
 function App() {
   return <CandlestickChart />

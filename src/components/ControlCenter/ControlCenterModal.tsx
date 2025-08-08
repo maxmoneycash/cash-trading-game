@@ -91,12 +91,29 @@ const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
     return (
         <>
             <style>{`
+                /* Mobile styles */
                 @media (max-width: 768px) {
                     .modal-container-responsive {
                         width: calc(100vw - 1rem) !important;
                         max-width: calc(100vw - 1rem) !important;
                         margin: 0.5rem !important;
                         maxHeight: calc(100vh - 1rem) !important;
+                    }
+                }
+                
+                /* Desktop styles - responsive to width */
+                @media (min-width: 769px) {
+                    .modal-container-responsive {
+                        width: min(92vw, 1400px) !important;
+                        min-width: 600px !important;
+                    }
+                }
+                
+                /* Narrow desktop screens */
+                @media (min-width: 769px) and (max-width: 1200px) {
+                    .modal-container-responsive {
+                        width: calc(100vw - 2rem) !important;
+                        max-width: calc(100vw - 2rem) !important;
                     }
                 }
                 
@@ -160,9 +177,9 @@ const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                 <div
                     className="glass-container modal-container-responsive"
                     style={{
-                        width: '92vw',
+                        width: isMobile ? 'calc(100vw - 1rem)' : '92vw',
                         height: 'auto',
-                        maxWidth: '1100px',
+                        maxWidth: isMobile ? 'calc(100vw - 1rem)' : '1400px',
                         maxHeight: '85vh',
                         borderRadius: '12px',
                         background: 'transparent',
@@ -179,7 +196,7 @@ const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                         display: 'flex',
                         flexDirection: 'column',
                         overflow: 'hidden',
-                        margin: '1rem',
+                        margin: isMobile ? '0.5rem' : '1rem',
                     }}
                     onClick={(e) => {
                         e.stopPropagation();
@@ -260,7 +277,7 @@ const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                             style={{
                                 flex: '1 1 auto',
                                 overflow: 'hidden',
-                                padding: isMobile ? '1rem' : '1.5rem',
+                                padding: activeTab === 'leaderboard' ? '0' : (isMobile ? '1rem' : '1.5rem'),
                                 display: 'flex',
                                 flexDirection: 'column',
                                 minHeight: 0,

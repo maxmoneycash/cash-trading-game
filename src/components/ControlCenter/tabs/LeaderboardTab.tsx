@@ -129,7 +129,8 @@ const LeaderboardTab: React.FC = () => {
                 overflow: 'hidden',
             }}>
                 <h3 style={{
-                    margin: '0 0 1rem 0',
+                    margin: '0',
+                    padding: isMobile ? '1rem 1rem 1rem 1rem' : '1.5rem 1.5rem 1rem 1.5rem',
                     fontSize: '1.125rem',
                     fontWeight: 600,
                     color: 'rgba(255, 255, 255, 0.9)',
@@ -139,8 +140,9 @@ const LeaderboardTab: React.FC = () => {
                 </h3>
                 <div style={{
                     background: 'rgba(255, 255, 255, 0.03)',
-                    borderRadius: '12px',
-                    border: '1px solid rgba(255, 255, 255, 0.08)',
+                    borderRadius: '0',
+                    border: 'none',
+                    borderTop: '1px solid rgba(255, 255, 255, 0.08)',
                     overflow: 'hidden',
                     backdropFilter: 'blur(10px)',
                     flex: '1 1 auto',
@@ -162,7 +164,8 @@ const LeaderboardTab: React.FC = () => {
                             width: '100%',
                             borderCollapse: 'collapse',
                             fontFamily: 'inherit',
-                            minWidth: isMobile ? '100%' : 'auto',
+                            minWidth: '100%',
+                            tableLayout: 'fixed',
                         }}>
                             <thead>
                                 <tr style={{
@@ -170,7 +173,7 @@ const LeaderboardTab: React.FC = () => {
                                     background: 'rgba(255, 255, 255, 0.02)',
                                 }}>
                                     <th style={{
-                                        padding: '1rem',
+                                        padding: isMobile ? '0.75rem 1rem' : '1rem 1.5rem',
                                         textAlign: 'left',
                                         fontWeight: 500,
                                         fontSize: '0.75rem',
@@ -181,7 +184,7 @@ const LeaderboardTab: React.FC = () => {
                                         Rank
                                     </th>
                                     <th style={{
-                                        padding: '1rem',
+                                        padding: isMobile ? '0.75rem 1rem' : '1rem 1.5rem',
                                         textAlign: 'left',
                                         fontWeight: 500,
                                         fontSize: '0.75rem',
@@ -192,7 +195,7 @@ const LeaderboardTab: React.FC = () => {
                                         Address
                                     </th>
                                     <th style={{
-                                        padding: '1rem',
+                                        padding: isMobile ? '0.75rem 1rem' : '1rem 1.5rem',
                                         textAlign: 'right',
                                         fontWeight: 500,
                                         fontSize: '0.75rem',
@@ -205,7 +208,7 @@ const LeaderboardTab: React.FC = () => {
                                     {!isMobile && (
                                         <>
                                             <th style={{
-                                                padding: '1rem',
+                                                padding: '1rem 1.5rem',
                                                 textAlign: 'center',
                                                 fontWeight: 500,
                                                 fontSize: '0.75rem',
@@ -216,7 +219,7 @@ const LeaderboardTab: React.FC = () => {
                                                 Trades
                                             </th>
                                             <th style={{
-                                                padding: '1rem',
+                                                padding: '1rem 1.5rem',
                                                 textAlign: 'center',
                                                 fontWeight: 500,
                                                 fontSize: '0.75rem',
@@ -227,7 +230,7 @@ const LeaderboardTab: React.FC = () => {
                                                 Win Rate
                                             </th>
                                             <th style={{
-                                                padding: '1rem',
+                                                padding: '1rem 1.5rem',
                                                 textAlign: 'right',
                                                 fontWeight: 500,
                                                 fontSize: '0.75rem',
@@ -259,7 +262,7 @@ const LeaderboardTab: React.FC = () => {
                                         }}
                                     >
                                         <td style={{
-                                            padding: '1rem',
+                                            padding: isMobile ? '0.75rem 1rem' : '1rem 1.5rem',
                                             fontSize: isMobile ? '0.8125rem' : '0.875rem',
                                             fontWeight: 700,
                                             color: entry.rank === 1 ? '#FFD700' :
@@ -269,7 +272,7 @@ const LeaderboardTab: React.FC = () => {
                                             #{entry.rank}
                                         </td>
                                         <td style={{
-                                            padding: '1rem',
+                                            padding: isMobile ? '0.75rem 1rem' : '1rem 1.5rem',
                                             fontSize: isMobile ? '0.75rem' : '0.875rem',
                                             color: 'rgba(255, 255, 255, 0.7)',
                                             fontFamily: 'monospace',
@@ -278,7 +281,7 @@ const LeaderboardTab: React.FC = () => {
                                             {formatAddress(entry.address)}
                                         </td>
                                         <td style={{
-                                            padding: '1rem',
+                                            padding: isMobile ? '0.75rem 1rem' : '1rem 1.5rem',
                                             textAlign: 'right',
                                             fontSize: isMobile ? '0.8125rem' : '0.875rem',
                                             fontWeight: 600,
@@ -290,7 +293,7 @@ const LeaderboardTab: React.FC = () => {
                                         {!isMobile && (
                                             <>
                                                 <td style={{
-                                                    padding: '1rem',
+                                                    padding: '1rem 1.5rem',
                                                     textAlign: 'center',
                                                     fontSize: '0.875rem',
                                                     color: 'rgba(255, 255, 255, 0.5)',
@@ -298,7 +301,7 @@ const LeaderboardTab: React.FC = () => {
                                                     {entry.trades}
                                                 </td>
                                                 <td style={{
-                                                    padding: '1rem',
+                                                    padding: '1rem 1.5rem',
                                                     textAlign: 'center',
                                                     fontSize: '0.875rem',
                                                     color: entry.winRate >= 50 ? '#00FF88' : '#FF4444',
@@ -307,7 +310,7 @@ const LeaderboardTab: React.FC = () => {
                                                     {entry.winRate}%
                                                 </td>
                                                 <td style={{
-                                                    padding: '1rem',
+                                                    padding: '1rem 1.5rem',
                                                     textAlign: 'right',
                                                     fontSize: '0.75rem',
                                                     color: 'rgba(255, 255, 255, 0.4)',

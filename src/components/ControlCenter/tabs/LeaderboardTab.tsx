@@ -162,6 +162,7 @@ const LeaderboardTab: React.FC = () => {
                             width: '100%',
                             borderCollapse: 'collapse',
                             fontFamily: 'inherit',
+                            minWidth: isMobile ? '100%' : 'auto',
                         }}>
                             <thead>
                                 <tr style={{
@@ -169,7 +170,7 @@ const LeaderboardTab: React.FC = () => {
                                     background: 'rgba(255, 255, 255, 0.02)',
                                 }}>
                                     <th style={{
-                                        padding: '1rem',
+                                        padding: isMobile ? '0.5rem' : '1rem',
                                         textAlign: 'left',
                                         fontWeight: 500,
                                         fontSize: '0.75rem',
@@ -180,7 +181,7 @@ const LeaderboardTab: React.FC = () => {
                                         Rank
                                     </th>
                                     <th style={{
-                                        padding: '1rem',
+                                        padding: isMobile ? '0.5rem' : '1rem',
                                         textAlign: 'left',
                                         fontWeight: 500,
                                         fontSize: '0.75rem',
@@ -191,7 +192,7 @@ const LeaderboardTab: React.FC = () => {
                                         Address
                                     </th>
                                     <th style={{
-                                        padding: '1rem',
+                                        padding: isMobile ? '0.5rem' : '1rem',
                                         textAlign: 'right',
                                         fontWeight: 500,
                                         fontSize: '0.75rem',
@@ -201,40 +202,42 @@ const LeaderboardTab: React.FC = () => {
                                     }}>
                                         P&L
                                     </th>
-                                    <th style={{
-                                        padding: '1rem',
-                                        textAlign: 'center',
-                                        fontWeight: 500,
-                                        fontSize: '0.75rem',
-                                        color: 'rgba(255, 255, 255, 0.5)',
-                                        textTransform: 'uppercase',
-                                        letterSpacing: '0.05em',
-                                    }}>
-                                        Trades
-                                    </th>
-                                    <th style={{
-                                        padding: '1rem',
-                                        textAlign: 'center',
-                                        fontWeight: 500,
-                                        fontSize: '0.75rem',
-                                        color: 'rgba(255, 255, 255, 0.5)',
-                                        textTransform: 'uppercase',
-                                        letterSpacing: '0.05em',
-                                    }}>
-                                        Win Rate
-                                    </th>
                                     {!isMobile && (
-                                        <th style={{
-                                            padding: '1rem',
-                                            textAlign: 'right',
-                                            fontWeight: 500,
-                                            fontSize: '0.75rem',
-                                            color: 'rgba(255, 255, 255, 0.5)',
-                                            textTransform: 'uppercase',
-                                            letterSpacing: '0.05em',
-                                        }}>
-                                            Last Active
-                                        </th>
+                                        <>
+                                            <th style={{
+                                                padding: '1rem',
+                                                textAlign: 'center',
+                                                fontWeight: 500,
+                                                fontSize: '0.75rem',
+                                                color: 'rgba(255, 255, 255, 0.5)',
+                                                textTransform: 'uppercase',
+                                                letterSpacing: '0.05em',
+                                            }}>
+                                                Trades
+                                            </th>
+                                            <th style={{
+                                                padding: '1rem',
+                                                textAlign: 'center',
+                                                fontWeight: 500,
+                                                fontSize: '0.75rem',
+                                                color: 'rgba(255, 255, 255, 0.5)',
+                                                textTransform: 'uppercase',
+                                                letterSpacing: '0.05em',
+                                            }}>
+                                                Win Rate
+                                            </th>
+                                            <th style={{
+                                                padding: '1rem',
+                                                textAlign: 'right',
+                                                fontWeight: 500,
+                                                fontSize: '0.75rem',
+                                                color: 'rgba(255, 255, 255, 0.5)',
+                                                textTransform: 'uppercase',
+                                                letterSpacing: '0.05em',
+                                            }}>
+                                                Last Active
+                                            </th>
+                                        </>
                                     )}
                                 </tr>
                             </thead>
@@ -245,15 +248,19 @@ const LeaderboardTab: React.FC = () => {
                                         transition: 'background 0.15s ease',
                                     }}
                                         onMouseEnter={(e) => {
-                                            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.02)';
+                                            if (!isMobile) {
+                                                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.02)';
+                                            }
                                         }}
                                         onMouseLeave={(e) => {
-                                            e.currentTarget.style.background = 'transparent';
+                                            if (!isMobile) {
+                                                e.currentTarget.style.background = 'transparent';
+                                            }
                                         }}
                                     >
                                         <td style={{
-                                            padding: isMobile ? '0.75rem' : '1rem',
-                                            fontSize: '0.875rem',
+                                            padding: isMobile ? '0.5rem' : '1rem',
+                                            fontSize: isMobile ? '0.8125rem' : '0.875rem',
                                             fontWeight: 700,
                                             color: entry.rank === 1 ? '#FFD700' :
                                                 entry.rank === 2 ? '#C0C0C0' :
@@ -262,7 +269,7 @@ const LeaderboardTab: React.FC = () => {
                                             #{entry.rank}
                                         </td>
                                         <td style={{
-                                            padding: isMobile ? '0.75rem' : '1rem',
+                                            padding: isMobile ? '0.5rem' : '1rem',
                                             fontSize: isMobile ? '0.75rem' : '0.875rem',
                                             color: 'rgba(255, 255, 255, 0.7)',
                                             fontFamily: 'monospace',
@@ -271,40 +278,43 @@ const LeaderboardTab: React.FC = () => {
                                             {formatAddress(entry.address)}
                                         </td>
                                         <td style={{
-                                            padding: isMobile ? '0.75rem' : '1rem',
+                                            padding: isMobile ? '0.5rem' : '1rem',
                                             textAlign: 'right',
                                             fontSize: isMobile ? '0.8125rem' : '0.875rem',
                                             fontWeight: 600,
                                             color: entry.pnl >= 0 ? '#00FF88' : '#FF4444',
+                                            whiteSpace: 'nowrap',
                                         }}>
                                             ${entry.pnl >= 0 ? '+' : ''}{entry.pnl.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                         </td>
-                                        <td style={{
-                                            padding: isMobile ? '0.75rem' : '1rem',
-                                            textAlign: 'center',
-                                            fontSize: isMobile ? '0.75rem' : '0.875rem',
-                                            color: 'rgba(255, 255, 255, 0.5)',
-                                        }}>
-                                            {entry.trades}
-                                        </td>
-                                        <td style={{
-                                            padding: isMobile ? '0.75rem' : '1rem',
-                                            textAlign: 'center',
-                                            fontSize: isMobile ? '0.75rem' : '0.875rem',
-                                            color: entry.winRate >= 50 ? '#00FF88' : '#FF4444',
-                                            fontWeight: 500,
-                                        }}>
-                                            {entry.winRate}%
-                                        </td>
                                         {!isMobile && (
-                                            <td style={{
-                                                padding: '1rem',
-                                                textAlign: 'right',
-                                                fontSize: '0.75rem',
-                                                color: 'rgba(255, 255, 255, 0.4)',
-                                            }}>
-                                                {entry.lastActive}
-                                            </td>
+                                            <>
+                                                <td style={{
+                                                    padding: '1rem',
+                                                    textAlign: 'center',
+                                                    fontSize: '0.875rem',
+                                                    color: 'rgba(255, 255, 255, 0.5)',
+                                                }}>
+                                                    {entry.trades}
+                                                </td>
+                                                <td style={{
+                                                    padding: '1rem',
+                                                    textAlign: 'center',
+                                                    fontSize: '0.875rem',
+                                                    color: entry.winRate >= 50 ? '#00FF88' : '#FF4444',
+                                                    fontWeight: 500,
+                                                }}>
+                                                    {entry.winRate}%
+                                                </td>
+                                                <td style={{
+                                                    padding: '1rem',
+                                                    textAlign: 'right',
+                                                    fontSize: '0.75rem',
+                                                    color: 'rgba(255, 255, 255, 0.4)',
+                                                }}>
+                                                    {entry.lastActive}
+                                                </td>
+                                            </>
                                         )}
                                     </tr>
                                 ))}

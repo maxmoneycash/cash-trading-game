@@ -20,6 +20,7 @@ const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
 }) => {
     const [activeTab, setActiveTab] = useState<TabId>('account');
     const [debugMode, setDebugMode] = useState(false);
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
 
     const renderTabContent = () => {
         switch (activeTab) {
@@ -92,12 +93,13 @@ const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
             <style>{`
                 @media (max-width: 768px) {
                     .modal-container-responsive {
-                        width: calc(100vw - 2rem) !important;
-                        margin: 1rem !important;
-                        maxHeight: calc(100vh - 2rem) !important;
+                        width: calc(100vw - 1rem) !important;
+                        max-width: calc(100vw - 1rem) !important;
+                        margin: 0.5rem !important;
+                        maxHeight: calc(100vh - 1rem) !important;
                     }
                     .modal-content-responsive {
-                        padding: 1rem !important;
+                        padding: 0.75rem !important;
                     }
                 }
                 
@@ -261,7 +263,7 @@ const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                             style={{
                                 flex: '1 1 auto',
                                 overflow: 'hidden',
-                                padding: '1.5rem',
+                                padding: isMobile ? '0.75rem' : '1.5rem',
                                 display: 'flex',
                                 flexDirection: 'column',
                                 minHeight: 0,

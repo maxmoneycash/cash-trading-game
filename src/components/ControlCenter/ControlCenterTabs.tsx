@@ -45,8 +45,8 @@ const ControlCenterTabs: React.FC<ControlCenterTabsProps> = ({ activeTab, onTabC
                 // PWA mode - needs safe area + extra space for notch/dynamic island
                 return 'calc(env(safe-area-inset-top) + 1.5rem)';
             } else {
-                // Mobile browser - needs safe area + space for browser UI
-                return 'calc(env(safe-area-inset-top) + 1rem)';
+                // Mobile browser - needs safe area + more space for browser UI
+                return 'calc(env(safe-area-inset-top) + 2rem)';
             }
         } else {
             // Desktop - just normal padding
@@ -57,12 +57,6 @@ const ControlCenterTabs: React.FC<ControlCenterTabsProps> = ({ activeTab, onTabC
     return (
         <>
             <style>{`
-                /* Tab button hover effects */
-                .tab-button:hover {
-                    transform: translateY(-1px);
-                    box-shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.1) !important;
-                }
-                
                 /* Navbar container safe area fallbacks */
                 .navbar-container {
                     /* Fallback for browsers that don't support env() */
@@ -74,9 +68,9 @@ const ControlCenterTabs: React.FC<ControlCenterTabsProps> = ({ activeTab, onTabC
                 /* Mobile-specific adjustments */
                 @media (max-width: 767px) {
                     .navbar-container {
-                        padding-top: 1rem;
-                        padding-top: calc(env(safe-area-inset-top, 0px) + 1rem);
-                        min-height: 80px;
+                        padding-top: 2rem;
+                        padding-top: calc(env(safe-area-inset-top, 0px) + 2rem);
+                        min-height: 90px;
                     }
                     
                     /* PWA-specific adjustments */

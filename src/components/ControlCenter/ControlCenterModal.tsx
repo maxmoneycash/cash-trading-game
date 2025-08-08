@@ -316,13 +316,19 @@ const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                             </div>
                         )}
 
-                        {/* Tab Navigation */}
-                        <ControlCenterTabs
-                            activeTab={activeTab}
-                            onTabChange={setActiveTab}
-                        />
+                        {/* Fixed Tab Navigation */}
+                        <div style={{
+                            flexShrink: 0,
+                            position: 'relative',
+                            zIndex: 100,
+                        }}>
+                            <ControlCenterTabs
+                                activeTab={activeTab}
+                                onTabChange={setActiveTab}
+                            />
+                        </div>
 
-                        {/* Tab Content */}
+                        {/* Scrollable Tab Content */}
                         <div
                             className="modal-content-responsive"
                             style={{

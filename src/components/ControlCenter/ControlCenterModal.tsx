@@ -263,7 +263,7 @@ const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                             style={{
                                 flex: '1 1 auto',
                                 overflow: 'hidden',
-                                padding: isMobile ? '0.75rem' : '1.5rem',
+                                padding: '1.5rem',
                                 display: 'flex',
                                 flexDirection: 'column',
                                 minHeight: 0,

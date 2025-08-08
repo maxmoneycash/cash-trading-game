@@ -15,7 +15,31 @@ interface Trade {
 
 const AccountTab: React.FC<AccountTabProps> = ({ balance }) => {
     const [timeFrame, setTimeFrame] = useState<'1D' | '1W' | '1M' | 'ALL'>('1W');
+    const [scrollDebug, setScrollDebug] = useState({ isScrolling: false, scrollTop: 0 });
     const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+
+    // Simple scroll debug handler
+    const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+        const target = e.target as HTMLDivElement;
+        const scrollInfo = {
+            scrollTop: target.scrollTop,
+            scrollHeight: target.scrollHeight,
+            clientHeight: target.clientHeight,
+            canScroll: target.scrollHeight > target.clientHeight
+        };
+
+        setScrollDebug({
+            isScrolling: true,
+            scrollTop: scrollInfo.scrollTop
+        });
+
+        console.log('📜 AccountTab Scrolling:', scrollInfo);
+
+        // Hide debug after 1 second
+        setTimeout(() => {
+            setScrollDebug(prev => ({ ...prev, isScrolling: false }));
+        }, 1000);
+    };
 
     // Mock data for recent trades
     const recentTrades = [
@@ -38,8 +62,16 @@ const AccountTab: React.FC<AccountTabProps> = ({ balance }) => {
 
     return (
         <>
+            {/* Debug Indicator */}
+            {scrollDebug.isScrolling && (
+                <div className="scroll-debug">
+                    Account Scrolling: {Math.round(scrollDebug.scrollTop)}px
+                </div>
+            )}
+
             <div
-                className="custom-scroll"
+                className="hide-scrollbar"
+                onScroll={handleScroll}
                 style={{
                     display: 'flex',
                     flexDirection: 'column',
@@ -239,25 +271,6 @@ const AccountTab: React.FC<AccountTabProps> = ({ balance }) => {
                     </div>
                 </div>
 
-                {/* P&L Chart Placeholder */}
-                <div style={{
-                    background: 'rgba(255, 255, 255, 0.03)',
-                    borderRadius: '16px',
-                    padding: '2rem',
-                    height: '300px',
-                    border: '1px solid rgba(255, 255, 255, 0.08)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    backdropFilter: 'blur(10px)',
-                }}>
-                    <p style={{
-                        color: 'rgba(255, 255, 255, 0.4)',
-                        fontSize: '0.875rem',
-                    }}>
-                        P&L Chart Coming Soon
-                    </p>
-                </div>
 
                 {/* Recent Trades */}
                 <div>
@@ -276,7 +289,7 @@ const AccountTab: React.FC<AccountTabProps> = ({ balance }) => {
                         overflow: 'hidden',
                         backdropFilter: 'blur(10px)',
                     }}>
-                        <div style={{ overflowX: 'auto' }}>
+                        <div style={{ overflowX: 'auto' }} className="hide-scrollbar">
                             <table style={{
                                 width: '100%',
                                 borderCollapse: 'collapse',

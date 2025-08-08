@@ -298,3 +298,39 @@ button:hover {
     transform: scale(1) translateY(0);
   }
 }
+
+/* Hide scrollbars globally but maintain scrolling */
+.hide-scrollbar {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+    display: none;  /* Chrome, Safari and Opera */
+    width: 0;
+    height: 0;
+}
+
+/* Apply to modal content areas specifically */
+.modal-content-responsive *::-webkit-scrollbar,
+.glass-content *::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    display: none;
+}
+
+.modal-content-responsive *,
+.glass-content * {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+/* Custom scroll class for specific elements */
+.custom-scroll {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+.custom-scroll::-webkit-scrollbar {
+    display: none;
+}

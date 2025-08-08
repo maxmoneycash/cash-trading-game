@@ -223,374 +223,342 @@ const ControlCenterTab: React.FC = () => {
     const [positionSize, setPositionSize] = useState(20);
     const [doNotDisturb, setDoNotDisturb] = useState(false);
     const [darkMode, setDarkMode] = useState(true);
+    const [scrollDebug, setScrollDebug] = useState({ isScrolling: false, scrollTop: 0 });
+
+    // Simple scroll debug handler
+    const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+        const target = e.target as HTMLDivElement;
+        const scrollInfo = {
+            scrollTop: target.scrollTop,
+            scrollHeight: target.scrollHeight,
+            clientHeight: target.clientHeight,
+            canScroll: target.scrollHeight > target.clientHeight
+        };
+
+        setScrollDebug({
+            isScrolling: true,
+            scrollTop: scrollInfo.scrollTop
+        });
+
+        console.log('📜 ControlCenterTab Scrolling:', scrollInfo);
+
+        // Hide debug after 1 second
+        setTimeout(() => {
+            setScrollDebug(prev => ({ ...prev, isScrolling: false }));
+        }, 1000);
+    };
 
     return (
-        <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '1.5rem',
-            height: '100%',
-            overflow: 'auto',
-            WebkitOverflowScrolling: 'touch',
-        }}>
-            {/* Top Controls Grid */}
-            <div style={{
-                display: 'grid',
-                gridTemplateColumns: '1fr 1fr',
-                gap: '1rem',
-            }}>
-                {/* Connection Controls */}
-                <div style={{
-                    background: 'rgba(255, 255, 255, 0.04)',
-                    borderRadius: '16px',
-                    border: '1px solid rgba(255, 255, 255, 0.08)',
-                    backdropFilter: 'blur(20px)',
-                    overflow: 'hidden',
-                }}>
-                    <ConnectionControl
-                        icon="♪"
-                        name="Sound Effects"
-                        status="Enabled"
-                        active={soundEnabled}
-                        onToggle={() => setSoundEnabled(!soundEnabled)}
-                    />
-                    <div style={{
-                        height: '1px',
-                        background: 'rgba(255, 255, 255, 0.08)'
-                    }} />
-                    <ConnectionControl
-                        icon="◉"
-                        name="Haptic Feedback"
-                        status="Strong"
-                        active={hapticEnabled}
-                        onToggle={() => setHapticEnabled(!hapticEnabled)}
-                    />
-                    <div style={{
-                        height: '1px',
-                        background: 'rgba(255, 255, 255, 0.08)'
-                    }} />
-                    <ConnectionControl
-                        icon="◈"
-                        name="Auto-Save"
-                        status="Every trade"
-                        active={autoSaveEnabled}
-                        onToggle={() => setAutoSaveEnabled(!autoSaveEnabled)}
-                    />
+        <>
+            {/* Debug Indicator */}
+            {scrollDebug.isScrolling && (
+                <div className="scroll-debug">
+                    Controls Scrolling: {Math.round(scrollDebug.scrollTop)}px
                 </div>
+            )}
 
-                {/* Other Controls */}
+            <div
+                className="hide-scrollbar"
+                onScroll={handleScroll}
+                style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '1.5rem',
+                    height: '100%',
+                    overflow: 'auto',
+                    WebkitOverflowScrolling: 'touch',
+                }}>
+                {/* Top Controls Grid */}
                 <div style={{
                     display: 'grid',
-                    gridTemplateRows: '1fr 1fr',
+                    gridTemplateColumns: '1fr 1fr',
                     gap: '1rem',
                 }}>
-                    {/* Do Not Disturb */}
+                    {/* Connection Controls */}
                     <div style={{
                         background: 'rgba(255, 255, 255, 0.04)',
                         borderRadius: '16px',
                         border: '1px solid rgba(255, 255, 255, 0.08)',
                         backdropFilter: 'blur(20px)',
+                        overflow: 'hidden',
+                    }}>
+                        <ConnectionControl
+                            icon="♪"
+                            name="Sound Effects"
+                            status="Enabled"
+                            active={soundEnabled}
+                            onToggle={() => setSoundEnabled(!soundEnabled)}
+                        />
+                        <div style={{
+                            height: '1px',
+                            background: 'rgba(255, 255, 255, 0.08)'
+                        }} />
+                        <ConnectionControl
+                            icon="◉"
+                            name="Haptic Feedback"
+                            status="Strong"
+                            active={hapticEnabled}
+                            onToggle={() => setHapticEnabled(!hapticEnabled)}
+                        />
+                        <div style={{
+                            height: '1px',
+                            background: 'rgba(255, 255, 255, 0.08)'
+                        }} />
+                        <ConnectionControl
+                            icon="◈"
+                            name="Auto-Save"
+                            status="Every trade"
+                            active={autoSaveEnabled}
+                            onToggle={() => setAutoSaveEnabled(!autoSaveEnabled)}
+                        />
+                    </div>
+
+                    {/* Other Controls */}
+                    <div style={{
                         display: 'grid',
-                        gridTemplateColumns: '80px 1fr',
-                        padding: '1.25rem',
-                        alignItems: 'center',
+                        gridTemplateRows: '1fr 1fr',
                         gap: '1rem',
                     }}>
-                        <button
-                            onClick={() => setDoNotDisturb(!doNotDisturb)}
-                            style={{
-                                width: '56px',
-                                height: '56px',
-                                borderRadius: '50%',
-                                border: 'none',
-                                background: doNotDisturb
-                                    ? 'linear-gradient(135deg, #685BDB 0%, #5A4FD8 100%)'
-                                    : 'rgba(255, 255, 255, 0.1)',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                cursor: 'pointer',
-                                fontSize: '1.5rem',
-                                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                                boxShadow: doNotDisturb
-                                    ? '0 4px 15px rgba(104, 91, 219, 0.4)'
-                                    : '0 2px 8px rgba(0, 0, 0, 0.1)',
-                            }}
-                        >
-                            ☾
-                        </button>
-                        <div>
-                            <p style={{
-                                margin: 0,
-                                fontSize: '0.875rem',
-                                fontWeight: 600,
-                                color: 'rgba(255, 255, 255, 0.9)',
-                                lineHeight: 1.4,
-                            }}>
-                                Do Not<br />Disturb
-                            </p>
+                        {/* Do Not Disturb */}
+                        <div style={{
+                            background: 'rgba(255, 255, 255, 0.04)',
+                            borderRadius: '16px',
+                            border: '1px solid rgba(255, 255, 255, 0.08)',
+                            backdropFilter: 'blur(20px)',
+                            display: 'grid',
+                            gridTemplateColumns: '80px 1fr',
+                            padding: '1.25rem',
+                            alignItems: 'center',
+                            gap: '1rem',
+                        }}>
+                            <button
+                                onClick={() => setDoNotDisturb(!doNotDisturb)}
+                                style={{
+                                    width: '56px',
+                                    height: '56px',
+                                    borderRadius: '50%',
+                                    border: 'none',
+                                    background: doNotDisturb
+                                        ? 'linear-gradient(135deg, #685BDB 0%, #5A4FD8 100%)'
+                                        : 'rgba(255, 255, 255, 0.1)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    cursor: 'pointer',
+                                    fontSize: '1.5rem',
+                                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                                    boxShadow: doNotDisturb
+                                        ? '0 4px 15px rgba(104, 91, 219, 0.4)'
+                                        : '0 2px 8px rgba(0, 0, 0, 0.1)',
+                                }}
+                            >
+                                ☾
+                            </button>
+                            <div>
+                                <p style={{
+                                    margin: 0,
+                                    fontSize: '0.875rem',
+                                    fontWeight: 600,
+                                    color: 'rgba(255, 255, 255, 0.9)',
+                                    lineHeight: 1.4,
+                                }}>
+                                    Do Not<br />Disturb
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Small Controls Grid */}
+                        <div style={{
+                            display: 'grid',
+                            gridTemplateColumns: '1fr 1fr',
+                            gap: '1rem',
+                        }}>
+                            <SmallControl
+                                icon="◐"
+                                label="Theme"
+                                active={!darkMode}
+                                onClick={() => setDarkMode(!darkMode)}
+                            />
+                            <SmallControl
+                                icon="≡"
+                                label="Analytics"
+                                onClick={() => console.log('Analytics clicked')}
+                            />
                         </div>
                     </div>
-
-                    {/* Small Controls Grid */}
-                    <div style={{
-                        display: 'grid',
-                        gridTemplateColumns: '1fr 1fr',
-                        gap: '1rem',
-                    }}>
-                        <SmallControl
-                            icon="◐"
-                            label="Theme"
-                            active={!darkMode}
-                            onClick={() => setDarkMode(!darkMode)}
-                        />
-                        <SmallControl
-                            icon="≡"
-                            label="Analytics"
-                            onClick={() => console.log('Analytics clicked')}
-                        />
-                    </div>
-                </div>
-            </div>
-
-            {/* Sliders Section */}
-            <div style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '1.5rem',
-            }}>
-                {/* Chart Speed Slider */}
-                <div style={{
-                    background: 'rgba(255, 255, 255, 0.05)',
-                    borderRadius: '12px',
-                    padding: '0',
-                    border: '1px solid rgba(255, 255, 255, 0.1)',
-                }}>
-                    <div style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        padding: '1rem 1.5rem 0.5rem 1.5rem',
-                    }}>
-                        <span style={{
-                            fontSize: '0.875rem',
-                            color: 'rgba(255, 255, 255, 0.9)',
-                            fontWeight: 500,
-                        }}>
-                            Chart Speed
-                        </span>
-                        <span style={{
-                            fontSize: '1.5rem',
-                        }}>
-                            ▶
-                        </span>
-                    </div>
-                    <div style={{ padding: '0 1.5rem 1.5rem 1.5rem' }}>
-                        <input
-                            type="range"
-                            min="0"
-                            max="100"
-                            value={animationSpeed}
-                            onChange={(e) => setAnimationSpeed(Number(e.target.value))}
-                            style={{
-                                width: '100%',
-                                height: '40px',
-                                background: 'rgba(255, 255, 255, 0.1)',
-                                borderRadius: '20px',
-                                outline: 'none',
-                                WebkitAppearance: 'none',
-                                appearance: 'none',
-                                cursor: 'pointer',
-                            }}
-                            className="slider"
-                        />
-                    </div>
-                    <style>{`
-                        .slider::-webkit-slider-thumb {
-                            -webkit-appearance: none;
-                            appearance: none;
-                            width: 40px;
-                            height: 40px;
-                            background: #FFFFFF;
-                            border-radius: 50%;
-                            cursor: pointer;
-                            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.1);
-                            transition: all 0.2s ease;
-                        }
-                        
-                        .slider::-webkit-slider-thumb:active {
-                            transform: scale(0.95);
-                            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.1);
-                        }
-                        
-                        .slider::-moz-range-thumb {
-                            width: 40px;
-                            height: 40px;
-                            background: #FFFFFF;
-                            border: none;
-                            border-radius: 50%;
-                            cursor: pointer;
-                            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.1);
-                            transition: all 0.2s ease;
-                        }
-                        
-                        .slider::-moz-range-thumb:active {
-                            transform: scale(0.95);
-                            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.1);
-                        }
-                        
-                        .slider2::-webkit-slider-thumb {
-                            -webkit-appearance: none;
-                            appearance: none;
-                            width: 40px;
-                            height: 40px;
-                            background: #FFFFFF;
-                            border-radius: 50%;
-                            cursor: pointer;
-                            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.1);
-                            transition: all 0.2s ease;
-                        }
-                        
-                        .slider2::-webkit-slider-thumb:active {
-                            transform: scale(0.95);
-                            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.1);
-                        }
-                        
-                        .slider2::-moz-range-thumb {
-                            width: 40px;
-                            height: 40px;
-                            background: #FFFFFF;
-                            border: none;
-                            border-radius: 50%;
-                            cursor: pointer;
-                            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.1);
-                            transition: all 0.2s ease;
-                        }
-                        
-                        .slider2::-moz-range-thumb:active {
-                            transform: scale(0.95);
-                            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.1);
-                        }
-                    `}</style>
                 </div>
 
-                {/* Position Size Slider */}
+                {/* Sliders Section */}
                 <div style={{
-                    background: 'rgba(255, 255, 255, 0.05)',
-                    borderRadius: '12px',
-                    padding: '0',
-                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '1.5rem',
                 }}>
+                    {/* Chart Speed Slider */}
                     <div style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        padding: '1rem 1.5rem 0.5rem 1.5rem',
-                    }}>
-                        <span style={{
-                            fontSize: '0.875rem',
-                            color: 'rgba(255, 255, 255, 0.9)',
-                            fontWeight: 500,
-                        }}>
-                            Position Size ({positionSize}% of balance)
-                        </span>
-                        <span style={{
-                            fontSize: '1.5rem',
-                        }}>
-                            $
-                        </span>
-                    </div>
-                    <div style={{ padding: '0 1.5rem 1.5rem 1.5rem' }}>
-                        <input
-                            type="range"
-                            min="5"
-                            max="100"
-                            value={positionSize}
-                            onChange={(e) => setPositionSize(Number(e.target.value))}
-                            style={{
-                                width: '100%',
-                                height: '40px',
-                                background: 'rgba(255, 255, 255, 0.1)',
-                                borderRadius: '20px',
-                                outline: 'none',
-                                WebkitAppearance: 'none',
-                                appearance: 'none',
-                                cursor: 'pointer',
-                            }}
-                            className="slider2"
-                        />
-                    </div>
-                </div>
-
-                {/* Game Info Card */}
-                <div style={{
-                    background: 'linear-gradient(135deg, rgba(0, 255, 136, 0.05) 0%, rgba(0, 255, 136, 0.02) 100%)',
-                    borderRadius: '16px',
-                    border: '1px solid rgba(0, 255, 136, 0.2)',
-                    padding: '1.5rem',
-                    display: 'grid',
-                    gridTemplateColumns: '60px 1fr',
-                    gap: '1rem',
-                    alignItems: 'center',
-                }}>
-                    <div style={{
-                        width: '60px',
-                        height: '60px',
+                        background: 'rgba(255, 255, 255, 0.05)',
                         borderRadius: '12px',
-                        background: 'rgba(0, 255, 136, 0.1)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: '1.75rem',
-                        fontWeight: 'bold',
-                        color: '#00FF88',
+                        padding: '0',
+                        border: '1px solid rgba(255, 255, 255, 0.1)',
                     }}>
-                        C$
-                    </div>
-                    <div>
-                        <h4 style={{
-                            margin: 0,
-                            fontSize: '1rem',
-                            fontWeight: 600,
-                            color: 'rgba(255, 255, 255, 0.9)',
-                        }}>
-                            Cash Trading Game
-                        </h4>
-                        <p style={{
-                            margin: '0.25rem 0',
-                            fontSize: '0.75rem',
-                            color: 'rgba(255, 255, 255, 0.5)',
-                        }}>
-                            Version 1.0.0 • Build 2024.1
-                        </p>
                         <div style={{
                             display: 'flex',
-                            gap: '0.5rem',
-                            marginTop: '0.5rem',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '1rem 1.5rem 0.5rem 1.5rem',
                         }}>
                             <span style={{
-                                fontSize: '0.75rem',
-                                padding: '0.125rem 0.5rem',
-                                background: 'rgba(0, 255, 136, 0.2)',
-                                borderRadius: '12px',
-                                color: '#00FF88',
+                                fontSize: '0.875rem',
+                                color: 'rgba(255, 255, 255, 0.9)',
+                                fontWeight: 500,
                             }}>
-                                Connected
+                                Chart Speed
                             </span>
                             <span style={{
-                                fontSize: '0.75rem',
-                                padding: '0.125rem 0.5rem',
-                                background: 'rgba(255, 255, 255, 0.1)',
-                                borderRadius: '12px',
-                                color: 'rgba(255, 255, 255, 0.6)',
+                                fontSize: '1.5rem',
                             }}>
-                                Low Latency
+                                ▶
                             </span>
+                        </div>
+                        <div style={{ padding: '0 1.5rem 1.5rem 1.5rem' }}>
+                            <input
+                                type="range"
+                                min="0"
+                                max="100"
+                                value={animationSpeed}
+                                onChange={(e) => setAnimationSpeed(Number(e.target.value))}
+                                style={{
+                                    width: '100%',
+                                    height: '40px',
+                                    background: 'rgba(255, 255, 255, 0.1)',
+                                    borderRadius: '20px',
+                                    outline: 'none',
+                                    WebkitAppearance: 'none',
+                                    appearance: 'none',
+                                    cursor: 'pointer',
+                                }}
+                                className="slider"
+                            />
+                        </div>
+                        <style>{`
+                            .slider::-webkit-slider-thumb {
+                                -webkit-appearance: none;
+                                appearance: none;
+                                width: 40px;
+                                height: 40px;
+                                background: #FFFFFF;
+                                border-radius: 50%;
+                                cursor: pointer;
+                                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.1);
+                                transition: all 0.2s ease;
+                            }
+                            
+                            .slider::-webkit-slider-thumb:active {
+                                transform: scale(0.95);
+                                box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.1);
+                            }
+                            
+                            .slider::-moz-range-thumb {
+                                width: 40px;
+                                height: 40px;
+                                background: #FFFFFF;
+                                border: none;
+                                border-radius: 50%;
+                                cursor: pointer;
+                                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.1);
+                                transition: all 0.2s ease;
+                            }
+                            
+                            .slider::-moz-range-thumb:active {
+                                transform: scale(0.95);
+                                box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.1);
+                            }
+                            
+                            .slider2::-webkit-slider-thumb {
+                                -webkit-appearance: none;
+                                appearance: none;
+                                width: 40px;
+                                height: 40px;
+                                background: #FFFFFF;
+                                border-radius: 50%;
+                                cursor: pointer;
+                                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.1);
+                                transition: all 0.2s ease;
+                            }
+                            
+                            .slider2::-webkit-slider-thumb:active {
+                                transform: scale(0.95);
+                                box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.1);
+                            }
+                            
+                            .slider2::-moz-range-thumb {
+                                width: 40px;
+                                height: 40px;
+                                background: #FFFFFF;
+                                border: none;
+                                border-radius: 50%;
+                                cursor: pointer;
+                                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.1);
+                                transition: all 0.2s ease;
+                            }
+                            
+                            .slider2::-moz-range-thumb:active {
+                                transform: scale(0.95);
+                                box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.1);
+                            }
+                        `}</style>
+                    </div>
+
+                    {/* Position Size Slider */}
+                    <div style={{
+                        background: 'rgba(255, 255, 255, 0.05)',
+                        borderRadius: '12px',
+                        padding: '0',
+                        border: '1px solid rgba(255, 255, 255, 0.1)',
+                    }}>
+                        <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '1rem 1.5rem 0.5rem 1.5rem',
+                        }}>
+                            <span style={{
+                                fontSize: '0.875rem',
+                                color: 'rgba(255, 255, 255, 0.9)',
+                                fontWeight: 500,
+                            }}>
+                                Position Size ({positionSize}% of balance)
+                            </span>
+                            <span style={{
+                                fontSize: '1.5rem',
+                            }}>
+                                $
+                            </span>
+                        </div>
+                        <div style={{ padding: '0 1.5rem 1.5rem 1.5rem' }}>
+                            <input
+                                type="range"
+                                min="5"
+                                max="100"
+                                value={positionSize}
+                                onChange={(e) => setPositionSize(Number(e.target.value))}
+                                style={{
+                                    width: '100%',
+                                    height: '40px',
+                                    background: 'rgba(255, 255, 255, 0.1)',
+                                    borderRadius: '20px',
+                                    outline: 'none',
+                                    WebkitAppearance: 'none',
+                                    appearance: 'none',
+                                    cursor: 'pointer',
+                                }}
+                                className="slider2"
+                            />
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
+        </>
     );
 };
 

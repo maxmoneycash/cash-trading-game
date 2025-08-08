@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import ControlCenterTabs from './ControlCenterTabs';
 import LeaderboardTab from './tabs/LeaderboardTab';
 import AccountTab from './tabs/AccountTab';
@@ -19,8 +19,7 @@ const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
     balance
 }) => {
     const [activeTab, setActiveTab] = useState<TabId>('account');
-
-    if (!isOpen) return null;
+    const [debugMode, setDebugMode] = useState(false);
 
     const renderTabContent = () => {
         switch (activeTab) {
@@ -35,6 +34,59 @@ const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
         }
     };
 
+    // Toggle debug mode with keyboard shortcut (Ctrl/Cmd + D)
+    useEffect(() => {
+        const handleKeyPress = (e: KeyboardEvent) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === 'd') {
+                e.preventDefault();
+                setDebugMode(prev => !prev);
+                console.log('Debug mode:', !debugMode);
+
+                // Add global debug functions when debug mode is on
+                if (!debugMode) {
+                    (window as any).scrollTest = {
+                        testAll: () => {
+                            console.log('🧪 Testing all scrollable elements...');
+                            const scrollables = document.querySelectorAll('.hide-scrollbar');
+                            scrollables.forEach((el, index) => {
+                                console.log(`Element ${index}:`, el);
+                                (el as HTMLElement).scrollTop += 100;
+                                console.log(`Scrolled to: ${(el as HTMLElement).scrollTop}`);
+                            });
+                        },
+                        info: () => {
+                            const scrollables = document.querySelectorAll('.hide-scrollbar');
+                            scrollables.forEach((el, index) => {
+                                const htmlEl = el as HTMLElement;
+                                console.log(`📜 Element ${index}:`, {
+                                    class: htmlEl.className,
+                                    canScroll: htmlEl.scrollHeight > htmlEl.clientHeight,
+                                    scrollHeight: htmlEl.scrollHeight,
+                                    clientHeight: htmlEl.clientHeight,
+                                    currentScroll: htmlEl.scrollTop
+                                });
+                            });
+                        }
+                    };
+                    console.log('✅ Debug functions available: window.scrollTest.testAll() and window.scrollTest.info()');
+                } else {
+                    delete (window as any).scrollTest;
+                }
+            }
+        };
+
+        if (isOpen) {
+            document.addEventListener('keydown', handleKeyPress);
+        }
+
+        return () => {
+            document.removeEventListener('keydown', handleKeyPress);
+        };
+    }, [isOpen, debugMode]);
+
+    // Move the early return AFTER all hooks
+    if (!isOpen) return null;
+
     return (
         <>
             <style>{`
@@ -47,6 +99,37 @@ const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                     .modal-content-responsive {
                         padding: 1rem !important;
                     }
+                }
+                
+                /* Hide all scrollbars globally within the modal */
+                .hide-scrollbar {
+                    -ms-overflow-style: none !important;  /* IE and Edge */
+                    scrollbar-width: none !important;  /* Firefox */
+                }
+                
+                .hide-scrollbar::-webkit-scrollbar {
+                    display: none !important;  /* Chrome, Safari and Opera */
+                    width: 0 !important;
+                    height: 0 !important;
+                }
+                
+                /* Debug indicator for scrolling */
+                .scroll-debug {
+                    position: fixed;
+                    top: 10px;
+                    right: 10px;
+                    background: rgba(255, 0, 0, 0.8);
+                    color: white;
+                    padding: 5px 10px;
+                    border-radius: 4px;
+                    font-size: 12px;
+                    z-index: 999999;
+                    pointer-events: none;
+                    transition: opacity 0.3s ease;
+                }
+                
+                .scroll-debug.hidden {
+                    opacity: 0;
                 }
             `}</style>
 
@@ -147,7 +230,24 @@ const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                             overflow: 'hidden',
                         }}
                     >
-
+                        {/* Debug Mode Indicator */}
+                        {debugMode && (
+                            <div style={{
+                                position: 'absolute',
+                                top: 10,
+                                right: 10,
+                                background: 'rgba(0, 255, 0, 0.2)',
+                                border: '1px solid rgba(0, 255, 0, 0.5)',
+                                color: '#00FF88',
+                                padding: '4px 8px',
+                                borderRadius: '4px',
+                                fontSize: '11px',
+                                fontWeight: 600,
+                                zIndex: 1000,
+                            }}>
+                                DEBUG MODE ON (Ctrl+D to toggle)
+                            </div>
+                        )}
 
                         {/* Tab Navigation */}
                         <ControlCenterTabs

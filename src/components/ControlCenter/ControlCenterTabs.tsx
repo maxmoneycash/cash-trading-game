@@ -53,6 +53,7 @@ const ControlCenterTabs: React.FC<ControlCenterTabsProps> = ({ activeTab, onTabC
                     alignItems: 'center',
                     justifyContent: 'center',
                     padding: '1rem 0.5rem',
+                    paddingTop: 'calc(env(safe-area-inset-top) + 1rem)',
                     position: 'relative',
                 }}
             >

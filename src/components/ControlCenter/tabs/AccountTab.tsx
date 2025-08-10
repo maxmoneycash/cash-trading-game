@@ -86,188 +86,113 @@ const AccountTab: React.FC<AccountTabProps> = ({ balance }) => {
                 {/* Balance & Stats Section */}
                 <div style={{
                     display: 'grid',
-                    gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(auto-fit, minmax(200px, 1fr))',
-                    gap: '0.75rem',
+                    gridTemplateColumns: isMobile ? '1fr' : '2fr 1fr',
+                    gap: '1rem',
+                    alignItems: 'stretch',
                 }}>
                     {/* Main Balance Card */}
                     <div style={{
-                        gridColumn: isMobile ? 'span 2' : 'span 2',
-                        background: 'linear-gradient(135deg, rgba(0, 255, 136, 0.1) 0%, rgba(0, 255, 136, 0.05) 100%)',
-                        borderRadius: '16px',
-                        padding: isMobile ? '1.25rem' : '2rem',
+                        background: 'linear-gradient(135deg, rgba(0, 255, 136, 0.08) 0%, rgba(0, 255, 136, 0.03) 100%)',
+                        borderRadius: '20px',
+                        padding: isMobile ? '2rem 1.5rem' : '2.5rem 2rem',
                         textAlign: 'center',
-                        border: '1px solid rgba(0, 255, 136, 0.2)',
+                        border: '1px solid rgba(0, 255, 136, 0.15)',
+                        position: 'relative',
+                        overflow: 'hidden',
+                        backdropFilter: 'blur(20px)',
+                    }}>
+                        {/* Subtle glow effect */}
+                        <div style={{
+                            position: 'absolute',
+                            top: '-30%',
+                            left: '-30%',
+                            width: '160%',
+                            height: '160%',
+                            background: 'radial-gradient(circle, rgba(0, 255, 136, 0.06) 0%, transparent 60%)',
+                            pointerEvents: 'none',
+                        }} />
+
+                        <div style={{ position: 'relative', zIndex: 1 }}>
+                            <h3 style={{
+                                margin: '0 0 0.75rem 0',
+                                fontSize: '0.8rem',
+                                fontWeight: 500,
+                                color: 'rgba(255, 255, 255, 0.6)',
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.15em',
+                            }}>
+                                Total Balance
+                            </h3>
+                            <div style={{
+                                fontSize: isMobile ? '3rem' : '4rem',
+                                fontWeight: 800,
+                                color: '#00FF88',
+                                letterSpacing: '-0.03em',
+                                textShadow: '0 0 40px rgba(0, 255, 136, 0.3)',
+                                marginBottom: '0.5rem',
+                            }}>
+                                ${balance.toFixed(0)}
+                            </div>
+                            <div style={{
+                                fontSize: '0.9rem',
+                                color: 'rgba(0, 255, 136, 0.7)',
+                                fontWeight: 500,
+                            }}>
+                                <span style={{ fontSize: '1.1rem', marginRight: '0.25rem' }}>↗</span>
+                                12.5% today
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Win Rate Card */}
+                    <div style={{
+                        background: 'rgba(255, 255, 255, 0.02)',
+                        borderRadius: '20px',
+                        padding: isMobile ? '2rem 1.5rem' : '2.5rem 2rem',
+                        border: '1px solid rgba(255, 255, 255, 0.06)',
+                        backdropFilter: 'blur(20px)',
+                        textAlign: 'center',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'center',
                         position: 'relative',
                         overflow: 'hidden',
                     }}>
-                        {/* Glow effect */}
+                        {/* Subtle inner glow */}
                         <div style={{
                             position: 'absolute',
-                            top: '-50%',
-                            left: '-50%',
-                            width: '200%',
-                            height: '200%',
-                            background: 'radial-gradient(circle, rgba(0, 255, 136, 0.1) 0%, transparent 70%)',
+                            inset: '0',
+                            background: 'radial-gradient(circle at center, rgba(255, 255, 255, 0.02) 0%, transparent 70%)',
                             pointerEvents: 'none',
                         }} />
-                        <h3 style={{
-                            margin: '0 0 0.5rem 0',
-                            fontSize: '0.875rem',
-                            fontWeight: 500,
-                            color: 'rgba(255, 255, 255, 0.7)',
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.1em',
-                        }}>
-                            Total Balance
-                        </h3>
-                        <div style={{
-                            fontSize: '3.5rem',
-                            fontWeight: 700,
-                            color: '#00FF88',
-                            letterSpacing: '-0.02em',
-                            textShadow: '0 0 30px rgba(0, 255, 136, 0.5)',
-                        }}>
-                            ${balance.toFixed(0)}
-                        </div>
-                        <div style={{
-                            marginTop: '0.5rem',
-                            fontSize: '0.875rem',
-                            color: 'rgba(0, 255, 136, 0.8)',
-                        }}>
-                            <span style={{ fontSize: '1.25rem' }}>↑</span> 12.5% today
-                        </div>
-                    </div>
 
-                    {/* Stats Cards */}
-                    <div style={{
-                        background: 'rgba(255, 255, 255, 0.03)',
-                        borderRadius: '12px',
-                        padding: '1.5rem',
-                        border: '1px solid rgba(255, 255, 255, 0.08)',
-                        backdropFilter: 'blur(10px)',
-                    }}>
-                        <h4 style={{
-                            margin: '0 0 0.5rem 0',
-                            fontSize: '0.75rem',
-                            fontWeight: 500,
-                            color: 'rgba(255, 255, 255, 0.5)',
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.05em',
-                        }}>
-                            Win Rate
-                        </h4>
-                        <div style={{
-                            fontSize: '2rem',
-                            fontWeight: 600,
-                            color: '#00FF88',
-                        }}>
-                            68.5%
-                        </div>
-                        <div style={{
-                            marginTop: '0.25rem',
-                            fontSize: '0.75rem',
-                            color: 'rgba(255, 255, 255, 0.4)',
-                        }}>
-                            137 wins / 200 trades
-                        </div>
-                    </div>
-
-                    <div style={{
-                        background: 'rgba(255, 255, 255, 0.03)',
-                        borderRadius: '12px',
-                        padding: '1.5rem',
-                        border: '1px solid rgba(255, 255, 255, 0.08)',
-                        backdropFilter: 'blur(10px)',
-                    }}>
-                        <h4 style={{
-                            margin: '0 0 0.5rem 0',
-                            fontSize: '0.75rem',
-                            fontWeight: 500,
-                            color: 'rgba(255, 255, 255, 0.5)',
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.05em',
-                        }}>
-                            Profit Factor
-                        </h4>
-                        <div style={{
-                            fontSize: '2rem',
-                            fontWeight: 600,
-                            color: '#00FF88',
-                        }}>
-                            2.34
-                        </div>
-                        <div style={{
-                            marginTop: '0.25rem',
-                            fontSize: '0.75rem',
-                            color: 'rgba(255, 255, 255, 0.4)',
-                        }}>
-                            Risk/Reward Ratio
-                        </div>
-                    </div>
-
-                    <div style={{
-                        background: 'rgba(255, 255, 255, 0.03)',
-                        borderRadius: '12px',
-                        padding: '1.5rem',
-                        border: '1px solid rgba(255, 255, 255, 0.08)',
-                        backdropFilter: 'blur(10px)',
-                    }}>
-                        <h4 style={{
-                            margin: '0 0 0.5rem 0',
-                            fontSize: '0.75rem',
-                            fontWeight: 500,
-                            color: 'rgba(255, 255, 255, 0.5)',
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.05em',
-                        }}>
-                            Best Streak
-                        </h4>
-                        <div style={{
-                            fontSize: '2rem',
-                            fontWeight: 600,
-                            color: '#FFD700',
-                        }}>
-                            12
-                        </div>
-                        <div style={{
-                            marginTop: '0.25rem',
-                            fontSize: '0.75rem',
-                            color: 'rgba(255, 255, 255, 0.4)',
-                        }}>
-                            Consecutive wins
-                        </div>
-                    </div>
-
-                    <div style={{
-                        background: 'rgba(255, 255, 255, 0.03)',
-                        borderRadius: '12px',
-                        padding: '1.5rem',
-                        border: '1px solid rgba(255, 255, 255, 0.08)',
-                        backdropFilter: 'blur(10px)',
-                    }}>
-                        <h4 style={{
-                            margin: '0 0 0.5rem 0',
-                            fontSize: '0.75rem',
-                            fontWeight: 500,
-                            color: 'rgba(255, 255, 255, 0.5)',
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.05em',
-                        }}>
-                            Daily P&L
-                        </h4>
-                        <div style={{
-                            fontSize: '2rem',
-                            fontWeight: 600,
-                            color: '#00FF88',
-                        }}>
-                            +$125
-                        </div>
-                        <div style={{
-                            marginTop: '0.25rem',
-                            fontSize: '0.75rem',
-                            color: 'rgba(255, 255, 255, 0.4)',
-                        }}>
-                            Last 24 hours
+                        <div style={{ position: 'relative', zIndex: 1 }}>
+                            <h4 style={{
+                                margin: '0 0 0.75rem 0',
+                                fontSize: '0.8rem',
+                                fontWeight: 500,
+                                color: 'rgba(255, 255, 255, 0.6)',
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.15em',
+                            }}>
+                                Win Rate
+                            </h4>
+                            <div style={{
+                                fontSize: isMobile ? '2.5rem' : '3rem',
+                                fontWeight: 700,
+                                color: '#00FF88',
+                                letterSpacing: '-0.02em',
+                                marginBottom: '0.5rem',
+                            }}>
+                                68.5%
+                            </div>
+                            <div style={{
+                                fontSize: '0.8rem',
+                                color: 'rgba(255, 255, 255, 0.5)',
+                                fontWeight: 400,
+                            }}>
+                                137 wins / 200 trades
+                            </div>
                         </div>
                     </div>
                 </div>

@@ -220,6 +220,7 @@ Assuming average T trades per round, hold fraction h (time holding), and simplif
 E \approx \frac{\mathbb{E}[L] - \mathbb{E}[G]}{T \cdot p \cdot B} \times 100\%
 \]
 
+
 #### Simulation-Based Estimate
 Using rug_simulation.js (attached), which models similar mechanics:
 - 10,000 rounds: House edge ~3.2% (from fees + ~4% liquidation rate wiping 20% positions).

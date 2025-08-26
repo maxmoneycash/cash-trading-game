@@ -210,6 +210,36 @@ const GameManagerTest: React.FC = () => {
         </button>
       </div>
 
+      {/* Replay Controls */}
+      {gameState?.isReplayMode && (
+        <div style={{ marginBottom: '20px', padding: '10px', border: '1px solid #ff6b35' }}>
+          <h3>🎬 Replay Controls</h3>
+          <div style={{ marginBottom: '10px' }}>
+            <label style={{ marginRight: '10px' }}>Speed:</label>
+            <button onClick={() => gameManagerRef.current?.setReplaySpeed(0.5)} style={{ margin: '2px', padding: '4px 8px' }}>0.5x</button>
+            <button onClick={() => gameManagerRef.current?.setReplaySpeed(1.0)} style={{ margin: '2px', padding: '4px 8px' }}>1.0x</button>
+            <button onClick={() => gameManagerRef.current?.setReplaySpeed(2.0)} style={{ margin: '2px', padding: '4px 8px' }}>2.0x</button>
+            <button onClick={() => gameManagerRef.current?.setReplaySpeed(5.0)} style={{ margin: '2px', padding: '4px 8px' }}>5.0x</button>
+          </div>
+          <p style={{ fontSize: '12px', color: '#888' }}>
+            Current speed: {gameState.replaySpeed}x
+          </p>
+        </div>
+      )}
+
+      {/* Replay Examples */}
+      {!gameState?.isReplayMode && (
+        <div style={{ marginBottom: '20px', padding: '10px', border: '1px solid #444' }}>
+          <h3>🎬 Replay System</h3>
+          <p style={{ fontSize: '14px', marginBottom: '10px' }}>Test replay functionality with URL parameters:</p>
+          <div style={{ fontSize: '12px', color: '#888' }}>
+            <p><strong>Replay by Round ID:</strong> ?test=true&replay=ROUND_ID</p>
+            <p><strong>Replay by Seed:</strong> ?test=true&seed=0x123abc...</p>
+            <p style={{ marginTop: '8px' }}>Generate a round first, then use its ID/seed in the URL!</p>
+          </div>
+        </div>
+      )}
+
       {/* Trading Controls */}
       <div style={{ marginBottom: '20px', padding: '10px', border: '1px solid #333' }}>
         <h3>Trading Controls</h3>
@@ -243,6 +273,27 @@ const GameManagerTest: React.FC = () => {
         <p>Current Price: ${gameState?.currentRound ? gameManagerRef.current?.getCurrentPrice().toFixed(2) : 'N/A'}</p>
         <p>Candles Generated: {candles.length}</p>
         <p>Round Progress: {((gameState?.roundProgress || 0) * 100).toFixed(1)}%</p>
+        
+        {/* Replay Mode Indicator */}
+        {gameState?.isReplayMode && (
+          <div style={{ 
+            marginTop: '10px', 
+            padding: '8px', 
+            border: '2px solid #ff6b35', 
+            borderRadius: '4px',
+            backgroundColor: '#331a00'
+          }}>
+            <p style={{ color: '#ff6b35', fontWeight: 'bold', margin: '2px 0' }}>
+              🎬 REPLAY MODE
+            </p>
+            <p style={{ margin: '2px 0' }}>Speed: {gameState.replaySpeed}x</p>
+            {gameState.currentRound && (
+              <p style={{ margin: '2px 0', fontSize: '12px' }}>
+                Seed: {gameState.currentRound.seed?.substring(0, 16)}...
+              </p>
+            )}
+          </div>
+        )}
         {position && (
           <div style={{ marginTop: '10px', padding: '10px', border: '1px solid #666' }}>
             <p><strong>Active Position:</strong></p>

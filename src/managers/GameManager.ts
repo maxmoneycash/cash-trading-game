@@ -51,6 +51,10 @@ export class GameManager {
   private candleTimer: NodeJS.Timeout | null = null;
   private apiBaseUrl = 'http://localhost:3001';
   
+  // Replay mode properties
+  private isReplayMode = false;
+  private replaySpeed = 1.0; // 1.0 = normal speed, 2.0 = 2x speed, etc.
+  
   // Event callbacks - the UI can listen to these
   public onCandleGenerated: (candle: CandleData) => void = () => {};
   public onRoundComplete: (summary: any) => void = () => {};
@@ -58,7 +62,20 @@ export class GameManager {
   public onError: (error: string) => void = () => {};
 
   constructor() {
-    console.log('🎮 GameManager initialized (Proof of Concept)');
+    console.log('🎮 GameManager initialized');
+    
+    // Check for replay parameters in URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const replayRoundId = urlParams.get('replay');
+    const replaySeed = urlParams.get('seed');
+    
+    if (replayRoundId) {
+      console.log('🎬 Replay mode detected - Round ID:', replayRoundId);
+      this.startReplayFromRoundId(replayRoundId);
+    } else if (replaySeed) {
+      console.log('🎬 Replay mode detected - Seed:', replaySeed.substring(0, 10) + '...');
+      this.startReplayFromSeed(replaySeed);
+    }
   }
 
   /**
@@ -147,8 +164,9 @@ export class GameManager {
 
       this.currentCandleIndex++;
 
-      // Schedule next candle
-      this.candleTimer = setTimeout(generateNextCandle, this.currentRound!.config.candleIntervalMs);
+      // Schedule next candle with replay speed adjustment
+      const interval = this.currentRound!.config.candleIntervalMs / this.replaySpeed;
+      this.candleTimer = setTimeout(generateNextCandle, interval);
     };
 
     generateNextCandle();
@@ -292,6 +310,105 @@ export class GameManager {
   }
 
   /**
+   * Start replay from a database round ID
+   */
+  async startReplayFromRoundId(roundId: string): Promise<void> {
+    try {
+      console.log('🎬 Starting replay from round ID:', roundId);
+      
+      // Fetch round data from backend
+      const response = await fetch(`${this.apiBaseUrl}/api/game/round/${roundId}`);
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch round: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to get round data');
+      }
+      
+      const round = data.round;
+      
+      // Start replay with the round's seed and config
+      await this.startReplayFromSeed(round.seed, round.config, {
+        roundId: round.id,
+        originalStartTime: round.startedAt,
+        finalPrice: round.finalPrice,
+        status: round.status
+      });
+      
+    } catch (error: any) {
+      console.error('❌ Failed to start replay from round ID:', error);
+      this.onError(`Failed to start replay: ${error.message}`);
+    }
+  }
+
+  /**
+   * Start replay from a seed directly
+   */
+  async startReplayFromSeed(seed: string, config?: GameConfig, replayInfo?: any): Promise<void> {
+    try {
+      console.log('🎬 Starting replay from seed:', seed.substring(0, 10) + '...');
+      
+      this.isReplayMode = true;
+      
+      // Use provided config or default config
+      const gameConfig = config || {
+        candleIntervalMs: 65,
+        totalCandles: 460,
+        initialPrice: 100.0,
+        roundDurationMs: 30000
+      };
+
+      // Set up round data for replay
+      this.currentRound = {
+        roundId: replayInfo?.roundId || `replay_${Date.now()}`,
+        seed,
+        userId: 'replay_user',
+        config: gameConfig
+      };
+
+      // Initialize deterministic candle generator
+      this.candleGenerator = new CandleGenerator(seed, {
+        initialPrice: gameConfig.initialPrice,
+        volatility: 0.02,
+        drift: -0.0001,
+        liquidationChance: 0.0015
+      });
+
+      this.candles = [];
+      this.currentCandleIndex = 0;
+      this.activePosition = null;
+      this.isActive = true;
+      this.roundStartTime = Date.now();
+
+      console.log(`✅ Replay started: ${this.isReplayMode ? '[REPLAY MODE]' : ''}`);
+      console.log(`🎲 Using seed: ${seed.substring(0, 10)}...`);
+      
+      if (replayInfo) {
+        console.log(`📊 Original round info:`, replayInfo);
+      }
+
+      // Start generating candles (will use replay speed)
+      this.startCandleGeneration();
+
+    } catch (error: any) {
+      console.error('❌ Failed to start replay from seed:', error);
+      this.onError(`Failed to start replay: ${error.message}`);
+    }
+  }
+
+  /**
+   * Set replay speed (1.0 = normal, 2.0 = 2x speed, 0.5 = half speed)
+   */
+  setReplaySpeed(speed: number): void {
+    this.replaySpeed = Math.max(0.1, Math.min(10.0, speed)); // Clamp between 0.1x and 10x
+    console.log(`🎬 Replay speed set to: ${this.replaySpeed}x`);
+  }
+
+  /**
    * Get current game state
    */
   getGameState() {
@@ -303,7 +420,9 @@ export class GameManager {
       activePosition: this.activePosition,
       roundProgress: this.currentRound 
         ? this.currentCandleIndex / this.currentRound.config.totalCandles 
-        : 0
+        : 0,
+      isReplayMode: this.isReplayMode,
+      replaySpeed: this.replaySpeed
     };
   }
 
@@ -323,6 +442,20 @@ export class GameManager {
     return this.candles.length > 0 
       ? this.candles[this.candles.length - 1].close 
       : this.currentRound?.config.initialPrice || 100;
+  }
+
+  /**
+   * Check if currently in replay mode
+   */
+  isInReplayMode(): boolean {
+    return this.isReplayMode;
+  }
+
+  /**
+   * Get current replay speed
+   */
+  getReplaySpeed(): number {
+    return this.replaySpeed;
   }
 
   /**

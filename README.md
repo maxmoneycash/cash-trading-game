@@ -8,6 +8,10 @@ Cash Trading Game is an interactive trading simulation built with React and p5.j
 - PNL tracking
 - Liquidation and rugpull events
 - Historical round reviews
+- **🎬 Seed-based replay system** - Debug and verify deterministic rounds
+- **🎲 Aptos blockchain integration** - Verifiable random seed generation
+- **📊 Database persistence** - SQLite backend with trade logging
+- **🔧 Development tools** - Test interface and debugging capabilities
 - Responsive design for mobile and desktop
 
 ## Installation
@@ -15,6 +19,82 @@ Cash Trading Game is an interactive trading simulation built with React and p5.j
 npm install
 npm run dev
 ```
+
+## 🎬 Game Replay System
+
+The game includes a powerful replay system for debugging and verification purposes. You can replay any game round using deterministic seed-based candle generation.
+
+### How to Use Replay
+
+#### 1. **Test Interface Access**
+Visit the development test interface at:
+```
+http://localhost:5173/?test=true
+```
+
+#### 2. **Generate a Round to Replay**
+- Click "Test Game API" or "Start Round" to create a new round
+- Copy the **Round ID** and **Seed** from the console logs or UI
+- Wait for the round to complete or manually stop it
+
+#### 3. **Replay Methods**
+
+**Method A: Replay by Round ID**
+```
+http://localhost:5173/?test=true&replay=ROUND_ID
+```
+Example:
+```
+http://localhost:5173/?test=true&replay=7D926FAC95F5971571921DFC56864DED
+```
+
+**Method B: Replay by Seed**
+```
+http://localhost:5173/?test=true&seed=SEED_VALUE
+```
+Example:
+```
+http://localhost:5173/?test=true&seed=0xb19ff6e9d5dbe03fafbb0e5c388c9f09514bbaf83c5c67a5f009a63e9a995265
+```
+
+### Replay Features
+
+- **🎯 Perfect Reproducibility**: Same seed = identical candles every time
+- **⚡ Speed Control**: Adjust replay speed (0.5x, 1x, 2x, 5x)
+- **🔍 Visual Indicators**: Orange "REPLAY MODE" banner shows active replay
+- **📊 Round Information**: Displays original round data and seed
+- **🛡️ Verification**: Proves deterministic generation works correctly
+
+### Replay Controls
+
+When in replay mode, you'll see speed control buttons:
+- **0.5x**: Half speed (slower for detailed analysis)
+- **1.0x**: Normal speed 
+- **2.0x**: Double speed
+- **5.0x**: Fast forward (quick overview)
+
+### Use Cases
+
+- **🐛 Debug Issues**: Replay problematic rounds to investigate bugs
+- **🧪 Test Determinism**: Verify that seeds generate identical candles
+- **📈 Analyze Patterns**: Study specific market conditions at different speeds
+- **🔬 Development**: Test new features against known scenarios
+
+### Database Integration
+
+Round ID replay automatically fetches:
+- Original game configuration
+- Blockchain proof data (block height, transaction hash)
+- Final round outcomes
+- Timing information
+
+### Technical Details
+
+The replay system uses the same deterministic `CandleGenerator` that produces candles from:
+- **256-bit Aptos seeds** (cryptographically secure randomness)
+- **SHA256-based hashing** for consistent random values
+- **Configurable parameters** (volatility, drift, liquidation chance)
+- **Identical timing** as original rounds
 
 ## Algorithm for Generating Verifiably Random Yet Realistic Candlestick Charts
 

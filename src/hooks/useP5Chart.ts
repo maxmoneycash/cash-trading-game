@@ -15,6 +15,7 @@ const useP5Chart = ({
     setPnl,
     setIsHolding,
     setShowFireworks,
+    setShowLossAnimation,
     setShowLiquidation,
     setRugpullType,
     setBalance,
@@ -30,6 +31,7 @@ const useP5Chart = ({
     setPnl: (pnl: number) => void;
     setIsHolding: (holding: boolean) => void;
     setShowFireworks: (show: boolean) => void;
+    setShowLossAnimation: (show: boolean) => void;
     setShowLiquidation: (show: boolean) => void;
     setRugpullType: (type: string | null) => void;
     setBalance: React.Dispatch<React.SetStateAction<number>>;
@@ -76,6 +78,8 @@ const useP5Chart = ({
             let shouldExplodeEmojis = false;
             let explosionCenter: any = null;
             let lastEmojiTime = 0;
+            let screenShake = 0;
+            let lossFlash = 0;
 
             // MoneyEmoji class for profit animations.
             class MoneyEmoji {
@@ -757,6 +761,18 @@ const useP5Chart = ({
                         const cashSound = new Audio('https://assets.mixkit.co/active_storage/sfx/2003/2003-preview.mp3');
                         cashSound.volume = 0.7;
                         cashSound.play().catch(err => console.log('Could not play cash sound:', err));
+                    } else if (netProfit < 0) {
+                        // Loss animation and sound
+                        setShowLossAnimation(true);
+                        setTimeout(() => setShowLossAnimation(false), 1500);
+                        
+                        // Visual effects for loss
+                        screenShake = 15; // Screen shake intensity
+                        lossFlash = 255; // Red flash intensity
+                        
+                        const lossSound = new Audio('https://assets.mixkit.co/active_storage/sfx/2955/2955-preview.mp3');
+                        lossSound.volume = 0.6;
+                        lossSound.play().catch(err => console.log('Could not play loss sound:', err));
                     }
                     currentPosition = null;
                     if (!liquidationCandleCreated && !rugpullActive) {
@@ -795,6 +811,25 @@ const useP5Chart = ({
             // p5 draw loop: Main rendering and update cycle.
             p.draw = () => {
                 p.background(12, 12, 12);
+                
+                // Apply screen shake for loss effect
+                if (screenShake > 0) {
+                    p.translate(
+                        (Math.random() - 0.5) * screenShake,
+                        (Math.random() - 0.5) * screenShake
+                    );
+                    screenShake *= 0.9; // Decay shake
+                    if (screenShake < 0.1) screenShake = 0;
+                }
+                
+                // Apply red flash overlay for loss
+                if (lossFlash > 0) {
+                    p.fill(255, 0, 0, lossFlash * 0.1); // Red with low opacity
+                    p.rect(0, 0, p.width, p.height);
+                    lossFlash *= 0.85; // Decay flash
+                    if (lossFlash < 1) lossFlash = 0;
+                }
+                
                 pulseAnimation += 0.1;
                 checkRoundEnd();
                 const currentSpeed = rugpullSlowMotion ? 0.3 : animationSpeed;

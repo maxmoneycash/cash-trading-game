@@ -20,6 +20,7 @@ const CandlestickChart = () => {
     const [candleCount, setCandleCount] = useState(0);
     const [isHolding, setIsHolding] = useState(false);
     const [showFireworks, setShowFireworks] = useState(false);
+    const [showLossAnimation, setShowLossAnimation] = useState(false);
     const [showLiquidation, setShowLiquidation] = useState(false);
     const [rugpullType, setRugpullType] = useState<string | null>(null);
     const [displayPnl, setDisplayPnl] = useState(0);
@@ -81,6 +82,7 @@ const CandlestickChart = () => {
         setPnl,
         setIsHolding,
         setShowFireworks,
+        setShowLossAnimation,
         setShowLiquidation,
         setRugpullType,
         setBalance,

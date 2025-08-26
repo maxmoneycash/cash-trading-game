@@ -770,7 +770,7 @@ const useP5Chart = ({
                         screenShake = 15; // Screen shake intensity
                         lossFlash = 255; // Red flash intensity
                         
-                        const lossSound = new Audio('https://assets.mixkit.co/active_storage/sfx/2955/2955-preview.mp3');
+                        const lossSound = new Audio('https://assets.mixkit.co/active_storage/sfx/2037/2037-preview.mp3');
                         lossSound.volume = 0.6;
                         lossSound.play().catch(err => console.log('Could not play loss sound:', err));
                     }

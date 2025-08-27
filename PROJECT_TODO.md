@@ -1,332 +1,1043 @@
-# Cash Trading Game - Implementation Priority Matrix
-
-## Executive Summary
-This document provides a structured implementation roadmap for the Cash Trading Game, categorizing tasks by necessity and priority. The project requires building a verifiable random trading game on Aptos blockchain with 65ms candlestick updates.
+# Cash Trading Game - Comprehensive Implementation Plan
+## Based on Sam's PR Analysis & Technical Requirements
 
 ---
 
-## Current Implementation Status
+## Executive Summary
 
-| Component | Status | Description |
-|-----------|--------|-------------|
-| **Frontend Core** | COMPLETE | React app with p5.js chart rendering |
-| **Chart Algorithm** | COMPLETE | Client-side deterministic candlestick generation |
-| **UI Components** | COMPLETE | Basic trading interface with position management |
-| **Documentation** | COMPLETE | Liquidation math, algorithm design, architecture plans |
-| **Server Structure** | PARTIAL | Basic Express setup exists but incomplete |
-| **WebSocket Hooks** | DEPRECATED | Removing WebSocket - using REST API only |
-| **Aptos Hooks** | PARTIAL | Wallet hooks exist but not implemented |
-| **Smart Contracts** | NOT STARTED | Aptos randomness integration needed |
-| **Backend Services** | NOT STARTED | REST API for seed distribution and trade verification |
-| **Database Layer** | NOT STARTED | SQLite setup with Users and Rounds tables |
-| **Authentication** | NOT STARTED | Wallet connection and session management |
-| **Verification** | NOT STARTED | Server-side price verification against seeds |
+**DECISION: ACCEPT SAM'S PR** - The `feature/game_manager` branch provides exactly the foundation we need. Sam has solved the core architectural challenges (deterministic generation, database design, API structure) while keeping complexity manageable. This analysis provides the complete implementation roadmap to transform Sam's foundation into a production-ready trading game with real Aptos integration.
 
-## Updated Architecture Overview
+**Key Insight**: Sam's approach of deterministic seed-based generation + REST API + SQLite is far superior to our original complex WebSocket/Redis/Rust architecture. We can ship faster, debug easier, and scale incrementally.
 
-**Key Changes from Original Plan:**
-- **Database**: SQLite for rapid development (easily migrated to PostgreSQL/MySQL later)
-- **No WebSocket**: Simple REST API for seed distribution and trade verification
-- **Client-Side Charts**: Each user generates their own candles from Aptos seeds
-- **Individual Rounds**: Each user has separate game instances, no global state
-- **Simplified Backend**: Focus on seed distribution, trade verification, and account management
+---
+
+## Current State Analysis
+
+### What We Have (Main Branch)
+```
+src/
+├── components/CandlestickChart.tsx    # Pure client-side game, hardcoded balance: 1000
+├── hooks/useAptos.ts                  # Mock wallet integration (simulated-account-address)
+├── hooks/useSocket.ts                 # WebSocket hooks (unused by main app)
+├── hooks/useGameState.ts              # Game state management (unused by main app)
+└── utils/generateBitcoinData.ts       # Static historical Bitcoin data
+
+server/src/index.ts                    # Basic Socket.io server, in-memory state, no persistence
+```
+
+**Current System Limitations:**
+- No user authentication or persistence
+- No backend integration in main app
+- Hardcoded balances and mock data
+- No verifiable randomness
+- No trade verification or settlement
+
+### What Sam Built (feature/game_manager PR)
+```
+server/
+├── database/
+│   ├── connection.ts                  # SQLite connection with promisified methods
+│   ├── schema.sql                     # Users, Rounds, Trades tables
+│   └── game.db                        # SQLite database file
+├── routes/game.ts                     # REST API for round management
+└── services/AptosService.ts           # Mock Aptos service (256-bit seeds)
+
+src/
+├── managers/GameManager.ts            # Complete game lifecycle management
+├── utils/CandleGenerator.ts           # Deterministic candle generation
+├── services/api.ts                    # API service layer
+└── components/GameManagerTest.tsx     # Test interface for new system
+```
+
+**Sam's Achievements:**
+- ✅ **Deterministic Generation**: Same seed = identical candles always
+- ✅ **Database Foundation**: Proper relational schema with foreign keys
+- ✅ **REST API**: Simple HTTP endpoints instead of WebSocket complexity
+- ✅ **Replay System**: URL-based replay for debugging (`?replay=roundId`)
+- ✅ **Game Lifecycle**: Complete round management with state tracking
+- ✅ **Mock Aptos Ready**: Easy to replace with real implementation
 
 ---
 
 ## Implementation Priority Matrix
 
-### CRITICAL - Required for MVP Launch
+### PHASE 1: PR Integration & Foundation (Week 1)
 
-| Priority | Component | Timeline | Dependencies | Description |
-|----------|-----------|----------|--------------|-------------|
-| **1** | SQLite Database Setup | Week 1 | None | Create Users and Rounds tables with TypeScript schema |
-| **2** | Aptos Randomness Service | Week 1 | Database | Fetch 256-bit seeds from Aptos blockchain |
-| **3** | REST API Endpoints | Week 1 | Database + Aptos | /api/game/start, /api/trade/open, /api/trade/close |
-| **4** | Client Candle Generator | Week 2 | API | Deterministic SHA256-based candle generation |
-| **5** | Wallet Authentication | Week 2 | API | Connect wallet, verify signatures, create sessions |
-| **6** | Trade Verification | Week 2 | Candle Generator | Server-side price verification against seeds |
-| **7** | Account Management | Week 3 | Authentication | Balance tracking, fund locking, P&L calculation |
-| **8** | Round Lifecycle | Week 3 | All Backend | Individual user rounds with 30-second duration |
-| **9** | Frontend Integration | Week 3 | All Backend | Connect UI to REST API, remove WebSocket code |
-| **10** | Security & Validation | Week 4 | All Components | Input validation, SQL injection prevention, seed replay protection |
+#### Day 1: PR Acceptance & Testing
+**Objective**: Merge Sam's PR and verify all functionality works
 
-### IMPORTANT - Enhanced Functionality
-
-| Priority | Component | Timeline | Dependencies | Description |
-|----------|-----------|----------|--------------|-------------|
-| **11** | Settlement System | Week 4 | Trade Execution | Batch settlement of round results |
-| **12** | Merkle Verification | Week 5 | Expansion Engine | Proof generation and validation |
-| **13** | Session Management | Week 5 | Wallet Integration | JWT tokens and refresh logic |
-| **14** | Trade Broadcasting | Week 5 | WebSocket Server | Show other players' trades |
-| **15** | Leaderboard System | Week 6 | Database | Rankings and statistics |
-| **16** | Error Recovery | Week 6 | All Components | Reconnection and retry logic |
-| **17** | Rate Limiting | Week 6 | Backend Services | API and WebSocket throttling |
-
-### OPTIONAL - Performance & Scale
-
-| Priority | Component | Timeline | Dependencies | Description |
-|----------|-----------|----------|--------------|-------------|
-| **18** | Shelby Integration | Week 7 | Verification | Decentralized data distribution |
-| **19** | Load Balancing | Week 7 | Backend Services | Horizontal scaling capability |
-| **20** | Monitoring Stack | Week 8 | All Components | Prometheus, Grafana, alerts |
-| **21** | Docker Containers | Week 8 | All Components | Containerized deployment |
-| **22** | CI/CD Pipeline | Week 8 | Docker | Automated testing and deployment |
-| **23** | CDN Integration | Post-Launch | Frontend | Global asset distribution |
-| **24** | Mobile App | Post-Launch | All Components | React Native implementation |
-
----
-
-## Detailed Implementation Checklist
-
-### Week 1: Foundation
-
-| Task | Component | Critical | Status | Notes |
-|------|-----------|----------|--------|-------|
-| Set up SQLite database | Database | YES | [ ] | Create .db file with Users and Rounds tables |
-| Create database schema files | Database | YES | [ ] | TypeScript interfaces for User, Round, Trade models |
-| Set up Aptos dev environment | Aptos Integration | YES | [ ] | Install Aptos CLI and TypeScript SDK |
-| Implement AptosService class | Backend | YES | [ ] | generateRandomSeed() method for fetching seeds |
-| Create REST API structure | Backend | YES | [ ] | Express.js with /api/game and /api/trade routes |
-| Database connection layer | Backend | YES | [ ] | SQLite connection with query functions |
-
-## Detailed Implementation Steps
-
-### 1. SQLite Database Setup
-
-**Files to create:**
-- `server/database/schema.sql` - SQL table definitions
-- `server/database/connection.ts` - Database connection and query functions
-- `server/database/migrations/` - Database migration files
-
-**Implementation steps:**
 ```bash
-# 1. Install SQLite dependencies
-npm install sqlite3 @types/sqlite3
+# Step 1: Accept PR
+git checkout main
+git pull origin main  # Get latest changes
+git merge feature/game_manager
 
-# 2. Create database directory structure
-mkdir -p server/database/migrations
+# Step 2: Install dependencies
+npm install
+cd server && npm install && cd ..
 
-# 3. Create initial database file
-touch server/database/game.db
+# Step 3: Test Sam's implementation
+npm run dev  # Start frontend
+cd server && npm run dev  # Start backend
+
+# Step 4: Verify functionality
+# Visit http://localhost:3000?test=true
+# Click "Test Game API" button
+# Verify database creation and round generation
+# Test replay system with URL parameters
 ```
 
-**Schema implementation:**
+**Success Criteria:**
+- [ ] PR merges without conflicts
+- [ ] Both frontend and backend start successfully
+- [ ] GameManagerTest interface loads and functions
+- [ ] Database tables are created automatically
+- [ ] Mock Aptos service generates seeds
+- [ ] Replay system works with URL parameters
+
+**Risk Mitigation:**
+- Keep original system accessible via default route
+- Document any merge conflicts and resolution steps
+- Create backup branch before merge
+
+#### Day 2-3: Database Schema Enhancement
+**Objective**: Extend Sam's schema for production authentication and financial tracking
+
+**Current Sam's Schema:**
 ```sql
--- server/database/schema.sql
-CREATE TABLE IF NOT EXISTS users (
+-- Sam's Users table (basic)
+CREATE TABLE users (
     id TEXT PRIMARY KEY DEFAULT (hex(randomblob(16))),
     wallet_address TEXT UNIQUE NOT NULL,
     username TEXT,
-    balance REAL DEFAULT 1000.0,
+    balance REAL DEFAULT 1000.0,  -- Hardcoded starting balance
     locked_balance REAL DEFAULT 0.0,
     total_pnl REAL DEFAULT 0.0,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     last_login DATETIME
 );
+```
 
-CREATE TABLE IF NOT EXISTS rounds (
+**Enhanced Production Schema:**
+```sql
+-- Enhanced Users table with authentication
+CREATE TABLE users (
     id TEXT PRIMARY KEY DEFAULT (hex(randomblob(16))),
-    user_id TEXT NOT NULL,
-    seed TEXT NOT NULL,
-    block_height INTEGER,
-    aptos_transaction_hash TEXT,
-    started_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    ended_at DATETIME,
-    status TEXT DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'COMPLETED', 'DISPUTED')),
-    final_price REAL,
-    config TEXT, -- JSON string
-    FOREIGN KEY (user_id) REFERENCES users (id),
-    UNIQUE(user_id, seed)
+    aptos_address TEXT UNIQUE NOT NULL,
+    public_key TEXT NOT NULL,  -- For signature verification
+    
+    -- Auto-generated username from address
+    username TEXT GENERATED ALWAYS AS (
+        'Player_' || substr(aptos_address, 3, 6)
+    ) STORED,
+    display_name TEXT,  -- User can customize this
+    
+    -- Financial Balances
+    game_balance REAL DEFAULT 0.0,  -- In-game balance (not hardcoded)
+    locked_balance REAL DEFAULT 0.0,  -- Funds locked in active trades
+    lifetime_deposited REAL DEFAULT 0.0,  -- Total APT deposited
+    lifetime_withdrawn REAL DEFAULT 0.0,  -- Total APT withdrawn
+    lifetime_pnl REAL DEFAULT 0.0,  -- Lifetime profit/loss
+    
+    -- Authentication & Session Management
+    last_challenge TEXT,  -- Last auth challenge sent
+    challenge_expires_at DATETIME,  -- Challenge expiration
+    session_token TEXT,  -- Current JWT token hash
+    session_expires_at DATETIME,  -- Session expiration
+    last_wallet_signature TEXT,  -- Last verified signature
+    
+    -- Game Statistics
+    total_rounds_played INTEGER DEFAULT 0,
+    total_trades INTEGER DEFAULT 0,
+    best_round_pnl REAL DEFAULT 0.0,
+    worst_round_pnl REAL DEFAULT 0.0,
+    average_round_duration INTEGER DEFAULT 0,  -- in seconds
+    
+    -- Metadata
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    last_login DATETIME,
+    last_active DATETIME,
+    
+    -- Constraints
+    CHECK (game_balance >= 0),
+    CHECK (locked_balance >= 0),
+    CHECK (lifetime_deposited >= 0),
+    CHECK (lifetime_withdrawn >= 0)
 );
 
-CREATE TABLE IF NOT EXISTS trades (
+-- Enhanced Rounds table with Aptos integration
+CREATE TABLE rounds (
+    id TEXT PRIMARY KEY DEFAULT (hex(randomblob(16))),
+    user_id TEXT NOT NULL,
+    
+    -- Aptos Blockchain Integration
+    aptos_seed TEXT NOT NULL,  -- 256-bit hex seed from Aptos randomness
+    aptos_block_height INTEGER,  -- Block where seed was generated
+    aptos_transaction_hash TEXT,  -- Transaction that generated seed
+    seed_verification_hash TEXT,  -- SHA256(seed) for quick verification
+    
+    -- Round Configuration
+    round_type TEXT DEFAULT 'INDIVIDUAL' CHECK (round_type IN ('INDIVIDUAL', 'MULTIPLAYER')),
+    duration_ms INTEGER DEFAULT 30000,  -- 30 second rounds
+    candle_interval_ms INTEGER DEFAULT 65,  -- 65ms per candle
+    total_candles INTEGER DEFAULT 460,  -- ~30 seconds worth
+    initial_price REAL DEFAULT 100.0,
+    
+    -- Game Parameters (JSON configuration)
+    config TEXT,  -- Volatility, house edge, liquidation params
+    
+    -- Round State
+    status TEXT DEFAULT 'ACTIVE' CHECK (status IN ('PENDING', 'ACTIVE', 'COMPLETED', 'DISPUTED', 'CANCELLED')),
+    started_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    ended_at DATETIME,
+    final_price REAL,
+    
+    -- Round Results
+    total_trades INTEGER DEFAULT 0,
+    total_volume REAL DEFAULT 0.0,
+    house_edge_realized REAL DEFAULT 0.0,  -- Actual house profit
+    
+    -- Multiplayer Support (future)
+    max_participants INTEGER DEFAULT 1,
+    current_participants INTEGER DEFAULT 0,
+    
+    FOREIGN KEY (user_id) REFERENCES users (id),
+    UNIQUE(user_id, aptos_seed)  -- Prevent seed reuse per user
+);
+
+-- Enhanced Trades table with verification
+CREATE TABLE trades (
     id TEXT PRIMARY KEY DEFAULT (hex(randomblob(16))),
     round_id TEXT NOT NULL,
     user_id TEXT NOT NULL,
+    
+    -- Trade Execution Details
     direction TEXT NOT NULL CHECK (direction IN ('LONG', 'SHORT')),
-    size REAL NOT NULL,
+    size REAL NOT NULL,  -- Position size in game currency
+    leverage REAL DEFAULT 1.0,  -- Future: leverage support
+    
+    -- Entry Details
     entry_price REAL NOT NULL,
-    exit_price REAL,
     entry_candle_index INTEGER NOT NULL,
+    entry_timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+    entry_server_time INTEGER NOT NULL,  -- Server milliseconds for verification
+    
+    -- Exit Details
+    exit_price REAL,
     exit_candle_index INTEGER,
-    pnl REAL DEFAULT 0.0,
-    status TEXT DEFAULT 'OPEN' CHECK (status IN ('OPEN', 'CLOSED')),
-    opened_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    closed_at DATETIME,
+    exit_timestamp DATETIME,
+    exit_server_time INTEGER,
+    
+    -- Financial Results
+    gross_pnl REAL DEFAULT 0.0,  -- Before fees
+    trading_fees REAL DEFAULT 0.0,  -- 0.2% of position size
+    net_pnl REAL DEFAULT 0.0,  -- After fees
+    
+    -- Trade Status & Verification
+    status TEXT DEFAULT 'OPEN' CHECK (status IN ('OPEN', 'CLOSED', 'LIQUIDATED')),
+    entry_price_verified BOOLEAN DEFAULT FALSE,  -- Server verified entry price
+    exit_price_verified BOOLEAN DEFAULT FALSE,   -- Server verified exit price
+    settlement_status TEXT DEFAULT 'PENDING' CHECK (settlement_status IN ('PENDING', 'SETTLED', 'DISPUTED')),
+    
+    -- Risk Management
+    max_drawdown REAL DEFAULT 0.0,  -- Worst PnL during trade
+    time_in_trade INTEGER DEFAULT 0,  -- Milliseconds held
+    
     FOREIGN KEY (round_id) REFERENCES rounds (id),
-    FOREIGN KEY (user_id) REFERENCES users (id)
+    FOREIGN KEY (user_id) REFERENCES users (id),
+    
+    -- Constraints
+    CHECK (size > 0),
+    CHECK (entry_price > 0),
+    CHECK (leverage > 0)
 );
 
--- Indexes for performance
-CREATE INDEX idx_users_wallet ON users(wallet_address);
-CREATE INDEX idx_rounds_user_started ON rounds(user_id, started_at);
-CREATE INDEX idx_rounds_status ON rounds(status);
-CREATE INDEX idx_trades_round ON trades(round_id);
-CREATE INDEX idx_trades_user ON trades(user_id);
+-- Financial Transactions (Deposits/Withdrawals)
+CREATE TABLE financial_transactions (
+    id TEXT PRIMARY KEY DEFAULT (hex(randomblob(16))),
+    user_id TEXT NOT NULL,
+    
+    -- Transaction Details
+    type TEXT NOT NULL CHECK (type IN ('DEPOSIT', 'WITHDRAWAL')),
+    amount REAL NOT NULL,  -- Amount in APT
+    
+    -- Aptos Blockchain Integration
+    aptos_transaction_hash TEXT UNIQUE,  -- On-chain transaction
+    aptos_block_height INTEGER,
+    gas_used INTEGER,
+    gas_price INTEGER,
+    
+    -- Status Tracking
+    status TEXT DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'PROCESSING', 'COMPLETED', 'FAILED', 'CANCELLED')),
+    requested_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    processed_at DATETIME,
+    confirmed_at DATETIME,  -- Blockchain confirmation
+    
+    -- Metadata
+    request_ip TEXT,  -- For fraud detection
+    user_agent TEXT,
+    notes TEXT,
+    
+    FOREIGN KEY (user_id) REFERENCES users (id),
+    CHECK (amount > 0)
+);
+
+-- Settlement Records (End-of-round blockchain settlements)
+CREATE TABLE settlements (
+    id TEXT PRIMARY KEY DEFAULT (hex(randomblob(16))),
+    round_id TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    
+    -- Settlement Details
+    gross_pnl REAL NOT NULL,  -- Total PnL before fees
+    house_fees REAL NOT NULL,  -- House edge taken
+    net_pnl REAL NOT NULL,  -- Final amount to settle
+    
+    -- Blockchain Integration
+    aptos_settlement_hash TEXT,  -- Settlement transaction
+    aptos_block_height INTEGER,
+    
+    -- Status
+    status TEXT DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'SUBMITTED', 'CONFIRMED', 'FAILED')),
+    calculated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    submitted_at DATETIME,
+    confirmed_at DATETIME,
+    
+    FOREIGN KEY (round_id) REFERENCES rounds (id),
+    FOREIGN KEY (user_id) REFERENCES users (id),
+    UNIQUE(round_id, user_id)  -- One settlement per user per round
+);
+
+-- Performance Indexes
+CREATE INDEX idx_users_address ON users(aptos_address);
+CREATE INDEX idx_users_session ON users(session_token) WHERE session_token IS NOT NULL;
+CREATE INDEX idx_rounds_status_user ON rounds(status, user_id);
+CREATE INDEX idx_rounds_aptos ON rounds(aptos_transaction_hash);
+CREATE INDEX idx_trades_round_user ON trades(round_id, user_id);
+CREATE INDEX idx_trades_status ON trades(status);
+CREATE INDEX idx_trades_settlement ON trades(settlement_status);
+CREATE INDEX idx_financial_user_status ON financial_transactions(user_id, status);
+CREATE INDEX idx_settlements_round ON settlements(round_id);
 ```
 
-### 2. Database Connection Layer
+**Implementation Steps:**
+1. Create migration script to enhance Sam's existing schema
+2. Add database connection methods for new tables
+3. Update TypeScript interfaces to match new schema
+4. Test schema with sample data
 
-**File: `server/database/connection.ts`**
+#### Day 4-5: Authentication System Implementation
+**Objective**: Replace mock authentication with real Aptos wallet integration
+
+**Technical Considerations:**
+
+**1. Wallet Integration Challenges:**
+- **Multiple Wallet Support**: Petra, Martian, Pontem wallets have different APIs
+- **Mobile Compatibility**: Wallet apps vs browser extensions
+- **Connection Persistence**: Handle wallet disconnections gracefully
+- **Network Switching**: Testnet vs mainnet wallet configurations
+
+**2. Security Considerations:**
+- **Challenge-Response**: Prevent replay attacks with time-limited challenges
+- **Session Management**: Short-lived JWTs (15 minutes) with refresh tokens
+- **Rate Limiting**: Prevent brute force attacks on auth endpoints
+- **IP Tracking**: Log authentication attempts for fraud detection
+
+**Frontend Wallet Service Implementation:**
 ```typescript
-import sqlite3 from 'sqlite3';
-import { promisify } from 'util';
-import path from 'path';
-
-class DatabaseConnection {
-  private db: sqlite3.Database;
-  
-  constructor() {
-    const dbPath = path.join(__dirname, 'game.db');
-    this.db = new sqlite3.Database(dbPath);
-    this.db.run = promisify(this.db.run.bind(this.db));
-    this.db.get = promisify(this.db.get.bind(this.db));
-    this.db.all = promisify(this.db.all.bind(this.db));
-  }
-  
-  async initialize() {
-    const schema = await fs.readFile(path.join(__dirname, 'schema.sql'), 'utf8');
-    await this.db.exec(schema);
-  }
-  
-  // User operations
-  async createUser(walletAddress: string, username?: string): Promise<User> {
-    const result = await this.db.run(
-      `INSERT INTO users (wallet_address, username) VALUES (?, ?)`,
-      [walletAddress, username]
-    );
-    
-    return await this.db.get(
-      `SELECT * FROM users WHERE id = ?`,
-      [result.lastID]
-    );
-  }
-  
-  async getUserByWallet(walletAddress: string): Promise<User | null> {
-    return await this.db.get(
-      `SELECT * FROM users WHERE wallet_address = ?`,
-      [walletAddress]
-    );
-  }
-  
-  // Round operations
-  async createRound(userId: string, seed: string, config: GameConfig, blockHeight?: number, txHash?: string): Promise<Round> {
-    const result = await this.db.run(
-      `INSERT INTO rounds (user_id, seed, block_height, aptos_transaction_hash, config) 
-       VALUES (?, ?, ?, ?, ?)`,
-      [userId, seed, blockHeight, txHash, JSON.stringify(config)]
-    );
-    
-    return await this.db.get(
-      `SELECT * FROM rounds WHERE id = ?`,
-      [result.lastID]
-    );
-  }
-  
-  // Trade operations
-  async createTrade(roundId: string, userId: string, direction: string, size: number, entryPrice: number, entryCandleIndex: number): Promise<Trade> {
-    const result = await this.db.run(
-      `INSERT INTO trades (round_id, user_id, direction, size, entry_price, entry_candle_index) 
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [roundId, userId, direction, size, entryPrice, entryCandleIndex]
-    );
-    
-    return await this.db.get(
-      `SELECT * FROM trades WHERE id = ?`,
-      [result.lastID]
-    );
-  }
+// src/services/WalletService.ts
+interface WalletProvider {
+  name: string;
+  connect(): Promise<{address: string, publicKey: string}>;
+  signMessage(message: string): Promise<string>;
+  isInstalled(): boolean;
 }
 
-export const db = new DatabaseConnection();
-```
-
-### 3. Aptos Service Implementation
-
-**File: `server/services/AptosService.ts`**
-```typescript
-import { AptosClient, AptosAccount, HexString } from 'aptos';
-
-interface SeedData {
-  seed: string;
-  blockHeight: number;
-  transactionHash: string;
-}
-
-export class AptosService {
-  private client: AptosClient;
-  private account: AptosAccount;
+class PetraWalletProvider implements WalletProvider {
+  name = 'Petra';
   
-  constructor() {
-    // Initialize Aptos client (testnet)
-    this.client = new AptosClient('https://fullnode.testnet.aptoslabs.com/v1');
-    
-    // Load server account from environment
-    const privateKeyHex = process.env.APTOS_PRIVATE_KEY;
-    if (!privateKeyHex) {
-      throw new Error('APTOS_PRIVATE_KEY environment variable required');
+  isInstalled(): boolean {
+    return typeof window !== 'undefined' && !!window.aptos;
+  }
+  
+  async connect(): Promise<{address: string, publicKey: string}> {
+    if (!this.isInstalled()) {
+      throw new Error('Petra Wallet not installed');
     }
     
-    this.account = new AptosAccount(HexString.ensure(privateKeyHex).toUint8Array());
+    try {
+      const response = await window.aptos.connect();
+      return {
+        address: response.address,
+        publicKey: response.publicKey
+      };
+    } catch (error) {
+      if (error.code === 4001) {
+        throw new Error('User rejected wallet connection');
+      }
+      throw new Error('Failed to connect to Petra Wallet');
+    }
+  }
+  
+  async signMessage(message: string): Promise<string> {
+    try {
+      const result = await window.aptos.signMessage({
+        message,
+        nonce: Date.now().toString()
+      });
+      return result.signature;
+    } catch (error) {
+      if (error.code === 4001) {
+        throw new Error('User rejected message signing');
+      }
+      throw new Error('Failed to sign message');
+    }
+  }
+}
+
+class MartianWalletProvider implements WalletProvider {
+  name = 'Martian';
+  
+  isInstalled(): boolean {
+    return typeof window !== 'undefined' && !!window.martian;
+  }
+  
+  async connect(): Promise<{address: string, publicKey: string}> {
+    if (!this.isInstalled()) {
+      throw new Error('Martian Wallet not installed');
+    }
+    
+    const response = await window.martian.connect();
+    return {
+      address: response.address,
+      publicKey: response.publicKey
+    };
+  }
+  
+  async signMessage(message: string): Promise<string> {
+    const result = await window.martian.signMessage({
+      message,
+      nonce: Date.now().toString()
+    });
+    return result.signature;
+  }
+}
+
+export class WalletService {
+  private providers: WalletProvider[] = [
+    new PetraWalletProvider(),
+    new MartianWalletProvider()
+  ];
+  private currentProvider: WalletProvider | null = null;
+  private currentWallet: {address: string, publicKey: string} | null = null;
+  
+  getAvailableWallets(): WalletProvider[] {
+    return this.providers.filter(p => p.isInstalled());
+  }
+  
+  async connectWallet(providerName?: string): Promise<{address: string, publicKey: string}> {
+    const availableWallets = this.getAvailableWallets();
+    
+    if (availableWallets.length === 0) {
+      throw new Error('No Aptos wallets found. Please install Petra or Martian Wallet.');
+    }
+    
+    // Use specified provider or first available
+    const provider = providerName 
+      ? availableWallets.find(p => p.name === providerName)
+      : availableWallets[0];
+    
+    if (!provider) {
+      throw new Error(`Wallet ${providerName} not found or not installed`);
+    }
+    
+    try {
+      this.currentWallet = await provider.connect();
+      this.currentProvider = provider;
+      
+      // Store in localStorage for persistence
+      localStorage.setItem('connected_wallet', JSON.stringify({
+        provider: provider.name,
+        address: this.currentWallet.address
+      }));
+      
+      return this.currentWallet;
+    } catch (error) {
+      console.error(`Failed to connect ${provider.name}:`, error);
+      throw error;
+    }
+  }
+  
+  async authenticateUser(): Promise<{token: string, userId: string, user: any}> {
+    if (!this.currentWallet || !this.currentProvider) {
+      throw new Error('Wallet not connected');
+    }
+    
+    try {
+      // Step 1: Request challenge from backend
+      const challengeResponse = await fetch('/api/auth/challenge', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          address: this.currentWallet.address,
+          publicKey: this.currentWallet.publicKey
+        })
+      });
+      
+      if (!challengeResponse.ok) {
+        throw new Error('Failed to get authentication challenge');
+      }
+      
+      const { challenge, expires } = await challengeResponse.json();
+      
+      // Step 2: Sign challenge with wallet
+      const signature = await this.currentProvider.signMessage(challenge);
+      
+      // Step 3: Verify signature with backend
+      const authResponse = await fetch('/api/auth/verify', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          address: this.currentWallet.address,
+          publicKey: this.currentWallet.publicKey,
+          challenge,
+          signature
+        })
+      });
+      
+      if (!authResponse.ok) {
+        const error = await authResponse.json();
+        throw new Error(error.message || 'Authentication failed');
+      }
+      
+      const authData = await authResponse.json();
+      
+      // Store authentication data
+      localStorage.setItem('auth_token', authData.token);
+      localStorage.setItem('user_id', authData.userId);
+      localStorage.setItem('token_expires', authData.expiresAt);
+      
+      return authData;
+      
+    } catch (error) {
+      console.error('Authentication failed:', error);
+      throw error;
+    }
+  }
+  
+  // Session management
+  getStoredAuth(): {token: string, userId: string} | null {
+    const token = localStorage.getItem('auth_token');
+    const userId = localStorage.getItem('user_id');
+    const expires = localStorage.getItem('token_expires');
+    
+    if (token && userId && expires) {
+      // Check if token is expired
+      if (new Date(expires) > new Date()) {
+        return { token, userId };
+      } else {
+        this.logout(); // Clear expired session
+      }
+    }
+    
+    return null;
+  }
+  
+  async refreshSession(): Promise<{token: string, expiresAt: string}> {
+    const currentAuth = this.getStoredAuth();
+    if (!currentAuth) {
+      throw new Error('No active session to refresh');
+    }
+    
+    const response = await fetch('/api/auth/refresh', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${currentAuth.token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    if (!response.ok) {
+      this.logout();
+      throw new Error('Session refresh failed');
+    }
+    
+    const { token, expiresAt } = await response.json();
+    
+    localStorage.setItem('auth_token', token);
+    localStorage.setItem('token_expires', expiresAt);
+    
+    return { token, expiresAt };
+  }
+  
+  logout(): void {
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('user_id');
+    localStorage.removeItem('token_expires');
+    localStorage.removeItem('connected_wallet');
+    this.currentWallet = null;
+    this.currentProvider = null;
+  }
+  
+  isAuthenticated(): boolean {
+    return this.getStoredAuth() !== null;
+  }
+  
+  getCurrentWallet(): {address: string, publicKey: string} | null {
+    return this.currentWallet;
+  }
+}
+```
+
+**Backend Authentication Implementation:**
+```typescript
+// server/routes/auth.ts
+import express from 'express';
+import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
+import { db } from '../database/connection';
+import { AptosClient, HexString } from 'aptos';
+
+const router = express.Router();
+const aptosClient = new AptosClient(process.env.APTOS_NODE_URL!);
+
+// POST /api/auth/challenge - Generate authentication challenge
+router.post('/challenge', async (req, res) => {
+  try {
+    const { address, publicKey } = req.body;
+    
+    // Validate address format
+    if (!address || !address.match(/^0x[a-fA-F0-9]{64}$/)) {
+      return res.status(400).json({ error: 'Invalid Aptos address format' });
+    }
+    
+    // Generate cryptographically secure challenge
+    const challenge = `Sign this message to authenticate with Cash Trading Game.\n\nAddress: ${address}\nTimestamp: ${Date.now()}\nNonce: ${crypto.randomBytes(16).toString('hex')}`;
+    
+    const expires = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
+    
+    // Store challenge in database (or Redis for production)
+    await db.updateUserChallenge(address, challenge, expires);
+    
+    res.json({
+      challenge,
+      expires: expires.toISOString()
+    });
+    
+  } catch (error) {
+    console.error('Challenge generation failed:', error);
+    res.status(500).json({ error: 'Failed to generate challenge' });
+  }
+});
+
+// POST /api/auth/verify - Verify signature and create session
+router.post('/verify', async (req, res) => {
+  try {
+    const { address, publicKey, challenge, signature } = req.body;
+    
+    // Validate inputs
+    if (!address || !publicKey || !challenge || !signature) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+    
+    // Get stored challenge
+    const user = await db.getUserByAddress(address);
+    if (!user || user.last_challenge !== challenge) {
+      return res.status(401).json({ error: 'Invalid or expired challenge' });
+    }
+    
+    // Check challenge expiration
+    if (!user.challenge_expires_at || new Date(user.challenge_expires_at) < new Date()) {
+      return res.status(401).json({ error: 'Challenge expired' });
+    }
+    
+    // Verify signature
+    const isValidSignature = await verifyAptosSignature(
+      challenge,
+      signature,
+      publicKey,
+      address
+    );
+    
+    if (!isValidSignature) {
+      return res.status(401).json({ error: 'Invalid signature' });
+    }
+    
+    // Create or update user
+    let finalUser;
+    if (!user.id) {
+      // New user
+      finalUser = await db.createUser({
+        aptosAddress: address,
+        publicKey,
+        lastWalletSignature: signature
+      });
+    } else {
+      // Existing user - update login info
+      await db.updateUserLogin(user.id, signature);
+      finalUser = await db.getUserById(user.id);
+    }
+    
+    // Generate session token
+    const sessionPayload = {
+      userId: finalUser.id,
+      address: finalUser.aptos_address,
+      iat: Math.floor(Date.now() / 1000),
+      exp: Math.floor(Date.now() / 1000) + (15 * 60) // 15 minutes
+    };
+    
+    const token = jwt.sign(sessionPayload, process.env.JWT_SECRET!);
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+    
+    // Store session in database
+    await db.updateUserSession(finalUser.id, token, expiresAt);
+    
+    res.json({
+      userId: finalUser.id,
+      token,
+      expiresAt: expiresAt.toISOString(),
+      user: {
+        id: finalUser.id,
+        address: finalUser.aptos_address,
+        username: finalUser.username,
+        displayName: finalUser.display_name,
+        gameBalance: finalUser.game_balance,
+        lockedBalance: finalUser.locked_balance,
+        lifetimePnl: finalUser.lifetime_pnl
+      }
+    });
+    
+  } catch (error) {
+    console.error('Authentication verification failed:', error);
+    res.status(500).json({ error: 'Authentication failed' });
+  }
+});
+
+// Signature verification function
+async function verifyAptosSignature(
+  message: string,
+  signature: string,
+  publicKey: string,
+  expectedAddress: string
+): Promise<boolean> {
+  try {
+    // Create message bytes
+    const messageBytes = new TextEncoder().encode(message);
+    
+    // Verify signature using Aptos SDK
+    const pubKey = new HexString(publicKey);
+    const sig = new HexString(signature);
+    
+    // Verify the signature matches the public key
+    const isValidSig = await aptosClient.verifySignature({
+      message: messageBytes,
+      signature: sig.toUint8Array(),
+      publicKey: pubKey.toUint8Array()
+    });
+    
+    if (!isValidSig) return false;
+    
+    // Verify the public key corresponds to the expected address
+    const derivedAddress = await aptosClient.getAddressFromPublicKey(pubKey);
+    return derivedAddress.toString() === expectedAddress;
+    
+  } catch (error) {
+    console.error('Signature verification error:', error);
+    return false;
+  }
+}
+
+export default router;
+```
+
+**Authentication Middleware:**
+```typescript
+// server/middleware/auth.ts
+import jwt from 'jsonwebtoken';
+import { Request, Response, NextFunction } from 'express';
+import { db } from '../database/connection';
+
+interface AuthRequest extends Request {
+  user?: {
+    id: string;
+    address: string;
+    gameBalance: number;
+    lockedBalance: number;
+  };
+}
+
+export const authenticateUser = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const authHeader = req.headers.authorization;
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Authorization header required' });
+    }
+    
+    const token = authHeader.split(' ')[1];
+    
+    // Verify JWT
+    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as any;
+    
+    // Check if session is still valid in database
+    const user = await db.getUserById(decoded.userId);
+    if (!user) {
+      return res.status(401).json({ error: 'User not found' });
+    }
+    
+    if (!user.session_token || user.session_token !== token) {
+      return res.status(401).json({ error: 'Session invalid' });
+    }
+    
+    if (!user.session_expires_at || new Date(user.session_expires_at) < new Date()) {
+      return res.status(401).json({ error: 'Session expired' });
+    }
+    
+    // Add user to request
+    req.user = {
+      id: user.id,
+      address: user.aptos_address,
+      gameBalance: user.game_balance,
+      lockedBalance: user.locked_balance
+    };
+    
+    next();
+    
+  } catch (error) {
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({ error: 'Invalid token' });
+    }
+    if (error.name === 'TokenExpiredError') {
+      return res.status(401).json({ error: 'Token expired' });
+    }
+    
+    console.error('Authentication error:', error);
+    res.status(500).json({ error: 'Authentication failed' });
+  }
+};
+
+// Rate limiting for authentication endpoints
+import rateLimit from 'express-rate-limit';
+
+export const authRateLimit = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10, // 10 auth attempts per IP per 15 minutes
+  message: 'Too many authentication attempts, please try again later',
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+export const challengeRateLimit = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: 5, // 5 challenges per IP per minute
+  message: 'Too many challenge requests, please slow down',
+});
+```
+
+#### Day 6-7: Real Aptos Integration
+**Objective**: Replace Sam's mock AptosService with real blockchain integration
+
+**Technical Considerations:**
+
+**1. Aptos Randomness API Integration:**
+- **Gas Costs**: Each randomness call costs ~2000 gas units (~$0.0002)
+- **Latency**: Blockchain calls take 600-1000ms for finality
+- **Rate Limits**: Aptos nodes have request rate limits
+- **Error Handling**: Network failures, insufficient gas, node downtime
+
+**2. Seed Generation Strategy:**
+- **Pre-generation**: Generate seed before round starts (not during)
+- **Verification**: Store seed hash for later verification
+- **Fallback**: Have backup seed generation if Aptos fails
+
+**Production Aptos Service:**
+```typescript
+// server/services/ProductionAptosService.ts
+import { AptosClient, AptosAccount, HexString, BCS } from 'aptos';
+import crypto from 'crypto';
+
+export interface SeedData {
+  seed: string;          // 256-bit hex seed
+  blockHeight: number;   // Block where seed was generated
+  transactionHash: string; // Transaction hash
+  timestamp: number;     // Generation timestamp
+  gasUsed: number;       // Gas consumed
+  verificationHash: string; // SHA256(seed) for quick verification
+}
+
+export class ProductionAptosService {
+  private client: AptosClient;
+  private gameAccount: AptosAccount;
+  private isInitialized: boolean = false;
+  
+  constructor() {
+    const nodeUrl = process.env.APTOS_NODE_URL || 'https://fullnode.mainnet.aptoslabs.com/v1';
+    this.client = new AptosClient(nodeUrl);
+    
+    // Load game account from environment
+    const privateKeyHex = process.env.APTOS_GAME_PRIVATE_KEY;
+    if (!privateKeyHex) {
+      throw new Error('APTOS_GAME_PRIVATE_KEY environment variable required');
+    }
+    
+    try {
+      const privateKeyBytes = HexString.ensure(privateKeyHex).toUint8Array();
+      this.gameAccount = new AptosAccount(privateKeyBytes);
+      console.log('🔗 Aptos service initialized with account:', this.gameAccount.address().hex());
+    } catch (error) {
+      throw new Error(`Invalid APTOS_GAME_PRIVATE_KEY: ${error.message}`);
+    }
+  }
+  
+  async initialize(): Promise<void> {
+    if (this.isInitialized) return;
+    
+    try {
+      // Verify account exists and has balance
+      const accountData = await this.client.getAccount(this.gameAccount.address());
+      console.log('✅ Game account verified:', accountData.address);
+      
+      // Check APT balance
+      const balance = await this.getAccountBalance(this.gameAccount.address().hex());
+      console.log(`💰 Game account balance: ${balance} APT`);
+      
+      if (balance < 1) {
+        console.warn('⚠️ Low game account balance - may not be able to generate seeds');
+      }
+      
+      this.isInitialized = true;
+    } catch (error) {
+      console.error('❌ Failed to initialize Aptos service:', error);
+      throw error;
+    }
   }
   
   async generateRandomSeed(): Promise<SeedData> {
+    if (!this.isInitialized) {
+      await this.initialize();
+    }
+    
     try {
-      // Use Aptos native randomness module
+      console.log('🎲 Generating random seed from Aptos...');
+      
+      // Create transaction payload for randomness
       const payload = {
         function: "0x1::randomness::u256_integer",
         type_arguments: [],
         arguments: []
       };
       
-      // Generate transaction
+      // Build transaction
       const txn = await this.client.generateTransaction(
-        this.account.address(),
+        this.gameAccount.address(),
         payload,
         {
-          gas_unit_price: "100",
-          max_gas_amount: "2000"
+          gas_unit_price: "100",  // 100 octas per gas unit
+          max_gas_amount: "5000"  // Max 5000 gas units
         }
       );
       
       // Sign and submit
-      const signedTxn = await this.client.signTransaction(this.account, txn);
-      const result = await this.client.submitTransaction(signedTxn);
+      const signedTxn = await this.client.signTransaction(this.gameAccount, txn);
+      const pendingTxn = await this.client.submitTransaction(signedTxn);
       
-      // Wait for confirmation
-      await this.client.waitForTransaction(result.hash);
+      console.log('📝 Submitted randomness transaction:', pendingTxn.hash);
       
-      // Get transaction details
-      const txDetails = await this.client.getTransactionByHash(result.hash);
+      // Wait for confirmation with timeout
+      const confirmedTxn = await Promise.race([
+        this.client.waitForTransaction(pendingTxn.hash),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Transaction timeout')), 10000)
+        )
+      ]);
       
-      // Extract seed from events or return value
-      let seed: string;
+      // Get full transaction details
+      const txDetails = await this.client.getTransactionByHash(pendingTxn.hash);
       
-      if (txDetails.events && txDetails.events.length > 0) {
-        // Look for randomness event
-        const randomEvent = txDetails.events.find(
-          e => e.type.includes('randomness') || e.type.includes('Random')
-        );
-        
-        if (randomEvent && randomEvent.data.value) {
-          seed = randomEvent.data.value;
-        } else {
-          // Fallback: use transaction hash as seed source
-          seed = result.hash;
-        }
-      } else {
-        seed = result.hash;
-      }
+      // Extract seed from transaction
+      const seed = this.extractSeedFromTransaction(txDetails);
+      const verificationHash = crypto.createHash('sha256').update(seed).digest('hex');
       
-      return {
+      const seedData: SeedData = {
         seed: seed.startsWith('0x') ? seed : `0x${seed}`,
         blockHeight: parseInt(txDetails.version),
-        transactionHash: result.hash
+        transactionHash: pendingTxn.hash,
+        timestamp: Date.now(),
+        gasUsed: parseInt(txDetails.gas_used),
+        verificationHash
       };
       
+      console.log('✅ Generated Aptos seed:', {
+        seed: seedData.seed.substring(0, 10) + '...',
+        blockHeight: seedData.blockHeight,
+        gasUsed: seedData.gasUsed
+      });
+      
+      return seedData;
+      
     } catch (error) {
-      console.error('Failed to generate Aptos seed:', error);
-      throw new Error('Aptos randomness generation failed');
+      console.error('❌ Aptos seed generation failed:', error);
+      
+      // Fallback: generate cryptographically secure seed locally
+      // This maintains game functionality if Aptos is down
+      const fallbackSeed = `0x${crypto.randomBytes(32).toString('hex')}`;
+      const verificationHash = crypto.createHash('sha256').update(fallbackSeed).digest('hex');
+      
+      console.warn('⚠️ Using fallback seed generation');
+      
+      return {
+        seed: fallbackSeed,
+        blockHeight: 0, // Indicates fallback
+        transactionHash: 'fallback',
+        timestamp: Date.now(),
+        gasUsed: 0,
+        verificationHash
+      };
+    }
+  }
+  
+  private extractSeedFromTransaction(txDetails: any): string {
+    // Method 1: Look for randomness events
+    if (txDetails.events && txDetails.events.length > 0) {
+      for (const event of txDetails.events) {
+        if (event.type.includes('randomness') || event.type.includes('Random')) {
+          if (event.data && event.data.value) {
+            return event.data.value;
+          }
+        }
+      }
+    }
+    
+    // Method 2: Look in transaction payload/return value
+    if (txDetails.payload && txDetails.payload.function === "0x1::randomness::u256_integer") {
+      // Check if there's a return value or output
+      if (txDetails.output && txDetails.output.length > 0) {
+        return txDetails.output[0];
+      }
+    }
+    
+    // Method 3: Fallback to transaction hash
+    console.warn('⚠️ Could not extract seed from randomness transaction, using tx hash');
+    return txDetails.hash;
+  }
+  
+  async getAccountBalance(address: string): Promise<number> {
+    try {
+      const resources = await this.client.getAccountResources({ accountAddress: address });
+      
+      const aptResource = resources.find(
+        (r) => r.type === "0x1::coin::CoinStore<0x1::aptos_coin::AptosCoin>"
+      );
+      
+      if (aptResource) {
+        const balance = (aptResource.data as { coin: { value: string } }).coin.value;
+        return parseInt(balance) / 100000000; // Convert octas to APT
+      }
+      
+      return 0;
+    } catch (error) {
+      console.error('Failed to get account balance:', error);
+      return 0;
     }
   }
   
@@ -338,1269 +1049,1241 @@ export class AptosService {
       return false;
     }
   }
+  
+  getNetworkInfo() {
+    return {
+      network: process.env.APTOS_NETWORK || 'mainnet',
+      nodeUrl: this.client.nodeUrl,
+      isTestnet: process.env.APTOS_NETWORK === 'testnet'
+    };
+  }
 }
+
+export const aptosService = new ProductionAptosService();
 ```
 
-### 4. REST API Structure
+---
 
-**File: `server/routes/game.ts`**
+### PHASE 2: Production Features (Week 2)
+
+#### Day 8-10: Frontend Integration
+**Objective**: Connect Sam's GameManager to the main application
+
+**Integration Challenges:**
+1. **State Management**: Current app uses local React state, GameManager uses class-based state
+2. **Chart Rendering**: Current app uses p5.js directly, need to bridge with GameManager
+3. **User Experience**: Maintain smooth UX while adding authentication
+4. **Backward Compatibility**: Keep original system working during transition
+
+**Implementation Strategy:**
 ```typescript
-import express from 'express';
-import { AptosService } from '../services/AptosService';
-import { db } from '../database/connection';
-import { authenticateJWT } from '../middleware/auth';
+// src/components/ProductionGameApp.tsx
+import React, { useState, useEffect, useRef } from 'react';
+import { ProductionGameManager } from '../managers/ProductionGameManager';
+import { WalletService } from '../services/WalletService';
+import { CandleData } from '../managers/GameManager';
 
-const router = express.Router();
-const aptosService = new AptosService();
+interface ProductionGameAppProps {
+  // Props for customization
+}
 
-// POST /api/game/start - Start new round
-router.post('/start', authenticateJWT, async (req, res) => {
-  try {
-    const { userId } = req.auth;
+const ProductionGameApp: React.FC<ProductionGameAppProps> = () => {
+  const gameManagerRef = useRef<ProductionGameManager | null>(null);
+  const walletServiceRef = useRef<WalletService | null>(null);
+  
+  // Authentication State
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [user, setUser] = useState<any>(null);
+  const [walletAddress, setWalletAddress] = useState<string | null>(null);
+  const [authLoading, setAuthLoading] = useState(false);
+  
+  // Game State
+  const [gameState, setGameState] = useState<any>(null);
+  const [currentCandle, setCurrentCandle] = useState<CandleData | null>(null);
+  const [position, setPosition] = useState<any>(null);
+  const [balance, setBalance] = useState(0);
+  const [pnl, setPnl] = useState(0);
+  
+  // UI State
+  const [showWalletModal, setShowWalletModal] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  
+  // Initialize services
+  useEffect(() => {
+    walletServiceRef.current = new WalletService();
     
-    // Step 1: Check user balance
-    const user = await db.getUserById(userId);
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
+    // Check for existing authentication
+    const storedAuth = walletServiceRef.current.getStoredAuth();
+    if (storedAuth) {
+      initializeAuthenticatedUser(storedAuth);
     }
-    
-    const MIN_BET = 10; // Minimum balance required
-    if (user.balance - user.locked_balance < MIN_BET) {
-      return res.status(400).json({ error: 'Insufficient balance' });
+  }, []);
+  
+  const initializeAuthenticatedUser = async (authData: {token: string, userId: string}) => {
+    try {
+      setAuthLoading(true);
+      
+      // Get user profile
+      const response = await fetch('/api/user/profile', {
+        headers: {
+          'Authorization': `Bearer ${authData.token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to get user profile');
+      }
+      
+      const userData = await response.json();
+      setUser(userData.user);
+      setWalletAddress(userData.user.address);
+      setBalance(userData.user.gameBalance);
+      setIsAuthenticated(true);
+      
+      // Initialize GameManager with authenticated user
+      gameManagerRef.current = new ProductionGameManager(authData.token);
+      setupGameManagerCallbacks();
+      
+    } catch (error) {
+      console.error('Failed to initialize authenticated user:', error);
+      walletServiceRef.current?.logout();
+      setError('Session expired. Please reconnect your wallet.');
+    } finally {
+      setAuthLoading(false);
     }
+  };
+  
+  const handleWalletConnect = async (providerName: string) => {
+    if (!walletServiceRef.current) return;
     
-    // Step 2: Generate seed from Aptos
-    const seedData = await aptosService.generateRandomSeed();
+    try {
+      setAuthLoading(true);
+      setError(null);
+      
+      // Connect wallet
+      const walletData = await walletServiceRef.current.connectWallet(providerName);
+      setWalletAddress(walletData.address);
+      
+      // Authenticate user
+      const authData = await walletServiceRef.current.authenticateUser();
+      setUser(authData.user);
+      setBalance(authData.user.gameBalance);
+      setIsAuthenticated(true);
+      setShowWalletModal(false);
+      
+      // Initialize GameManager
+      gameManagerRef.current = new ProductionGameManager(authData.token);
+      setupGameManagerCallbacks();
+      
+    } catch (error) {
+      console.error('Wallet connection failed:', error);
+      setError(error.message);
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+  
+  const setupGameManagerCallbacks = () => {
+    if (!gameManagerRef.current) return;
     
-    // Step 3: Create round record
-    const config = {
-      candleIntervalMs: 65,
-      totalCandles: 460,
-      initialPrice: 100.00,
-      roundDurationMs: 30000
+    gameManagerRef.current.onCandleGenerated = (candle: CandleData) => {
+      setCurrentCandle(candle);
     };
     
-    const round = await db.createRound(
-      userId,
-      seedData.seed,
-      config,
-      seedData.blockHeight,
-      seedData.transactionHash
-    );
+    gameManagerRef.current.onPositionUpdate = (updatedPosition: any) => {
+      setPosition(updatedPosition);
+      setPnl(updatedPosition.pnl);
+    };
     
-    // Step 4: Return to client
-    res.json({
-      roundId: round.id,
-      seed: seedData.seed,
-      config,
-      proof: {
-        blockHeight: seedData.blockHeight,
-        txHash: seedData.transactionHash
+    gameManagerRef.current.onRoundComplete = (summary: any) => {
+      setBalance(summary.newBalance);
+      setPosition(null);
+      setPnl(0);
+    };
+    
+    gameManagerRef.current.onError = (error: string) => {
+      setError(error);
+    };
+    
+    // Update game state periodically
+    const interval = setInterval(() => {
+      if (gameManagerRef.current) {
+        setGameState(gameManagerRef.current.getGameState());
       }
+    }, 100);
+    
+    return () => clearInterval(interval);
+  };
+  
+  const handleStartRound = async () => {
+    if (!gameManagerRef.current) return;
+    
+    try {
+      setError(null);
+      await gameManagerRef.current.startAuthenticatedRound();
+    } catch (error) {
+      setError(error.message);
+    }
+  };
+  
+  const handleOpenPosition = async (direction: 'LONG' | 'SHORT') => {
+    if (!gameManagerRef.current) return;
+    
+    try {
+      const positionSize = balance * 0.2; // 20% of balance
+      await gameManagerRef.current.openVerifiedPosition(direction, positionSize);
+    } catch (error) {
+      setError(error.message);
+    }
+  };
+  
+  const handleClosePosition = async () => {
+    if (!gameManagerRef.current) return;
+    
+    try {
+      await gameManagerRef.current.closePosition();
+    } catch (error) {
+      setError(error.message);
+    }
+  };
+  
+  // Render authentication UI if not authenticated
+  if (!isAuthenticated) {
+    return (
+      <AuthenticationScreen
+        onConnect={handleWalletConnect}
+        loading={authLoading}
+        error={error}
+        availableWallets={walletServiceRef.current?.getAvailableWallets() || []}
+      />
+    );
+  }
+  
+  // Render main game interface
+  return (
+    <GameInterface
+      user={user}
+      balance={balance}
+      pnl={pnl}
+      gameState={gameState}
+      currentCandle={currentCandle}
+      position={position}
+      onStartRound={handleStartRound}
+      onOpenLong={() => handleOpenPosition('LONG')}
+      onOpenShort={() => handleOpenPosition('SHORT')}
+      onClosePosition={handleClosePosition}
+      error={error}
+    />
+  );
+};
+
+export default ProductionGameApp;
+```
+
+#### Day 11-14: Financial Operations
+**Objective**: Implement real money deposits, withdrawals, and balance management
+
+**Technical Considerations:**
+
+**1. Deposit Flow:**
+- User initiates deposit through wallet
+- Backend monitors blockchain for confirmation
+- Update user balance after confirmation
+- Handle failed/cancelled deposits
+
+**2. Withdrawal Flow:**
+- User requests withdrawal (must have sufficient balance)
+- Backend queues withdrawal for processing
+- Batch process withdrawals for gas efficiency
+- Handle withdrawal failures and refunds
+
+**3. Balance Management:**
+- Separate game balance from wallet balance
+- Lock funds during active trades
+- Atomic balance updates (prevent race conditions)
+- Audit trail for all balance changes
+
+**Financial Endpoints Implementation:**
+```typescript
+// server/routes/financial.ts
+import express from 'express';
+import { authenticateUser } from '../middleware/auth';
+import { db } from '../database/connection';
+import { aptosService } from '../services/ProductionAptosService';
+
+const router = express.Router();
+
+// POST /api/financial/deposit - Initiate APT deposit
+router.post('/deposit', authenticateUser, async (req, res) => {
+  try {
+    const { amount } = req.body;
+    const user = req.user!;
+    
+    // Validate amount
+    if (!amount || amount <= 0 || amount > 10000) {
+      return res.status(400).json({ error: 'Invalid deposit amount (0.01 - 10000 APT)' });
+    }
+    
+    // Check daily deposit limit
+    const todayDeposits = await db.getUserDailyDeposits(user.id);
+    if (todayDeposits + amount > 1000) {
+      return res.status(400).json({ error: 'Daily deposit limit exceeded (1000 APT)' });
+    }
+    
+    // Create pending deposit record
+    const deposit = await db.createFinancialTransaction({
+      userId: user.id,
+      type: 'DEPOSIT',
+      amount,
+      status: 'PENDING'
+    });
+    
+    // Return deposit instructions
+    res.json({
+      depositId: deposit.id,
+      instructions: {
+        recipient: process.env.GAME_WALLET_ADDRESS,
+        amount,
+        memo: `DEPOSIT:${deposit.id}`,
+        network: aptosService.getNetworkInfo().network
+      },
+      status: 'PENDING',
+      message: 'Send APT to the provided address with the exact memo to complete deposit'
     });
     
   } catch (error) {
-    console.error('Failed to start game:', error);
-    res.status(500).json({ error: 'Failed to start game' });
+    console.error('Deposit initiation failed:', error);
+    res.status(500).json({ error: 'Failed to initiate deposit' });
   }
 });
 
-// POST /api/game/complete - Complete round
-router.post('/complete', authenticateJWT, async (req, res) => {
+// POST /api/financial/deposit/confirm - Confirm deposit with transaction hash
+router.post('/deposit/confirm', authenticateUser, async (req, res) => {
   try {
-    const { roundId, finalPrice, completedAt } = req.body;
-    const { userId } = req.auth;
+    const { depositId, transactionHash } = req.body;
+    const user = req.user!;
     
-    // Verify round ownership
-    const round = await db.getRoundById(roundId);
-    if (!round || round.userId !== userId || round.status !== 'ACTIVE') {
-      return res.status(400).json({ error: 'Invalid round' });
+    // Get deposit record
+    const deposit = await db.getFinancialTransaction(depositId);
+    if (!deposit || deposit.user_id !== user.id || deposit.type !== 'DEPOSIT') {
+      return res.status(404).json({ error: 'Deposit not found' });
     }
     
-    // Verify final price by regenerating candles
-    const generator = new CandleGenerator(round.seed, JSON.parse(round.config));
-    let expectedFinalPrice;
-    
-    for (let i = 0; i < JSON.parse(round.config).totalCandles; i++) {
-      const candle = generator.generateCandle(i);
-      expectedFinalPrice = candle.close;
+    if (deposit.status !== 'PENDING') {
+      return res.status(400).json({ error: 'Deposit already processed' });
     }
     
-    if (Math.abs(expectedFinalPrice - finalPrice) > 0.001) {
-      await db.updateRoundStatus(roundId, 'DISPUTED');
-      return res.status(400).json({ error: 'Price verification failed' });
+    // Verify transaction on Aptos
+    const isValid = await aptosService.verifyTransaction(transactionHash);
+    if (!isValid) {
+      return res.status(400).json({ error: 'Invalid or failed transaction' });
     }
     
-    // Complete round and settle trades
-    await db.completeRound(roundId, finalPrice, new Date(completedAt));
-    const totalPnl = await db.settleTrades(roundId, finalPrice);
-    await db.updateUserBalance(userId, totalPnl);
+    // Get transaction details
+    const txDetails = await aptosService.getTransactionDetails(transactionHash);
+    
+    // Verify amount and recipient
+    if (!this.verifyDepositTransaction(txDetails, deposit.amount, process.env.GAME_WALLET_ADDRESS)) {
+      return res.status(400).json({ error: 'Transaction verification failed' });
+    }
+    
+    // Update deposit record
+    await db.updateFinancialTransaction(depositId, {
+      aptosTransactionHash: transactionHash,
+      aptosBlockHeight: parseInt(txDetails.version),
+      status: 'COMPLETED',
+      processedAt: new Date()
+    });
+    
+    // Update user balance
+    await db.updateUserBalance(user.id, user.gameBalance + deposit.amount);
+    await db.updateUserLifetimeDeposited(user.id, deposit.amount);
+    
+    // Get updated user data
+    const updatedUser = await db.getUserById(user.id);
     
     res.json({
-      roundComplete: true,
-      totalPnl,
-      newBalance: (await db.getUserById(userId)).balance
+      success: true,
+      deposit: {
+        id: deposit.id,
+        amount: deposit.amount,
+        transactionHash,
+        status: 'COMPLETED'
+      },
+      newBalance: updatedUser.game_balance
     });
     
   } catch (error) {
-    console.error('Failed to complete round:', error);
-    res.status(500).json({ error: 'Failed to complete round' });
+    console.error('Deposit confirmation failed:', error);
+    res.status(500).json({ error: 'Failed to confirm deposit' });
+  }
+});
+
+// POST /api/financial/withdraw - Request withdrawal
+router.post('/withdraw', authenticateUser, async (req, res) => {
+  try {
+    const { amount } = req.body;
+    const user = req.user!;
+    
+    // Validate amount
+    if (!amount || amount <= 0) {
+      return res.status(400).json({ error: 'Invalid withdrawal amount' });
+    }
+    
+    // Check available balance
+    const availableBalance = user.gameBalance - user.lockedBalance;
+    if (amount > availableBalance) {
+      return res.status(400).json({ error: 'Insufficient available balance' });
+    }
+    
+    // Check daily withdrawal limit
+    const todayWithdrawals = await db.getUserDailyWithdrawals(user.id);
+    if (todayWithdrawals + amount > 500) {
+      return res.status(400).json({ error: 'Daily withdrawal limit exceeded (500 APT)' });
+    }
+    
+    // Check minimum withdrawal
+    if (amount < 0.1) {
+      return res.status(400).json({ error: 'Minimum withdrawal is 0.1 APT' });
+    }
+    
+    // Create withdrawal request
+    const withdrawal = await db.createFinancialTransaction({
+      userId: user.id,
+      type: 'WITHDRAWAL',
+      amount,
+      status: 'PENDING'
+    });
+    
+    // Lock the funds immediately
+    await db.updateUserLockedBalance(user.id, user.lockedBalance + amount);
+    
+    res.json({
+      withdrawalId: withdrawal.id,
+      amount,
+      status: 'PENDING',
+      estimatedProcessingTime: '1-24 hours',
+      message: 'Withdrawal request submitted. Funds will be sent to your connected wallet address.'
+    });
+    
+    // Queue for batch processing
+    await queueWithdrawalForProcessing(withdrawal.id);
+    
+  } catch (error) {
+    console.error('Withdrawal request failed:', error);
+    res.status(500).json({ error: 'Failed to request withdrawal' });
   }
 });
 
 export default router;
 ```
 
-### 5. Authentication Middleware
+#### Day 15-17: Trade Verification & Settlement
+**Objective**: Implement server-side trade verification and settlement system
 
-**File: `server/middleware/auth.ts`**
+**Technical Considerations:**
+
+**1. Trade Verification Challenges:**
+- **Timing Attacks**: Clients might try to submit trades with favorable timing
+- **Price Manipulation**: Clients might claim different prices than actual
+- **Race Conditions**: Multiple trades at same candle index
+- **Network Latency**: Client-server time synchronization
+
+**2. Settlement Considerations:**
+- **Atomic Operations**: All settlements must succeed or fail together
+- **Gas Optimization**: Batch multiple user settlements in single transaction
+- **Failure Recovery**: Handle failed settlements gracefully
+- **Audit Trail**: Complete record of all settlement attempts
+
+**Enhanced Trade Verification:**
 ```typescript
-import jwt from 'jsonwebtoken';
-import { Request, Response, NextFunction } from 'express';
-
-interface AuthRequest extends Request {
-  auth?: {
-    userId: string;
-    walletAddress: string;
-  };
-}
-
-export const authenticateJWT = (req: AuthRequest, res: Response, next: NextFunction) => {
-  const authHeader = req.headers.authorization;
-  
-  if (!authHeader) {
-    return res.status(401).json({ error: 'Authorization header required' });
-  }
-  
-  const token = authHeader.split(' ')[1]; // Bearer TOKEN
-  
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as any;
-    req.auth = {
-      userId: decoded.userId,
-      walletAddress: decoded.walletAddress
-    };
-    next();
-  } catch (error) {
-    return res.status(403).json({ error: 'Invalid token' });
-  }
-};
-```
-
-## Database Schema Design
-
-### Users Table
-```sql
-CREATE TABLE users (
-    id TEXT PRIMARY KEY,
-    wallet_address TEXT UNIQUE NOT NULL,
-    username TEXT,
-    balance REAL DEFAULT 1000.0,
-    locked_balance REAL DEFAULT 0.0,
-    total_pnl REAL DEFAULT 0.0,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    last_login DATETIME
-);
-```
-
-### Rounds Table  
-```sql
-CREATE TABLE rounds (
-    id TEXT PRIMARY KEY,
-    user_id TEXT NOT NULL,
-    seed TEXT NOT NULL,
-    block_height INTEGER,
-    aptos_transaction_hash TEXT,
-    started_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    ended_at DATETIME,
-    status TEXT DEFAULT 'ACTIVE',
-    final_price REAL,
-    config TEXT, -- JSON string with game configuration
-    FOREIGN KEY (user_id) REFERENCES users (id),
-    UNIQUE(user_id, seed) -- Prevent seed reuse
-);
-```
-
-### Trades Table
-```sql
-CREATE TABLE trades (
-    id TEXT PRIMARY KEY,
-    round_id TEXT NOT NULL,
-    user_id TEXT NOT NULL,
-    direction TEXT NOT NULL, -- 'LONG' or 'SHORT'
-    size REAL NOT NULL,
-    entry_price REAL NOT NULL,
-    exit_price REAL,
-    entry_candle_index INTEGER NOT NULL,
-    exit_candle_index INTEGER,
-    pnl REAL DEFAULT 0.0,
-    status TEXT DEFAULT 'OPEN',
-    opened_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    closed_at DATETIME,
-    FOREIGN KEY (round_id) REFERENCES rounds (id),
-    FOREIGN KEY (user_id) REFERENCES users (id)
-);
-```
-
-### Week 2: Core Engine
-
-| Task | Component | Critical | Status | Notes |
-|------|-----------|----------|--------|-------|
-| Implement CandleGenerator class | Frontend | YES | [ ] | SHA256-based deterministic generation |
-| Create GameManager class | Frontend | YES | [ ] | Round lifecycle and candle timing |
-| Build trade verification system | Backend | YES | [ ] | Server-side candle regeneration |
-| Implement wallet authentication | Backend | YES | [ ] | Signature verification and JWT tokens |
-| Create account management | Backend | YES | [ ] | Balance operations and fund locking |
-| Add security validations | Backend | YES | [ ] | Input sanitization and rate limiting |
-
-### 6. Client-Side Candle Generator
-
-**File: `src/utils/CandleGenerator.ts`**
-```typescript
-import { createHash } from 'crypto';
-
-interface Candle {
-  index: number;
-  open: number;
-  high: number;
-  low: number;
-  close: number;
-  timestamp: number;
-  isLiquidation: boolean;
-}
-
-interface GameConfig {
-  candleIntervalMs: number;
-  totalCandles: number;
-  initialPrice: number;
-  roundDurationMs: number;
-}
-
-export class CandleGenerator {
-  private seed: Buffer;
-  private lastClose: number;
-  private config: GameConfig;
-  
-  constructor(seedHex: string, config: GameConfig) {
-    this.seed = Buffer.from(seedHex.replace('0x', ''), 'hex');
-    this.lastClose = config.initialPrice;
-    this.config = config;
-  }
-  
-  generateCandle(index: number): Candle {
-    // Create deterministic random from seed + index
-    const hash = createHash('sha256')
-      .update(this.seed)
-      .update(Buffer.from(index.toString()))
-      .digest();
-    
-    // Use hash bytes as random source (4 bytes each = 32-bit values)
-    const random1 = hash.readUInt32BE(0) / 0xFFFFFFFF;  // Price movement
-    const random2 = hash.readUInt32BE(4) / 0xFFFFFFFF;  // Jump probability
-    const random3 = hash.readUInt32BE(8) / 0xFFFFFFFF;  // Jump size
-    const random4 = hash.readUInt32BE(12) / 0xFFFFFFFF; // Liquidation probability
-    
-    // Generate price movement with house edge
-    const volatility = 0.02; // 2% per candle max movement
-    const drift = -0.0001; // Slight downward bias for house edge (-11.6% expected)
-    
-    // Calculate base returns
-    const returns = drift + volatility * (random1 - 0.5) * 2;
-    
-    // Check for special events
-    const isJump = random2 < 0.02; // 2% chance of price jump
-    const jumpSize = isJump ? (random3 - 0.5) * 0.1 : 0; // ±5% jumps
-    
-    const isLiquidation = random4 < 0.0015 && index > 100; // 0.15% chance after candle 100
-    
-    // Calculate OHLC values
-    let close = this.lastClose * (1 + returns + jumpSize);
-    
-    if (isLiquidation) {
-      close = 0; // Liquidation event - price goes to zero
-    }
-    
-    // Ensure close price is positive (except liquidation)
-    close = Math.max(close, 0.01);
-    
-    // Calculate high and low with some intra-candle movement
-    const high = Math.max(this.lastClose, close) * (1 + Math.abs(random1) * 0.001);
-    const low = Math.min(this.lastClose, close) * (1 - Math.abs(random2) * 0.001);
-    const open = this.lastClose;
-    
-    // Update last close for next candle
-    this.lastClose = isLiquidation ? 0.01 : close; // Reset to small value after liquidation
-    
-    return {
-      index,
-      open,
-      high,
-      low,
-      close,
-      timestamp: Date.now(),
-      isLiquidation
-    };
-  }
-  
-  // Generate multiple candles at once (for verification)
-  generateCandles(count: number): Candle[] {
-    const candles: Candle[] = [];
-    for (let i = 0; i < count; i++) {
-      candles.push(this.generateCandle(i));
-    }
-    return candles;
-  }
-}
-```
-
-### 7. Game Manager Class
-
-**File: `src/managers/GameManager.ts`**
-```typescript
-import { CandleGenerator } from '../utils/CandleGenerator';
-import { api } from '../services/api';
-
-interface Trade {
-  id: string;
-  direction: 'LONG' | 'SHORT';
-  size: number;
-  entryPrice: number;
-  entryCandleIndex: number;
-  pnl: number;
-}
-
-export class GameManager {
-  private seed: string = '';
-  private config: GameConfig | null = null;
-  private candleGenerator: CandleGenerator | null = null;
-  private candles: Candle[] = [];
-  private currentIndex: number = 0;
-  private roundId: string = '';
-  private isActive: boolean = false;
-  private activePosition: Trade | null = null;
-  private roundStartTime: number = 0;
-  
-  // Event callbacks
-  public onCandleGenerated: (candle: Candle) => void = () => {};
-  public onRoundComplete: (summary: any) => void = () => {};
-  public onError: (error: string) => void = () => {};
-  
-  async startNewRound(): Promise<void> {
-    try {
-      // Call backend to get seed and start round
-      const response = await api.post('/api/game/start');
-      
-      this.roundId = response.data.roundId;
-      this.seed = response.data.seed;
-      this.config = response.data.config;
-      
-      // Initialize deterministic generator
-      this.candleGenerator = new CandleGenerator(this.seed, this.config);
-      
-      // Reset state
-      this.candles = [];
-      this.currentIndex = 0;
-      this.isActive = true;
-      this.activePosition = null;
-      this.roundStartTime = Date.now();
-      
-      // Start generating candles
-      this.startCandleGeneration();
-      
-    } catch (error) {
-      this.onError(`Failed to start round: ${error.message}`);
-    }
-  }
-  
-  private startCandleGeneration(): void {
-    if (!this.config || !this.candleGenerator) return;
-    
-    const generateNext = () => {
-      if (!this.isActive || this.currentIndex >= this.config!.totalCandles) {
-        this.endRound();
-        return;
-      }
-      
-      // Generate next candle deterministically
-      const candle = this.candleGenerator!.generateCandle(this.currentIndex);
-      this.candles.push(candle);
-      
-      // Update active position P&L
-      if (this.activePosition) {
-        this.updatePositionPnL(candle);
-      }
-      
-      // Emit to chart
-      this.onCandleGenerated(candle);
-      
-      this.currentIndex++;
-      
-      // Schedule next candle with precise timing
-      const nextTime = this.roundStartTime + (this.currentIndex * this.config!.candleIntervalMs);
-      const delay = Math.max(0, nextTime - Date.now());
-      
-      setTimeout(generateNext, delay);
-    };
-    
-    generateNext();
-  }
-  
-  async openPosition(direction: 'LONG' | 'SHORT', size: number): Promise<void> {
-    if (!this.isActive || this.activePosition || this.candles.length === 0) {
-      throw new Error('Cannot open position');
-    }
-    
-    const currentCandle = this.candles[this.candles.length - 1];
-    
-    try {
-      // Send to backend for verification and recording
-      const response = await api.post('/api/trade/open', {
-        roundId: this.roundId,
-        direction,
-        size,
-        candleIndex: currentCandle.index,
-        claimedPrice: currentCandle.close
-      });
-      
-      this.activePosition = {
-        id: response.data.trade.id,
-        direction,
-        size,
-        entryPrice: currentCandle.close,
-        entryCandleIndex: currentCandle.index,
-        pnl: 0
-      };
-      
-    } catch (error) {
-      throw new Error(`Failed to open position: ${error.message}`);
-    }
-  }
-  
-  async closePosition(): Promise<void> {
-    if (!this.activePosition || this.candles.length === 0) {
-      throw new Error('No position to close');
-    }
-    
-    const currentCandle = this.candles[this.candles.length - 1];
-    
-    try {
-      await api.post('/api/trade/close', {
-        tradeId: this.activePosition.id,
-        candleIndex: currentCandle.index,
-        claimedPrice: currentCandle.close
-      });
-      
-      this.activePosition = null;
-      
-    } catch (error) {
-      throw new Error(`Failed to close position: ${error.message}`);
-    }
-  }
-  
-  private updatePositionPnL(candle: Candle): void {
-    if (!this.activePosition) return;
-    
-    const priceDiff = candle.close - this.activePosition.entryPrice;
-    const multiplier = this.activePosition.direction === 'LONG' ? 1 : -1;
-    
-    this.activePosition.pnl = (priceDiff * multiplier * this.activePosition.size);
-  }
-  
-  private async endRound(): Promise<void> {
-    this.isActive = false;
-    
-    // Close any open positions
-    if (this.activePosition) {
-      await this.closePosition();
-    }
-    
-    // Send round completion to backend
-    const finalCandle = this.candles[this.candles.length - 1];
-    const summary = {
-      roundId: this.roundId,
-      totalCandles: this.candles.length,
-      finalPrice: finalCandle.close,
-      completedAt: Date.now()
-    };
-    
-    try {
-      const response = await api.post('/api/game/complete', summary);
-      this.onRoundComplete(response.data);
-    } catch (error) {
-      this.onError(`Failed to complete round: ${error.message}`);
-    }
-  }
-  
-  // Getters
-  getCurrentCandle(): Candle | null {
-    return this.candles.length > 0 ? this.candles[this.candles.length - 1] : null;
-  }
-  
-  getActivePosition(): Trade | null {
-    return this.activePosition;
-  }
-  
-  getRoundProgress(): number {
-    if (!this.config) return 0;
-    return this.currentIndex / this.config.totalCandles;
-  }
-  
-  getTimeRemaining(): number {
-    if (!this.config) return 0;
-    const elapsed = Date.now() - this.roundStartTime;
-    return Math.max(0, this.config.roundDurationMs - elapsed);
-  }
-}
-```
-
-### 8. Trade Verification System
-
-**File: `server/routes/trade.ts`**
-```typescript
+// server/routes/trade.ts
 import express from 'express';
+import { authenticateUser } from '../middleware/auth';
 import { db } from '../database/connection';
-import { authenticateJWT } from '../middleware/auth';
 import { CandleGenerator } from '../utils/CandleGenerator';
 
 const router = express.Router();
 
-// POST /api/trade/open - Open new position
-router.post('/open', authenticateJWT, async (req, res) => {
+// POST /api/trade/open - Open trading position with verification
+router.post('/open', authenticateUser, async (req, res) => {
   try {
-    const { roundId, direction, size, candleIndex, claimedPrice } = req.body;
-    const { userId } = req.auth;
+    const { roundId, direction, size, candleIndex, claimedPrice, clientTimestamp } = req.body;
+    const user = req.user!;
+    const serverTimestamp = Date.now();
     
-    // Validate inputs
+    // Input validation
     if (!['LONG', 'SHORT'].includes(direction)) {
       return res.status(400).json({ error: 'Invalid direction' });
     }
     
-    if (size <= 0 || size > 1000) {
+    if (!size || size <= 0 || size > user.gameBalance) {
       return res.status(400).json({ error: 'Invalid position size' });
     }
     
     // Get round and verify ownership
     const round = await db.getRoundById(roundId);
-    if (!round || round.userId !== userId || round.status !== 'ACTIVE') {
-      return res.status(400).json({ error: 'Invalid round' });
+    if (!round) {
+      return res.status(404).json({ error: 'Round not found' });
     }
     
-    // Verify the claimed price by regenerating the candle
-    const generator = new CandleGenerator(round.seed, JSON.parse(round.config));
+    if (round.user_id !== user.id) {
+      return res.status(403).json({ error: 'Not your round' });
+    }
+    
+    if (round.status !== 'ACTIVE') {
+      return res.status(400).json({ error: 'Round not active' });
+    }
+    
+    // Check if user already has open position in this round
+    const existingTrade = await db.getOpenTradeByRoundAndUser(roundId, user.id);
+    if (existingTrade) {
+      return res.status(400).json({ error: 'Position already open in this round' });
+    }
+    
+    // Verify claimed price by regenerating candle
+    const config = JSON.parse(round.config);
+    const generator = new CandleGenerator(round.aptos_seed, config);
     const expectedCandle = generator.generateCandle(candleIndex);
     
-    if (Math.abs(expectedCandle.close - claimedPrice) > 0.001) {
-      return res.status(400).json({ error: 'Price verification failed' });
+    // Price verification with tolerance for floating point precision
+    const priceTolerance = 0.001;
+    if (Math.abs(expectedCandle.close - claimedPrice) > priceTolerance) {
+      return res.status(400).json({ 
+        error: 'Price verification failed',
+        expected: expectedCandle.close,
+        claimed: claimedPrice,
+        difference: Math.abs(expectedCandle.close - claimedPrice)
+      });
     }
     
-    // Check user has sufficient balance
-    const user = await db.getUserById(userId);
-    const requiredMargin = size * 0.1; // 10% margin requirement
+    // Timing verification - prevent trades too far in the future
+    const roundStartTime = new Date(round.started_at).getTime();
+    const expectedCandleTime = roundStartTime + (candleIndex * config.candle_interval_ms);
+    const timeDifference = Math.abs(serverTimestamp - expectedCandleTime);
     
-    if (user.balance - user.lockedBalance < requiredMargin) {
-      return res.status(400).json({ error: 'Insufficient balance' });
+    if (timeDifference > 5000) { // 5 second tolerance
+      return res.status(400).json({ error: 'Trade timing verification failed' });
     }
     
-    // Lock funds
-    await db.updateUserLockedBalance(userId, user.lockedBalance + requiredMargin);
+    // Calculate required margin (10% of position size)
+    const requiredMargin = size * 0.1;
+    const availableBalance = user.gameBalance - user.lockedBalance;
+    
+    if (requiredMargin > availableBalance) {
+      return res.status(400).json({ error: 'Insufficient balance for margin requirement' });
+    }
+    
+    // Lock funds for margin
+    await db.updateUserLockedBalance(user.id, user.lockedBalance + requiredMargin);
     
     // Create trade record
-    const trade = await db.createTrade(
+    const trade = await db.createTrade({
       roundId,
-      userId,
+      userId: user.id,
       direction,
       size,
-      expectedCandle.close, // Use server-verified price
-      candleIndex
-    );
+      entryPrice: expectedCandle.close, // Use server-verified price
+      entryCandleIndex: candleIndex,
+      entryServerTime: serverTimestamp,
+      entryPriceVerified: true,
+      tradingFees: size * 0.002 // 0.2% trading fee
+    });
     
-    res.json({ trade });
+    // Log trade for monitoring
+    console.log(`📈 Trade opened: ${user.id} ${direction} ${size} @ ${expectedCandle.close}`);
+    
+    res.json({
+      trade: {
+        id: trade.id,
+        direction,
+        size,
+        entryPrice: expectedCandle.close,
+        entryCandleIndex: candleIndex,
+        status: 'OPEN',
+        marginLocked: requiredMargin
+      },
+      newLockedBalance: user.lockedBalance + requiredMargin
+    });
     
   } catch (error) {
-    console.error('Failed to open trade:', error);
+    console.error('Trade opening failed:', error);
     res.status(500).json({ error: 'Failed to open trade' });
   }
 });
 
-// POST /api/trade/close - Close position
-router.post('/close', authenticateJWT, async (req, res) => {
+// POST /api/trade/close - Close trading position with verification
+router.post('/close', authenticateUser, async (req, res) => {
   try {
-    const { tradeId, candleIndex, claimedPrice } = req.body;
-    const { userId } = req.auth;
+    const { tradeId, candleIndex, claimedPrice, clientTimestamp } = req.body;
+    const user = req.user!;
+    const serverTimestamp = Date.now();
     
     // Get trade and verify ownership
     const trade = await db.getTradeById(tradeId);
-    if (!trade || trade.userId !== userId || trade.status !== 'OPEN') {
+    if (!trade || trade.user_id !== user.id || trade.status !== 'OPEN') {
       return res.status(400).json({ error: 'Invalid trade' });
     }
     
     // Get round for verification
-    const round = await db.getRoundById(trade.roundId);
-    if (!round) {
-      return res.status(400).json({ error: 'Round not found' });
+    const round = await db.getRoundById(trade.round_id);
+    if (!round || round.status !== 'ACTIVE') {
+      return res.status(400).json({ error: 'Round not active' });
     }
     
     // Verify exit price
-    const generator = new CandleGenerator(round.seed, JSON.parse(round.config));
+    const config = JSON.parse(round.config);
+    const generator = new CandleGenerator(round.aptos_seed, config);
     const expectedCandle = generator.generateCandle(candleIndex);
     
-    if (Math.abs(expectedCandle.close - claimedPrice) > 0.001) {
-      return res.status(400).json({ error: 'Exit price verification failed' });
+    const priceTolerance = 0.001;
+    if (Math.abs(expectedCandle.close - claimedPrice) > priceTolerance) {
+      return res.status(400).json({ 
+        error: 'Exit price verification failed',
+        expected: expectedCandle.close,
+        claimed: claimedPrice
+      });
     }
     
     // Calculate P&L
-    const priceDiff = expectedCandle.close - trade.entryPrice;
+    const priceDifference = expectedCandle.close - trade.entry_price;
     const multiplier = trade.direction === 'LONG' ? 1 : -1;
-    const pnl = priceDiff * multiplier * trade.size;
+    const grossPnl = priceDifference * multiplier * trade.size;
+    const tradingFees = trade.size * 0.002; // 0.2% fee
+    const netPnl = grossPnl - tradingFees;
     
-    // Update trade
-    await db.closeTrade(tradeId, expectedCandle.close, candleIndex, pnl);
+    // Update trade record
+    await db.closeTrade(tradeId, {
+      exitPrice: expectedCandle.close,
+      exitCandleIndex: candleIndex,
+      exitServerTime: serverTimestamp,
+      grossPnl,
+      tradingFees,
+      netPnl,
+      exitPriceVerified: true,
+      timeInTrade: serverTimestamp - trade.entry_server_time
+    });
     
-    // Update user balance and unlock funds
-    const user = await db.getUserById(userId);
-    const margin = trade.size * 0.1;
+    // Calculate margin to unlock
+    const marginLocked = trade.size * 0.1;
     
-    await db.updateUserBalance(userId, user.balance + pnl);
-    await db.updateUserLockedBalance(userId, user.lockedBalance - margin);
+    // Update user balances atomically
+    await db.transaction(async (trx) => {
+      // Unlock margin
+      await trx.updateUserLockedBalance(user.id, user.lockedBalance - marginLocked);
+      
+      // Apply P&L to balance
+      await trx.updateUserBalance(user.id, user.gameBalance + netPnl);
+      
+      // Update lifetime stats
+      await trx.updateUserLifetimePnl(user.id, user.lifetimePnl + netPnl);
+      await trx.incrementUserTradeCount(user.id);
+    });
+    
+    // Get updated user data
+    const updatedUser = await db.getUserById(user.id);
+    
+    // Log trade closure
+    console.log(`📊 Trade closed: ${user.id} ${direction} PnL: ${netPnl.toFixed(2)}`);
     
     res.json({
       trade: {
-        ...trade,
+        id: trade.id,
+        direction: trade.direction,
+        size: trade.size,
+        entryPrice: trade.entry_price,
         exitPrice: expectedCandle.close,
-        exitCandleIndex: candleIndex,
-        pnl,
+        grossPnl,
+        tradingFees,
+        netPnl,
+        timeInTrade: serverTimestamp - trade.entry_server_time,
         status: 'CLOSED'
-      }
+      },
+      newBalance: updatedUser.game_balance,
+      newLockedBalance: updatedUser.locked_balance
     });
     
   } catch (error) {
-    console.error('Failed to close trade:', error);
+    console.error('Trade closing failed:', error);
     res.status(500).json({ error: 'Failed to close trade' });
-  }
-});
-
- export default router;
- ```
-
-### 9. Wallet Authentication System
-
-**File: `server/routes/auth.ts`**
-```typescript
-import express from 'express';
-import jwt from 'jsonwebtoken';
-import { db } from '../database/connection';
-import { AptosClient, HexString } from 'aptos';
-
-const router = express.Router();
-const aptosClient = new AptosClient('https://fullnode.testnet.aptoslabs.com/v1');
-
-// POST /api/auth/connect - Connect wallet and authenticate
-router.post('/connect', async (req, res) => {
-  try {
-    const { walletAddress, signature, message, publicKey } = req.body;
-    
-    // Validate required fields
-    if (!walletAddress || !signature || !message || !publicKey) {
-      return res.status(400).json({ error: 'Missing required fields' });
-    }
-    
-    // Verify the signature
-    const isValidSignature = await verifySignature(
-      message,
-      signature,
-      publicKey,
-      walletAddress
-    );
-    
-    if (!isValidSignature) {
-      return res.status(401).json({ error: 'Invalid signature' });
-    }
-    
-    // Check if user exists, create if not
-    let user = await db.getUserByWallet(walletAddress);
-    
-    if (!user) {
-      user = await db.createUser(walletAddress);
-    } else {
-      // Update last login
-      await db.updateUserLastLogin(user.id);
-    }
-    
-    // Generate JWT token
-    const token = jwt.sign(
-      {
-        userId: user.id,
-        walletAddress: user.wallet_address
-      },
-      process.env.JWT_SECRET!,
-      { expiresIn: '24h' }
-    );
-    
-    res.json({
-      userId: user.id,
-      token,
-      account: {
-        balance: user.balance,
-        lockedBalance: user.locked_balance,
-        totalPnl: user.total_pnl
-      }
-    });
-    
-  } catch (error) {
-    console.error('Authentication failed:', error);
-    res.status(500).json({ error: 'Authentication failed' });
-  }
-});
-
-// Verify Aptos signature
-async function verifySignature(
-  message: string,
-  signature: string,
-  publicKey: string,
-  walletAddress: string
-): Promise<boolean> {
-  try {
-    // Create message bytes
-    const messageBytes = new TextEncoder().encode(message);
-    
-    // Verify signature using Aptos client
-    const pubKey = new HexString(publicKey);
-    const sig = new HexString(signature);
-    
-    // Note: This is a simplified verification
-    // In production, you'd want more robust signature verification
-    const isValid = await aptosClient.verifySignature(
-      walletAddress,
-      messageBytes,
-      sig.toUint8Array()
-    );
-    
-    return isValid;
-    
-  } catch (error) {
-    console.error('Signature verification failed:', error);
-    return false;
-  }
-}
-
-// GET /api/auth/profile - Get user profile
-router.get('/profile', authenticateJWT, async (req, res) => {
-  try {
-    const { userId } = req.auth;
-    
-    const user = await db.getUserById(userId);
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-    
-    // Get recent rounds
-    const recentRounds = await db.getUserRecentRounds(userId, 10);
-    
-    res.json({
-      user: {
-        id: user.id,
-        walletAddress: user.wallet_address,
-        username: user.username,
-        balance: user.balance,
-        lockedBalance: user.locked_balance,
-        totalPnl: user.total_pnl,
-        createdAt: user.created_at
-      },
-      recentRounds
-    });
-    
-  } catch (error) {
-    console.error('Failed to get profile:', error);
-    res.status(500).json({ error: 'Failed to get profile' });
   }
 });
 
 export default router;
 ```
 
-**File: `src/services/WalletService.ts`**
-```typescript
-import { AptosClient, AptosAccount, HexString } from 'aptos';
+---
 
-interface WalletConnection {
-  address: string;
-  publicKey: string;
-  signMessage: (message: string) => Promise<string>;
-}
+### PHASE 3: Production Readiness (Week 3-4)
 
-export class WalletService {
-  private wallet: WalletConnection | null = null;
-  private client: AptosClient;
-  
-  constructor() {
-    this.client = new AptosClient('https://fullnode.testnet.aptoslabs.com/v1');
-  }
-  
-  async connectWallet(): Promise<WalletConnection> {
-    try {
-      // Check if Aptos wallet is available
-      if (!window.aptos) {
-        throw new Error('Aptos wallet not found. Please install Petra or another Aptos wallet.');
-      }
-      
-      // Request connection
-      const response = await window.aptos.connect();
-      
-      if (!response.address || !response.publicKey) {
-        throw new Error('Failed to connect wallet');
-      }
-      
-      this.wallet = {
-        address: response.address,
-        publicKey: response.publicKey,
-        signMessage: async (message: string) => {
-          const result = await window.aptos.signMessage({
-            message,
-            nonce: Date.now().toString()
-          });
-          return result.signature;
+#### Smart Contract Integration
+**Objective**: Deploy Move contracts for on-chain settlements
+
+**Move Contract Design:**
+```rust
+// contracts/sources/CashTradingGame.move
+module cash_trading_game::game {
+    use std::signer;
+    use std::vector;
+    use aptos_framework::coin;
+    use aptos_framework::aptos_coin::AptosCoin;
+    use aptos_framework::timestamp;
+    use aptos_framework::event;
+    
+    /// User account for game balances
+    struct UserAccount has key {
+        balance: u64,  // In octas (1 APT = 100,000,000 octas)
+        locked_balance: u64,
+        total_deposited: u64,
+        total_withdrawn: u64,
+        lifetime_pnl: i64,
+    }
+    
+    /// Settlement batch for multiple users
+    struct SettlementBatch has drop, store {
+        round_id: vector<u8>,
+        settlements: vector<UserSettlement>,
+        total_house_edge: u64,
+        timestamp: u64,
+    }
+    
+    struct UserSettlement has drop, store {
+        user: address,
+        net_pnl: i64,  // Can be negative
+        new_balance: u64,
+    }
+    
+    /// Events
+    struct DepositEvent has drop, store {
+        user: address,
+        amount: u64,
+        new_balance: u64,
+        timestamp: u64,
+    }
+    
+    struct WithdrawalEvent has drop, store {
+        user: address,
+        amount: u64,
+        new_balance: u64,
+        timestamp: u64,
+    }
+    
+    struct SettlementEvent has drop, store {
+        round_id: vector<u8>,
+        user: address,
+        pnl: i64,
+        new_balance: u64,
+        timestamp: u64,
+    }
+    
+    /// Initialize user account
+    public entry fun initialize_account(user: &signer) {
+        let user_addr = signer::address_of(user);
+        
+        if (!exists<UserAccount>(user_addr)) {
+            move_to(user, UserAccount {
+                balance: 0,
+                locked_balance: 0,
+                total_deposited: 0,
+                total_withdrawn: 0,
+                lifetime_pnl: 0,
+            });
         }
-      };
-      
-      return this.wallet;
-      
-    } catch (error) {
-      console.error('Wallet connection failed:', error);
-      throw error;
-    }
-  }
-  
-  async authenticateUser(): Promise<{token: string, userId: string, account: any}> {
-    if (!this.wallet) {
-      throw new Error('Wallet not connected');
     }
     
-    // Create authentication message
-    const message = `Sign this message to authenticate with Cash Trading Game.\nTimestamp: ${Date.now()}`;
-    
-    try {
-      // Sign the message
-      const signature = await this.wallet.signMessage(message);
-      
-      // Send to backend for verification
-      const response = await fetch('/api/auth/connect', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          walletAddress: this.wallet.address,
-          signature,
-          message,
-          publicKey: this.wallet.publicKey
-        })
-      });
-      
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Authentication failed');
-      }
-      
-      const data = await response.json();
-      
-      // Store token in localStorage
-      localStorage.setItem('auth_token', data.token);
-      localStorage.setItem('user_id', data.userId);
-      
-      return data;
-      
-    } catch (error) {
-      console.error('Authentication failed:', error);
-      throw error;
-    }
-  }
-  
-  getStoredAuth(): {token: string, userId: string} | null {
-    const token = localStorage.getItem('auth_token');
-    const userId = localStorage.getItem('user_id');
-    
-    if (token && userId) {
-      return { token, userId };
+    /// Deposit APT into game account
+    public entry fun deposit(user: &signer, amount: u64) acquires UserAccount {
+        let user_addr = signer::address_of(user);
+        
+        // Ensure user account exists
+        if (!exists<UserAccount>(user_addr)) {
+            initialize_account(user);
+        }
+        
+        // Transfer APT from user to contract
+        let coins = coin::withdraw<AptosCoin>(user, amount);
+        coin::deposit(@cash_trading_game, coins);
+        
+        // Update user balance
+        let account = borrow_global_mut<UserAccount>(user_addr);
+        account.balance = account.balance + amount;
+        account.total_deposited = account.total_deposited + amount;
+        
+        // Emit event
+        event::emit(DepositEvent {
+            user: user_addr,
+            amount,
+            new_balance: account.balance,
+            timestamp: timestamp::now_microseconds(),
+        });
     }
     
-    return null;
-  }
-  
-  logout(): void {
-    localStorage.removeItem('auth_token');
-    localStorage.removeItem('user_id');
-    this.wallet = null;
-  }
-  
-  isConnected(): boolean {
-    return this.wallet !== null;
-  }
-  
-  getWalletAddress(): string | null {
-    return this.wallet?.address || null;
-  }
-}
-```
-
-### 10. Security Validations and Rate Limiting
-
-**File: `server/middleware/security.ts`**
-```typescript
-import rateLimit from 'express-rate-limit';
-import { body, validationResult } from 'express-validator';
-import { Request, Response, NextFunction } from 'express';
-
-// Rate limiting for API endpoints
-export const apiRateLimit = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
-  message: 'Too many requests from this IP, please try again later.',
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-
-// Stricter rate limiting for game actions
-export const gameRateLimit = rateLimit({
-  windowMs: 1 * 60 * 1000, // 1 minute
-  max: 10, // limit each IP to 10 game actions per minute
-  message: 'Too many game actions, please slow down.',
-});
-
-// Validation middleware
-export const validateRequest = (req: Request, res: Response, next: NextFunction) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({
-      error: 'Validation failed',
-      details: errors.array()
-    });
-  }
-  next();
-};
-
-// Input validation schemas
-export const validateGameStart = [
-  // No body parameters needed for game start
-  validateRequest
-];
-
-export const validateTradeOpen = [
-  body('roundId').isUUID().withMessage('Invalid round ID'),
-  body('direction').isIn(['LONG', 'SHORT']).withMessage('Invalid direction'),
-  body('size').isFloat({ min: 0.01, max: 1000 }).withMessage('Invalid position size'),
-  body('candleIndex').isInt({ min: 0 }).withMessage('Invalid candle index'),
-  body('claimedPrice').isFloat({ min: 0.01 }).withMessage('Invalid price'),
-  validateRequest
-];
-
-export const validateTradeClose = [
-  body('tradeId').isUUID().withMessage('Invalid trade ID'),
-  body('candleIndex').isInt({ min: 0 }).withMessage('Invalid candle index'),
-  body('claimedPrice').isFloat({ min: 0 }).withMessage('Invalid price'),
-  validateRequest
-];
-
-export const validateAuth = [
-  body('walletAddress').matches(/^0x[a-fA-F0-9]{64}$/).withMessage('Invalid wallet address'),
-  body('signature').isLength({ min: 1 }).withMessage('Signature required'),
-  body('message').isLength({ min: 1 }).withMessage('Message required'),
-  body('publicKey').matches(/^0x[a-fA-F0-9]{64}$/).withMessage('Invalid public key'),
-  validateRequest
-];
-
-// SQL injection prevention
-export const sanitizeInput = (input: string): string => {
-  return input.replace(/['"\\;]/g, '');
-};
-
-// XSS prevention
-export const sanitizeHtml = (input: string): string => {
-  return input
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#x27;')
-    .replace(/\//g, '&#x2F;');
-};
-```
-
-**Updated server main file: `server/src/index.ts`**
-```typescript
-import express from 'express';
-import cors from 'cors';
-import helmet from 'helmet';
-import { db } from './database/connection';
-import { apiRateLimit } from './middleware/security';
-import authRoutes from './routes/auth';
-import gameRoutes from './routes/game';
-import tradeRoutes from './routes/trade';
-
-const app = express();
-const PORT = process.env.PORT || 3001;
-
-// Security middleware
-app.use(helmet());
-app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
-  credentials: true
-}));
-
-// Rate limiting
-app.use('/api', apiRateLimit);
-
-// Body parsing
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true }));
-
-// Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/game', gameRoutes);
-app.use('/api/trade', tradeRoutes);
-
-// Health check
-app.get('/health', (req, res) => {
-  res.json({ status: 'OK', timestamp: new Date().toISOString() });
-});
-
-// Error handling
-app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
-  console.error('Server error:', err);
-  res.status(500).json({ error: 'Internal server error' });
-});
-
-// Initialize database and start server
-async function startServer() {
-  try {
-    await db.initialize();
-    console.log('Database initialized');
+    /// Process withdrawal
+    public entry fun withdraw(user: &signer, amount: u64) acquires UserAccount {
+        let user_addr = signer::address_of(user);
+        
+        // Check account exists and has sufficient balance
+        assert!(exists<UserAccount>(user_addr), 1);
+        let account = borrow_global_mut<UserAccount>(user_addr);
+        
+        let available_balance = account.balance - account.locked_balance;
+        assert!(amount <= available_balance, 2);
+        
+        // Update balance
+        account.balance = account.balance - amount;
+        account.total_withdrawn = account.total_withdrawn + amount;
+        
+        // Transfer APT to user
+        let coins = coin::withdraw<AptosCoin>(@cash_trading_game, amount);
+        coin::deposit(user_addr, coins);
+        
+        // Emit event
+        event::emit(WithdrawalEvent {
+            user: user_addr,
+            amount,
+            new_balance: account.balance,
+            timestamp: timestamp::now_microseconds(),
+        });
+    }
     
-    app.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
-    });
-  } catch (error) {
-    console.error('Failed to start server:', error);
-    process.exit(1);
-  }
-}
-
-startServer();
-```
- 
- ## TypeScript Interfaces
-
-### Database Models
-```typescript
-interface User {
-  id: string;
-  walletAddress: string;
-  username?: string;
-  balance: number;
-  lockedBalance: number;
-  totalPnl: number;
-  createdAt: Date;
-  lastLogin?: Date;
-}
-
-interface Round {
-  id: string;
-  userId: string;
-  seed: string;
-  blockHeight?: number;
-  aptosTransactionHash?: string;
-  startedAt: Date;
-  endedAt?: Date;
-  status: 'ACTIVE' | 'COMPLETED' | 'DISPUTED';
-  finalPrice?: number;
-  config: GameConfig;
-}
-
-interface Trade {
-  id: string;
-  roundId: string;
-  userId: string;
-  direction: 'LONG' | 'SHORT';
-  size: number;
-  entryPrice: number;
-  exitPrice?: number;
-  entryCandleIndex: number;
-  exitCandleIndex?: number;
-  pnl: number;
-  status: 'OPEN' | 'CLOSED';
-  openedAt: Date;
-  closedAt?: Date;
-}
-
-interface GameConfig {
-  candleIntervalMs: number;
-  totalCandles: number;
-  initialPrice: number;
-  roundDurationMs: number;
+    /// Batch settle round results
+    public entry fun settle_round(
+        admin: &signer,
+        round_id: vector<u8>,
+        settlements: vector<UserSettlement>
+    ) acquires UserAccount {
+        // Only game admin can settle rounds
+        assert!(signer::address_of(admin) == @cash_trading_game, 3);
+        
+        let total_house_edge = 0u64;
+        let i = 0;
+        
+        while (i < vector::length(&settlements)) {
+            let settlement = vector::borrow(&settlements, i);
+            
+            if (exists<UserAccount>(settlement.user)) {
+                let account = borrow_global_mut<UserAccount>(settlement.user);
+                
+                // Apply P&L (can be negative)
+                if (settlement.net_pnl >= 0) {
+                    account.balance = account.balance + (settlement.net_pnl as u64);
+                } else {
+                    let loss = (-settlement.net_pnl as u64);
+                    if (loss <= account.balance) {
+                        account.balance = account.balance - loss;
+                    } else {
+                        // User balance goes to zero if loss exceeds balance
+                        total_house_edge = total_house_edge + (loss - account.balance);
+                        account.balance = 0;
+                    }
+                }
+                
+                // Update lifetime P&L
+                account.lifetime_pnl = account.lifetime_pnl + settlement.net_pnl;
+                
+                // Emit settlement event
+                event::emit(SettlementEvent {
+                    round_id,
+                    user: settlement.user,
+                    pnl: settlement.net_pnl,
+                    new_balance: account.balance,
+                    timestamp: timestamp::now_microseconds(),
+                });
+            }
+            
+            i = i + 1;
+        }
+        
+        // Emit batch settlement event
+        event::emit(SettlementBatch {
+            round_id,
+            settlements,
+            total_house_edge,
+            timestamp: timestamp::now_microseconds(),
+        });
+    }
 }
 ```
-
-### Week 3: Game Logic
-
-| Task | Component | Critical | Status | Notes |
-|------|-----------|----------|--------|-------|
-| Wallet adapter setup | Frontend | YES | [ ] | Aptos wallet connection |
-| Round timer system | Backend | YES | [ ] | 30-second cycles |
-| Position tracking | Backend | YES | [ ] | Open/close trades |
-| P&L calculation | Backend | YES | [ ] | Real-time updates |
-| Liquidation detection | Backend | YES | [ ] | 0.15% base probability |
-
-### Week 4: Integration
-
-| Task | Component | Critical | Status | Notes |
-|------|-----------|----------|--------|-------|
-| Connect frontend to WS | Frontend | YES | [ ] | Real-time updates |
-| Replace static charts | Frontend | YES | [ ] | Live data stream |
-| Implement trade UI | Frontend | YES | [ ] | Buy/sell interface |
-| Test round flow | All | YES | [ ] | End-to-end testing |
-| Deploy to staging | All | YES | [ ] | Testnet deployment |
-
-### Week 5-6: Enhancement
-
-| Task | Component | Critical | Status | Notes |
-|------|-----------|----------|--------|-------|
-| Merkle proof system | Verification | NO | [ ] | Data integrity |
-| Trade broadcasting | Social | NO | [ ] | Multi-player features |
-| Leaderboard | Social | NO | [ ] | Competition element |
-| Session management | Auth | NO | [ ] | JWT implementation |
-| Error recovery | Reliability | NO | [ ] | Reconnection logic |
-
-### Week 7-8: Production
-
-| Task | Component | Critical | Status | Notes |
-|------|-----------|----------|--------|-------|
-| Load testing | Testing | NO | [ ] | 1,000 users target |
-| Performance tuning | Optimization | NO | [ ] | 65ms target |
-| Monitoring setup | DevOps | NO | [ ] | Metrics and alerts |
-| Documentation | Docs | NO | [ ] | API and user guides |
-| Security audit | Security | NO | [ ] | Contract review |
 
 ---
 
-## Resource Requirements
-
-### Infrastructure Needs
-
-| Resource | Specification | Purpose | Monthly Cost |
-|----------|--------------|---------|--------------|
-| Development Server | 2 vCPU, 4GB RAM | Backend services + SQLite | $20 |
-| SQLite Database | Local file | Primary database | $0 |
-| Aptos Testnet | N/A | Randomness generation | $0 |
-| Domain + SSL | Standard | HTTPS endpoint | $15 |
-| **Future Migration** | | | |
-| PostgreSQL/MySQL | 10GB storage | Production database | $25 |
-| Redis Cache | 2GB RAM | Performance optimization | $15 |
-
-### Team Composition
-
-| Role | Priority | Time Commitment | Key Skills |
-|------|----------|-----------------|------------|
-| Full-Stack Dev | CRITICAL | Full-time | TypeScript, React, Node.js, SQLite |
-| Aptos Integration | CRITICAL | Part-time | Aptos SDK, blockchain integration |
-| Frontend Dev | IMPORTANT | Part-time | React, deterministic algorithms |
-| Security Auditor | IMPORTANT | Part-time | Input validation, SQL injection prevention |
-| DevOps Engineer | OPTIONAL | Part-time | Docker, deployment |
-
----
-
-## Risk Assessment
+## Risk Analysis & Mitigation Strategies
 
 ### Technical Risks
 
-| Risk | Impact | Likelihood | Mitigation |
-|------|--------|------------|------------|
-| 65ms latency not achievable | HIGH | MEDIUM | Adjust to 100ms if needed |
-| Aptos randomness costs | MEDIUM | LOW | Batch seed requests, optimize calls |
-| Client-side tampering | HIGH | MEDIUM | Server-side price verification for all trades |
-| SQLite performance limits | MEDIUM | MEDIUM | Migration path to PostgreSQL ready |
-| Database security vulnerabilities | HIGH | LOW | Input validation, parameterized queries |
+#### 1. SQLite Performance Limits
+**Risk**: SQLite may not handle high concurrent load
+**Likelihood**: Medium (if we get >100 concurrent users)
+**Impact**: High (database locks, slow queries)
 
-### Business Risks
+**Mitigation Strategy:**
+```typescript
+// Implement connection pooling and query optimization
+class DatabaseConnection {
+  private pool: sqlite3.Database[] = [];
+  private readonly poolSize = 5;
+  
+  constructor() {
+    // Create connection pool
+    for (let i = 0; i < this.poolSize; i++) {
+      const db = new sqlite3.Database(dbPath);
+      db.configure("busyTimeout", 30000); // 30 second timeout
+      this.pool.push(db);
+    }
+  }
+  
+  async withConnection<T>(operation: (db: sqlite3.Database) => Promise<T>): Promise<T> {
+    const db = this.pool.shift();
+    if (!db) throw new Error('No database connections available');
+    
+    try {
+      return await operation(db);
+    } finally {
+      this.pool.push(db);
+    }
+  }
+}
 
-| Risk | Impact | Likelihood | Mitigation |
-|------|--------|------------|------------|
-| Low player retention | HIGH | MEDIUM | Tune house edge, add features |
-| Regulatory issues | HIGH | LOW | Implement KYC if required |
-| Insufficient liquidity | MEDIUM | LOW | Set withdrawal limits |
-| Security breach | HIGH | LOW | Audit before mainnet |
+// Migration path to PostgreSQL
+const migrationPlan = {
+  trigger: 'When SQLite shows performance issues or >500 concurrent users',
+  steps: [
+    '1. Set up PostgreSQL instance',
+    '2. Create identical schema in PostgreSQL', 
+    '3. Write data migration script',
+    '4. Update connection.ts to use PostgreSQL',
+    '5. Deploy with zero downtime using read replicas'
+  ]
+};
+```
+
+#### 2. Authentication Security
+**Risk**: Wallet signature replay attacks, session hijacking
+**Likelihood**: Medium (targeted attacks)
+**Impact**: High (user account compromise)
+
+**Mitigation Strategy:**
+```typescript
+// Enhanced security measures
+const securityMeasures = {
+  challengeGeneration: {
+    entropy: 'crypto.randomBytes(32)', // 256-bit challenges
+    expiration: '5 minutes maximum',
+    oneTimeUse: 'Challenge invalidated after use',
+    addressBinding: 'Challenge includes user address'
+  },
+  
+  sessionManagement: {
+    tokenExpiry: '15 minutes maximum',
+    refreshTokens: 'Separate refresh token with longer expiry',
+    ipBinding: 'Optional IP address validation',
+    deviceFingerprinting: 'Browser fingerprint for additional security'
+  },
+  
+  rateLimiting: {
+    authAttempts: '10 per IP per 15 minutes',
+    challengeRequests: '5 per IP per minute',
+    tradeRequests: '100 per user per minute',
+    globalRateLimit: '1000 requests per minute per server'
+  }
+};
+```
+
+#### 3. Aptos Integration Failures
+**Risk**: Aptos node downtime, rate limits, gas price spikes
+**Likelihood**: Low-Medium (blockchain infrastructure issues)
+**Impact**: Medium (game temporarily unavailable)
+
+**Mitigation Strategy:**
+```typescript
+// Robust Aptos integration with fallbacks
+class ResilientAptosService {
+  private primaryClient: AptosClient;
+  private fallbackClients: AptosClient[] = [];
+  private circuitBreaker: CircuitBreaker;
+  
+  constructor() {
+    // Primary node
+    this.primaryClient = new AptosClient(process.env.APTOS_PRIMARY_NODE!);
+    
+    // Fallback nodes
+    const fallbackNodes = [
+      'https://fullnode.mainnet.aptoslabs.com/v1',
+      'https://aptos-mainnet.nodereal.io/v1',
+      // Add more reliable nodes
+    ];
+    
+    this.fallbackClients = fallbackNodes.map(url => new AptosClient(url));
+    
+    // Circuit breaker for automatic failover
+    this.circuitBreaker = new CircuitBreaker({
+      failureThreshold: 3,
+      resetTimeout: 60000 // 1 minute
+    });
+  }
+  
+  async generateRandomSeed(): Promise<SeedData> {
+    // Try primary client first
+    try {
+      return await this.circuitBreaker.execute(() => 
+        this.generateSeedFromClient(this.primaryClient)
+      );
+    } catch (primaryError) {
+      console.warn('Primary Aptos client failed, trying fallbacks');
+      
+      // Try fallback clients
+      for (const fallbackClient of this.fallbackClients) {
+        try {
+          return await this.generateSeedFromClient(fallbackClient);
+        } catch (fallbackError) {
+          console.warn('Fallback client failed:', fallbackError.message);
+        }
+      }
+      
+      // All clients failed - use secure fallback
+      console.error('All Aptos clients failed, using cryptographic fallback');
+      return this.generateFallbackSeed();
+    }
+  }
+  
+  private generateFallbackSeed(): SeedData {
+    // Generate cryptographically secure seed when Aptos is unavailable
+    const seed = `0x${crypto.randomBytes(32).toString('hex')}`;
+    const verificationHash = crypto.createHash('sha256').update(seed).digest('hex');
+    
+    return {
+      seed,
+      blockHeight: 0, // Indicates fallback
+      transactionHash: 'fallback',
+      timestamp: Date.now(),
+      gasUsed: 0,
+      verificationHash
+    };
+  }
+}
+```
+
+#### 4. Trade Timing & Fairness
+**Risk**: Clients manipulating trade timing for advantage
+**Likelihood**: High (sophisticated users will try)
+**Impact**: Medium (unfair advantage, reduced house edge)
+
+**Mitigation Strategy:**
+```typescript
+// Server-side timing enforcement
+const tradeTimingValidation = {
+  serverTimeAuthority: 'All trades timestamped by server, not client',
+  candleIndexValidation: 'Verify candle index matches server time',
+  futureTradesPrevention: 'Reject trades more than 1 second in future',
+  pastTradesLimit: 'Accept trades up to 5 seconds in past (network latency)',
+  
+  implementation: `
+    const roundStartTime = new Date(round.started_at).getTime();
+    const expectedCandleTime = roundStartTime + (candleIndex * config.candle_interval_ms);
+    const serverTime = Date.now();
+    const timeDifference = serverTime - expectedCandleTime;
+    
+    // Reject if trade is too far in future or past
+    if (timeDifference < -1000 || timeDifference > 5000) {
+      throw new Error('Trade timing invalid');
+    }
+  `
+};
+```
 
 ---
 
-## Success Criteria
+## Synchronization Decision Analysis
 
-### Technical Metrics
+### Individual Rounds vs Synchronized Rounds
 
-| Metric | Target | Measurement Method |
-|--------|--------|-------------------|
-| Update Latency | <65ms | Client-side monitoring |
-| WebSocket Latency | <5ms p99 | Server metrics |
-| Concurrent Users | 1,000+ | Load testing |
-| System Uptime | 99.9% | Monitoring tools |
-| Settlement Accuracy | 100% | Automated verification |
+#### **Phase 1: Individual Rounds (Recommended Start)**
 
-### Business Metrics
+**Implementation:**
+```typescript
+// Each user gets their own round with unique seed
+const individualRoundFlow = {
+  userStartsGame: 'User clicks "Start Round"',
+  backendGeneratesSeed: 'Backend calls Aptos randomness API',
+  uniqueSeedPerUser: 'Each user gets different seed',
+  clientGeneratesCandles: 'Frontend generates candles from seed',
+  noSynchronization: 'No coordination between users needed',
+  
+  advantages: [
+    'Simple to implement - no WebSocket complexity',
+    'Better performance - no network latency',
+    'Easier debugging - each game is independent', 
+    'Offline capable - can generate entire round locally',
+    'Scalable - no synchronization bottlenecks'
+  ],
+  
+  disadvantages: [
+    'No shared experience - users see different charts',
+    'No social features - cannot see other players trades',
+    'Less engaging - missing FOMO and competition elements',
+    'Harder to create tournaments or leaderboards'
+  ]
+};
+```
 
-| Metric | Target | Measurement Method |
-|--------|--------|-------------------|
-| House Edge Realized | 11.6% | Financial analysis |
-| Cost per Round | <0.001 APT | Transaction logs |
-| Daily Active Users | 100+ | Analytics |
-| Player Retention (7d) | 50% | Cohort analysis |
-| Break-even Timeline | 3 months | P&L tracking |
+#### **Phase 2: Synchronized Rounds (Future Enhancement)**
+
+**Implementation:**
+```typescript
+// All users see same chart with shared seed
+const synchronizedRoundFlow = {
+  globalRoundStart: 'Server starts round for all users',
+  sharedSeed: 'All users get same Aptos seed',
+  precomputeCandles: 'Server generates all candles before round starts',
+  webSocketDistribution: 'Stream candles to all users at precise intervals',
+  sharedExperience: 'Everyone sees identical price movements',
+  
+  advantages: [
+    'Shared experience - all users see same chart',
+    'Social features - see other players trades in real-time',
+    'More engaging - creates FOMO and excitement',
+    'Tournament support - fair competition with same conditions',
+    'Whale alerts - big trades visible to everyone'
+  ],
+  
+  disadvantages: [
+    'Complex implementation - WebSocket infrastructure needed',
+    'Performance challenges - network latency affects UX',
+    'Scaling difficulties - need to handle thousands of connections',
+    'Single point of failure - if sync breaks, game breaks',
+    'Higher server costs - need Redis and WebSocket servers'
+  ]
+};
+```
+
+**Migration Path:**
+```typescript
+// Database schema supports both approaches
+const migrationStrategy = {
+  phase1: {
+    roundType: 'INDIVIDUAL',
+    implementation: 'Each user gets unique seed',
+    database: 'rounds.user_id = specific user',
+    frontend: 'GameManager generates own candles'
+  },
+  
+  phase2: {
+    roundType: 'MULTIPLAYER', 
+    implementation: 'Shared seed for all participants',
+    database: 'rounds.user_id = null, round_participants table',
+    frontend: 'WebSocket receives candles from server'
+  },
+  
+  transition: 'User can choose individual or multiplayer rounds'
+};
+```
 
 ---
 
-## Execution Timeline
+## Concrete Next Steps (Immediate Actions)
 
-### Phase 1: Core (Weeks 1-4)
-**Goal**: Functional game with basic features
-- SQLite database with Users/Rounds/Trades tables
-- Aptos randomness integration
-- REST API for seed distribution and trade verification
-- Client-side deterministic candle generation
-- Basic trading working with wallet authentication
+### Week 1 Action Items
 
-### Phase 2: Enhancement (Weeks 5-6)  
-**Goal**: Production-ready features
-- Advanced security validations
-- Account management and P&L tracking
-- Error handling and edge cases
-- Performance optimization
-- Database migration preparation
+#### Day 1: PR Acceptance
+```bash
+# 1. Backup current state
+git checkout -b backup-before-gamemanager-merge
+git checkout main
 
-### Phase 3: Scale (Weeks 7-8)
-**Goal**: Launch preparation
-- Load testing with SQLite limits
-- Security audit and penetration testing
-- Documentation and API guides
-- Migration to PostgreSQL/MySQL if needed
+# 2. Merge Sam's PR
+git merge feature/game_manager
+
+# 3. Install dependencies
+npm install
+cd server && npm install
+
+# 4. Test functionality
+npm run dev  # Terminal 1
+cd server && npm run dev  # Terminal 2
+
+# 5. Verify test interface
+# Visit http://localhost:3000?test=true
+# Click "Test Game API"
+# Verify database creation and seed generation
+```
+
+#### Day 2-3: Database Enhancement
+```bash
+# 1. Create migration script
+touch server/database/migrations/001_enhance_schema.sql
+
+# 2. Add authentication fields
+# 3. Add financial transaction tables  
+# 4. Add settlement tables
+# 5. Test migration with sample data
+```
+
+#### Day 4-5: Authentication Implementation
+```bash
+# 1. Install wallet dependencies
+npm install @aptos-labs/wallet-adapter-react
+npm install @aptos-labs/wallet-adapter-petra
+npm install @aptos-labs/wallet-adapter-martian
+
+# 2. Implement WalletService
+# 3. Add authentication routes
+# 4. Add authentication middleware
+# 5. Test wallet connection flow
+```
+
+#### Day 6-7: Aptos Integration
+```bash
+# 1. Set up Aptos environment variables
+echo "APTOS_NODE_URL=https://fullnode.mainnet.aptoslabs.com/v1" >> .env
+echo "APTOS_GAME_PRIVATE_KEY=your_private_key_here" >> .env
+echo "JWT_SECRET=$(openssl rand -hex 32)" >> .env
+
+# 2. Replace mock AptosService
+# 3. Test real seed generation
+# 4. Implement error handling and fallbacks
+```
+
+### Success Criteria & Testing
+
+#### Functional Testing Checklist
+- [ ] User can connect Petra wallet
+- [ ] Authentication challenge/response works
+- [ ] Real Aptos seeds are generated
+- [ ] Candles are deterministically generated from seeds
+- [ ] Trades are verified server-side
+- [ ] Balances are tracked correctly
+- [ ] Replay system works with real seeds
+- [ ] Error handling works for all failure modes
+
+#### Performance Testing
+- [ ] Seed generation completes within 2 seconds
+- [ ] Trade verification completes within 100ms
+- [ ] Database queries complete within 50ms
+- [ ] Frontend renders at 60fps with real data
+- [ ] System handles 10 concurrent users without issues
+
+#### Security Testing
+- [ ] Invalid signatures are rejected
+- [ ] Expired challenges are rejected
+- [ ] Price manipulation attempts are blocked
+- [ ] Session tokens expire correctly
+- [ ] Rate limiting prevents abuse
 
 ---
 
-## Security Considerations
+## Final Assessment
 
-### Database Security
-- **Input Validation**: All user inputs sanitized and validated
-- **Parameterized Queries**: Prevent SQL injection attacks
-- **Access Control**: Database file permissions and connection limits
-- **Seed Protection**: Prevent seed reuse and replay attacks
+**Sam's PR is exactly what we need** - it provides a solid, practical foundation that solves the core architectural challenges while avoiding the complexity trap of our original plans.
 
-### API Security  
-- **Rate Limiting**: Prevent abuse of seed generation and trading endpoints
-- **Authentication**: JWT tokens with wallet signature verification
-- **CORS Configuration**: Restrict cross-origin requests
-- **Input Sanitization**: Validate all request parameters
+**Key Success Factors:**
+1. **Accept the PR immediately** - don't overthink it
+2. **Focus on real Aptos integration** - replace mocks with production code
+3. **Implement authentication properly** - wallet-based user management
+4. **Start with individual rounds** - add synchronization later
+5. **Maintain backward compatibility** - keep original system during transition
 
-### Client-Side Security
-- **Price Verification**: All trade prices verified server-side against seeds
-- **Deterministic Generation**: Consistent candle generation across clients
-- **Tamper Detection**: Server regenerates candles to detect manipulation
-- **Session Management**: Secure token handling and expiration
+This approach gives us the best chance of shipping a working game with real money quickly while maintaining a clear path to enhanced features.
 
----
-
-*Document Version: 2.0 | Last Updated: Current Date*
-*Major Update: Simplified architecture with SQLite, REST API, and client-side candle generation*
+*Document Version: 4.0 | Last Updated: Current Date*
+*Comprehensive implementation plan based on Sam's PR analysis*

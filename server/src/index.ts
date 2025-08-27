@@ -2,6 +2,8 @@ import express, { Request, Response } from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';
+import { db } from '../database/connection';
+import gameRoutes from '../routes/game';
 
 interface CandleData {
     date: Date;
@@ -23,6 +25,9 @@ const io = new Server(server, {
 
 app.use(cors());
 app.use(express.json());
+
+// API Routes
+app.use('/api/game', gameRoutes);
 
 // Game state
 let gameState = {
@@ -112,14 +117,71 @@ app.get('/health', (req: Request, res: Response) => {
     res.json({ status: 'ok', gameState });
 });
 
-const PORT = process.env.PORT || 3001;
-server.listen(PORT, () => {
-    console.log(`🚀 Trading game server running on port ${PORT}`);
-    
-    // Auto-start first round
-    setTimeout(() => {
-        gameState.isRoundActive = true;
-        gameState.roundStartTime = Date.now();
-        console.log('📈 Auto-started first round');
-    }, 2000);
+// Database test endpoints for proof of concept
+app.get('/api/test/users', async (req: Request, res: Response) => {
+    try {
+        const users = await db.getAllUsers();
+        res.json({ users });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to get users' });
+    }
 });
+
+app.get('/api/test/rounds', async (req: Request, res: Response) => {
+    try {
+        const rounds = await db.getAllRounds();
+        res.json({ rounds });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to get rounds' });
+    }
+});
+
+app.post('/api/test/round', async (req: Request, res: Response) => {
+    try {
+        // Get the test user
+        const testUser = await db.getUserByWallet('0x1234567890abcdef');
+        if (!testUser) {
+            return res.status(404).json({ error: 'Test user not found' });
+        }
+        
+        // Create a test round with a simple seed
+        const testSeed = `0x${Date.now().toString(16)}${Math.random().toString(16).slice(2)}`;
+        const round = await db.createRound(testUser.id, testSeed);
+        
+        res.json({ 
+            message: 'Test round created',
+            round,
+            user: testUser
+        });
+    } catch (error) {
+        console.error('Failed to create test round:', error);
+        res.status(500).json({ error: 'Failed to create test round' });
+    }
+});
+
+// Initialize database and start server
+async function startServer() {
+    try {
+        console.log('🔧 Initializing database...');
+        await db.initialize();
+        
+        const PORT = process.env.PORT || 3001;
+        server.listen(PORT, () => {
+            console.log(`🚀 Trading game server running on port ${PORT}`);
+            console.log(`📊 Database ready - visit http://localhost:${PORT}/api/test/users to see test data`);
+            
+            // Auto-start first round
+            setTimeout(() => {
+                gameState.isRoundActive = true;
+                gameState.roundStartTime = Date.now();
+                console.log('📈 Auto-started first round');
+            }, 2000);
+        });
+        
+    } catch (error) {
+        console.error('❌ Failed to start server:', error);
+        process.exit(1);
+    }
+}
+
+startServer();

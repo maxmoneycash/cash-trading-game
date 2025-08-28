@@ -768,14 +768,14 @@ interface AuthRequest extends Request {
 
 export const authenticateUser = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
-    const authHeader = req.headers.authorization;
-    
+  const authHeader = req.headers.authorization;
+  
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ error: 'Authorization header required' });
-    }
-    
+    return res.status(401).json({ error: 'Authorization header required' });
+  }
+  
     const token = authHeader.split(' ')[1];
-    
+  
     // Verify JWT
     const decoded = jwt.verify(token, process.env.JWT_SECRET!) as any;
     
@@ -984,12 +984,12 @@ export class ProductionAptosService {
       const verificationHash = crypto.createHash('sha256').update(fallbackSeed).digest('hex');
       
       console.warn('⚠️ Using fallback seed generation');
-      
-      return {
+    
+    return {
         seed: fallbackSeed,
         blockHeight: 0, // Indicates fallback
         transactionHash: 'fallback',
-        timestamp: Date.now(),
+      timestamp: Date.now(),
         gasUsed: 0,
         verificationHash
       };
@@ -1351,8 +1351,8 @@ router.post('/deposit', authenticateUser, async (req, res) => {
       status: 'PENDING',
       message: 'Send APT to the provided address with the exact memo to complete deposit'
     });
-    
-  } catch (error) {
+      
+    } catch (error) {
     console.error('Deposit initiation failed:', error);
     res.status(500).json({ error: 'Failed to initiate deposit' });
   }
@@ -1414,7 +1414,7 @@ router.post('/deposit/confirm', authenticateUser, async (req, res) => {
       newBalance: updatedUser.game_balance
     });
     
-  } catch (error) {
+    } catch (error) {
     console.error('Deposit confirmation failed:', error);
     res.status(500).json({ error: 'Failed to confirm deposit' });
   }
@@ -1710,8 +1710,8 @@ router.post('/close', authenticateUser, async (req, res) => {
   }
 });
 
-export default router;
-```
+ export default router;
+ ```
 
 ---
 

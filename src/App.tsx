@@ -1,8 +1,16 @@
 import CandlestickChart from './components/CandlestickChart'
+import { DebugProvider } from './debug/DebugContext'
+import DebugOverlay from './components/DebugOverlay'
 
 function App() {
-  // Run the core game UI (standalone chart). Backend logging is handled via API/Postman.
-  return <CandlestickChart />
+  const params = new URLSearchParams(window.location.search)
+  const debugEnabled = params.get('debug') === 'true'
+  return (
+    <DebugProvider enabled={debugEnabled}>
+      {debugEnabled && <DebugOverlay />}
+      <CandlestickChart />
+    </DebugProvider>
+  )
 }
 
 export default App

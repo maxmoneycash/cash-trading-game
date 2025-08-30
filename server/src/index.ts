@@ -59,6 +59,22 @@ app.post('/api/admin/clear', async (req: Request, res: Response) => {
   }
 });
 
+// Admin: update user balance
+app.post('/api/admin/user/balance', async (req: Request, res: Response) => {
+  try {
+    const { userId, balance } = req.body || {}
+    if (!userId || typeof balance !== 'number') {
+      return res.status(400).json({ success: false, error: 'userId and numeric balance required' })
+    }
+    await db.updateUserBalance(userId, balance)
+    const user = await db.getUserById(userId)
+    res.json({ success: true, user })
+  } catch (error: any) {
+    console.error('❌ Failed to update user balance:', error)
+    res.status(500).json({ success: false, error: 'Failed to update user balance', details: error.message })
+  }
+})
+
 
 // Initialize database and start server
 async function startServer() {

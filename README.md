@@ -16,6 +16,13 @@ npm run dev
 # open http://localhost:5173
 ```
 
+### Debug Mode (local)
+- Append `?debug=true` to enable the in‑app debug overlay: `http://localhost:5173/?debug=true`.
+- Overlay shows API status, round_id, seed, user info, and controls:
+  - Pause/Resume: freezes and resumes the round (timer is paused accurately).
+  - Buy (hold): press and hold to buy; release to sell (canvas clicks are disabled while debug is on).
+  - Balance: enter a value and click Apply to update the in‑game balance.
+
 ## Run the Server
 ```
 cd server

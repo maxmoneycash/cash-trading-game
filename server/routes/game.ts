@@ -52,6 +52,10 @@ router.post('/start', async (req, res) => {
           transactionHash: seedData.transactionHash,
           timestamp: seedData.timestamp
         }
+      },
+      user: {
+        id: testUser.id,
+        wallet_address: testUser.wallet_address
       }
     });
     

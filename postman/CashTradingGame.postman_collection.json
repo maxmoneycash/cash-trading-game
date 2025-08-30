@@ -142,6 +142,38 @@
           "request": { "method": "GET", "url": "{{api_base}}/api/users" }
         }
       ]
+    },
+    {
+      "name": "Admin",
+      "item": [
+        {
+          "name": "POST Clear Data (keepTestUser=true)",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"keepTestUser\": true\n}" },
+            "url": "{{api_base}}/api/admin/clear"
+          }
+        },
+        {
+          "name": "POST Clear Data (keepTestUser=false)",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"keepTestUser\": false\n}" },
+            "url": "{{api_base}}/api/admin/clear"
+          }
+        },
+        {
+          "name": "POST Update User Balance",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"userId\": \"{{user_id}}\",\n  \"balance\": 1500\n}" },
+            "url": "{{api_base}}/api/admin/user/balance"
+          }
+        }
+      ]
     }
   ]
 }

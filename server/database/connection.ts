@@ -162,6 +162,13 @@ class DatabaseConnection {
       [walletAddress]
     );
   }
+
+  async getUserById(userId: string): Promise<User | null> {
+    return await this.get(
+      'SELECT * FROM users WHERE id = ?',
+      [userId]
+    );
+  }
   
   // Basic round operations
   async createRound(userId: string, seed: string): Promise<Round> {
@@ -329,6 +336,11 @@ class DatabaseConnection {
       'SELECT * FROM round_metrics WHERE round_id = ?',
       [roundId]
     );
+  }
+
+  // Update user balance
+  async updateUserBalance(userId: string, balance: number): Promise<void> {
+    await this.run('UPDATE users SET balance = ? WHERE id = ?', [balance, userId])
   }
   
   // Update round with additional data

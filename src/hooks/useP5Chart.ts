@@ -42,6 +42,9 @@ const useP5Chart = ({
     useEffect(() => {
         const sketch = (p: p5) => {
             // Local state for chart elements and animations.
+            // Backend logging helpers
+            const API_BASE_URL = (import.meta as any)?.env?.VITE_API_URL || 'http://localhost:3001';
+            let currentRoundId: string | null = null;
             let candles: any[] = [];
             let allRoundCandles: any[] = [];
             let currentIndex = 0;
@@ -70,6 +73,9 @@ const useP5Chart = ({
             let rugpullZoom = 1;
             let liquidationCandleCreated = false;
             let currentPosition: any = null;
+            // Track entry index and backend trade id
+            let currentTradeId: string | null = null;
+            let currentEntryIndex: number | null = null;
             let completedTrades: any[] = [];
             let currentPnl = 0;
             let isHoldingPosition = false;
@@ -218,6 +224,33 @@ const useP5Chart = ({
 
             // Handle game end due to liquidation or rugpull.
             const endGameLiquidation = () => {
+                // Record event + complete round if possible
+                try {
+                    const lastIndex = Math.max(0, allRoundCandles.length - 1);
+                    const last = allRoundCandles[lastIndex];
+                    if (currentRoundId && last) {
+                        fetch(`${API_BASE_URL}/api/game/event`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                roundId: currentRoundId,
+                                candleIndex: lastIndex,
+                                type: 'LIQUIDATION',
+                                data: { price: last.close }
+                            })
+                        }).catch(() => {});
+                        fetch(`${API_BASE_URL}/api/game/complete`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                roundId: currentRoundId,
+                                finalPrice: last.close,
+                                candleCount: allRoundCandles.length,
+                                completedAt: new Date().toISOString()
+                            })
+                        }).catch(() => {});
+                    }
+                } catch {}
                 rugpullActive = false;
                 rugpullSlowMotion = false;
                 rugpullZoom = 1;
@@ -278,6 +311,19 @@ const useP5Chart = ({
                 explosionCenter = null;
                 liquidationCandleCreated = false;
                 console.log(`✅ Round started - liquidation risk increases with position duration`);
+                // Start backend round
+                try {
+                    fetch(`${API_BASE_URL}/api/game/start`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' }
+                    }).then(async (res) => {
+                        if (!res.ok) return;
+                        const data = await res.json();
+                        if (data?.success && data.round?.id) {
+                            currentRoundId = data.round.id;
+                        }
+                    }).catch(() => {});
+                } catch {}
             };
 
             // Check if current round should end.
@@ -301,6 +347,23 @@ const useP5Chart = ({
                 explosionCenter = null;
                 isHistoricalView = true;
                 zoomStartTime = p.millis();
+                // Complete round in backend
+                try {
+                    const lastIndex = Math.max(0, allRoundCandles.length - 1);
+                    const last = allRoundCandles[lastIndex];
+                    if (currentRoundId && last) {
+                        fetch(`${API_BASE_URL}/api/game/complete`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                roundId: currentRoundId,
+                                finalPrice: last.close,
+                                candleCount: allRoundCandles.length,
+                                completedAt: new Date().toISOString()
+                            })
+                        }).catch(() => {});
+                    }
+                } catch {}
                 setTimeout(() => {
                     startRound();
                 }, 3000);
@@ -721,11 +784,35 @@ const useP5Chart = ({
                         positionSize: positionSize,
                         candlesElapsed: 0
                     };
+                    currentEntryIndex = allRoundCandles.length - 1;
                     isHoldingPosition = true;
                     setIsHolding(true);
                     currentPnl = 0;
                     setPnl(0);
                     p.redraw();
+                    // Persist open trade
+                    try {
+                        if (currentRoundId != null && currentEntryIndex != null) {
+                            fetch(`${API_BASE_URL}/api/game/trade/open`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    roundId: currentRoundId,
+                                    direction: 'LONG',
+                                    size: positionSize,
+                                    entryPrice: lastCandle.close,
+                                    entryCandleIndex: currentEntryIndex,
+                                })
+                            }).then(async (res) => {
+                                if (res.ok) {
+                                    const data = await res.json();
+                                    if (data?.success && data.trade?.id) {
+                                        currentTradeId = data.trade.id;
+                                    }
+                                }
+                            }).catch(() => {});
+                        }
+                    } catch {}
                 } catch (error) {
                     console.error('❌ Error in startPosition:', error);
                 }
@@ -747,6 +834,23 @@ const useP5Chart = ({
                         netProfit: netProfit,
                         exitElapsed: 0
                     });
+                    // Persist close trade
+                    try {
+                        const lastIndex = Math.max(0, allRoundCandles.length - 1);
+                        const last = allRoundCandles[lastIndex];
+                        if (currentTradeId && last) {
+                            fetch(`${API_BASE_URL}/api/game/trade/close`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    tradeId: currentTradeId,
+                                    exitPrice: last.close,
+                                    exitCandleIndex: lastIndex,
+                                    pnl: netProfit,
+                                })
+                            }).catch(() => {});
+                        }
+                    } catch {}
                     setBalance(prevBalance => {
                         const newBalance = prevBalance + netProfit;
                         return newBalance;
@@ -775,6 +879,8 @@ const useP5Chart = ({
                         lossSound.play().catch(err => console.log('Could not play loss sound:', err));
                     }
                     currentPosition = null;
+                    currentTradeId = null;
+                    currentEntryIndex = null;
                     if (!liquidationCandleCreated && !rugpullActive) {
                         currentPnl = 0;
                         setPnl(0);

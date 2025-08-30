@@ -51,3 +51,27 @@ CREATE INDEX IF NOT EXISTS idx_rounds_user_started ON rounds(user_id, started_at
 CREATE INDEX IF NOT EXISTS idx_rounds_status ON rounds(status);
 CREATE INDEX IF NOT EXISTS idx_trades_round ON trades(round_id);
 CREATE INDEX IF NOT EXISTS idx_trades_user ON trades(user_id);
+
+-- Optional: round events (e.g., liquidation, moon spikes) for analysis
+CREATE TABLE IF NOT EXISTS round_events (
+    id TEXT PRIMARY KEY DEFAULT (hex(randomblob(16))),
+    round_id TEXT NOT NULL,
+    candle_index INTEGER NOT NULL,
+    type TEXT NOT NULL, -- e.g., 'LIQUIDATION' | 'MOON' | 'RUGPULL'
+    data TEXT, -- JSON payload
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (round_id) REFERENCES rounds (id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_events_round ON round_events(round_id);
+
+-- Optional: summary metrics per round
+CREATE TABLE IF NOT EXISTS round_metrics (
+    round_id TEXT PRIMARY KEY,
+    max_drawdown REAL,
+    max_runup REAL,
+    peak_pnl REAL,
+    liquidation_occurred INTEGER DEFAULT 0, -- 0/1 boolean
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (round_id) REFERENCES rounds (id)
+);

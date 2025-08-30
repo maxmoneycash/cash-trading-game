@@ -44,6 +44,24 @@ export interface Trade {
   closed_at?: string;
 }
 
+export interface RoundEvent {
+  id: string;
+  round_id: string;
+  candle_index: number;
+  type: 'LIQUIDATION' | 'MOON' | 'RUGPULL' | string;
+  data?: string; // JSON string
+  created_at: string;
+}
+
+export interface RoundMetrics {
+  round_id: string;
+  max_drawdown?: number;
+  max_runup?: number;
+  peak_pnl?: number;
+  liquidation_occurred?: 0 | 1;
+  created_at?: string;
+}
+
 class DatabaseConnection {
   private db: sqlite3.Database;
   private isInitialized = false;
@@ -54,7 +72,10 @@ class DatabaseConnection {
   private all: (sql: string, params?: any[]) => Promise<any[]>;
   
   constructor() {
-    const dbPath = path.join(__dirname, 'game.db');
+    const envPath = process.env.DATABASE_PATH;
+    const dbPath = envPath
+      ? path.resolve(process.cwd(), envPath)
+      : path.join(__dirname, 'game.db');
     
     // Enable verbose mode for development
     sqlite3.verbose();
@@ -162,6 +183,104 @@ class DatabaseConnection {
       [userId, seed]
     );
   }
+
+  // Ensure a user exists by wallet; create if missing
+  async ensureUser(walletAddress: string, username?: string): Promise<User> {
+    const existing = await this.get(
+      'SELECT * FROM users WHERE wallet_address = ?',
+      [walletAddress]
+    );
+    if (existing) return existing;
+    await this.run(
+      'INSERT INTO users (wallet_address, username, balance) VALUES (?, ?, ?)',
+      [walletAddress, username || null, 1000.0]
+    );
+    return await this.get(
+      'SELECT * FROM users WHERE wallet_address = ?',
+      [walletAddress]
+    );
+  }
+
+  // Insert a trade
+  async insertTrade(params: {
+    round_id: string,
+    user_id: string,
+    direction: 'LONG' | 'SHORT',
+    size: number,
+    entry_price: number,
+    exit_price?: number,
+    entry_candle_index: number,
+    exit_candle_index?: number,
+    pnl?: number,
+    status?: 'OPEN' | 'CLOSED',
+    opened_at?: string,
+    closed_at?: string,
+  }): Promise<Trade> {
+    await this.run(
+      `INSERT INTO trades (round_id, user_id, direction, size, entry_price, exit_price, entry_candle_index, exit_candle_index, pnl, status, opened_at, closed_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        params.round_id,
+        params.user_id,
+        params.direction,
+        params.size,
+        params.entry_price,
+        params.exit_price ?? null,
+        params.entry_candle_index,
+        params.exit_candle_index ?? null,
+        params.pnl ?? 0,
+        params.status ?? (params.exit_price != null ? 'CLOSED' : 'OPEN'),
+        params.opened_at ?? new Date().toISOString(),
+        params.closed_at ?? null,
+      ]
+    );
+    return await this.get(
+      `SELECT * FROM trades WHERE rowid = last_insert_rowid()`
+    );
+  }
+
+  // Insert a round event
+  async insertRoundEvent(params: {
+    round_id: string,
+    candle_index: number,
+    type: string,
+    data?: Record<string, any>,
+  }): Promise<RoundEvent> {
+    const dataStr = params.data ? JSON.stringify(params.data) : null;
+    await this.run(
+      `INSERT INTO round_events (round_id, candle_index, type, data) VALUES (?, ?, ?, ?)`,
+      [params.round_id, params.candle_index, params.type, dataStr]
+    );
+    return await this.get(`SELECT * FROM round_events WHERE rowid = last_insert_rowid()`);
+  }
+
+  // Upsert round metrics
+  async upsertRoundMetrics(roundId: string, metrics: Omit<RoundMetrics, 'round_id'>): Promise<void> {
+    const existing = await this.get('SELECT * FROM round_metrics WHERE round_id = ?', [roundId]);
+    if (existing) {
+      await this.run(
+        `UPDATE round_metrics SET max_drawdown = ?, max_runup = ?, peak_pnl = ?, liquidation_occurred = ? WHERE round_id = ?`,
+        [
+          metrics.max_drawdown ?? existing.max_drawdown,
+          metrics.max_runup ?? existing.max_runup,
+          metrics.peak_pnl ?? existing.peak_pnl,
+          metrics.liquidation_occurred ?? existing.liquidation_occurred,
+          roundId,
+        ]
+      );
+    } else {
+      await this.run(
+        `INSERT INTO round_metrics (round_id, max_drawdown, max_runup, peak_pnl, liquidation_occurred) VALUES (?, ?, ?, ?, ?)`,
+        [
+          roundId,
+          metrics.max_drawdown ?? null,
+          metrics.max_runup ?? null,
+          metrics.peak_pnl ?? null,
+          metrics.liquidation_occurred ?? 0,
+        ]
+      );
+    }
+  }
   
   // Get all users (for testing)
   async getAllUsers(): Promise<User[]> {
@@ -177,6 +296,37 @@ class DatabaseConnection {
   async getRoundById(roundId: string): Promise<Round | null> {
     return await this.get(
       'SELECT * FROM rounds WHERE id = ?',
+      [roundId]
+    );
+  }
+
+  async getRoundByUserAndSeed(userId: string, seed: string): Promise<Round | null> {
+    return await this.get(
+      'SELECT * FROM rounds WHERE user_id = ? AND seed = ?',
+      [userId, seed]
+    );
+  }
+
+  // Get trades by round ID
+  async getTradesByRoundId(roundId: string): Promise<Trade[]> {
+    return await this.all(
+      'SELECT * FROM trades WHERE round_id = ? ORDER BY opened_at ASC',
+      [roundId]
+    );
+  }
+
+  // Get events by round ID
+  async getEventsByRoundId(roundId: string): Promise<RoundEvent[]> {
+    return await this.all(
+      'SELECT * FROM round_events WHERE round_id = ? ORDER BY candle_index ASC',
+      [roundId]
+    );
+  }
+
+  // Get metrics by round ID
+  async getMetricsByRoundId(roundId: string): Promise<RoundMetrics | null> {
+    return await this.get(
+      'SELECT * FROM round_metrics WHERE round_id = ?',
       [roundId]
     );
   }
@@ -220,6 +370,20 @@ class DatabaseConnection {
       [limit]
     );
   }
+
+  // Trades helpers
+  async getTradeById(tradeId: string): Promise<Trade | null> {
+    return await this.get('SELECT * FROM trades WHERE id = ?', [tradeId]);
+  }
+
+  async closeTrade(tradeId: string, params: { exit_price: number, exit_candle_index: number, pnl: number }): Promise<void> {
+    await this.run(
+      `UPDATE trades
+       SET exit_price = ?, exit_candle_index = ?, pnl = ?, status = 'CLOSED', closed_at = ?
+       WHERE id = ?`,
+      [params.exit_price, params.exit_candle_index, params.pnl, new Date().toISOString(), tradeId]
+    );
+  }
   
   // Close database connection
   async close() {
@@ -233,6 +397,24 @@ class DatabaseConnection {
         }
       });
     });
+  }
+
+  // Maintenance helpers
+  async clearAllButTestUser(testWalletAddress: string): Promise<void> {
+    // Remove dependent tables first
+    await this.run('DELETE FROM trades');
+    await this.run('DELETE FROM round_events');
+    await this.run('DELETE FROM round_metrics');
+    await this.run('DELETE FROM rounds');
+    await this.run('DELETE FROM users WHERE wallet_address <> ?', [testWalletAddress]);
+  }
+
+  async clearAllData(): Promise<void> {
+    await this.run('DELETE FROM trades');
+    await this.run('DELETE FROM round_events');
+    await this.run('DELETE FROM round_metrics');
+    await this.run('DELETE FROM rounds');
+    await this.run('DELETE FROM users');
   }
 }
 

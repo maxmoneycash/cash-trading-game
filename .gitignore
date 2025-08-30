@@ -11,6 +11,8 @@ node_modules
 dist
 dist-ssr
 *.local
+# Ignore stray compiled JS in server (TS outputs should go to dist/)
+server/**/*.js
 
 # Editor directories and files
 .vscode/*

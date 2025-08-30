@@ -1,0 +1,147 @@
+{
+  "info": {
+    "name": "Cash Trading Game API",
+    "_postman_id": "c9b1a5a0-9e6b-4a65-b4f1-collection",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "api_base", "value": "http://localhost:3001" }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "GET Health",
+          "request": { "method": "GET", "url": "{{api_base}}/health" }
+        }
+      ]
+    },
+    {
+      "name": "Game",
+      "item": [
+        {
+          "name": "GET All Rounds",
+          "request": { "method": "GET", "url": "{{api_base}}/api/game/rounds" }
+        },
+        {
+          "name": "POST Start Round",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json && json.round) {",
+                  "  pm.environment.set('round_id', json.round.id);",
+                  "  pm.environment.set('seed', json.round.seed);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{api_base}}/api/game/start"
+          }
+        },
+        {
+          "name": "GET Round By ID (round_id)",
+          "request": { "method": "GET", "url": "{{api_base}}/api/game/round/{{round_id}}" }
+        },
+        {
+          "name": "POST Complete Round (round_id)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"roundId\": \"{{round_id}}\",\n  \"finalPrice\": 105.42,\n  \"candleCount\": 460\n}"
+            },
+            "url": "{{api_base}}/api/game/complete"
+          }
+        },
+        {
+          "name": "GET Recent Rounds (limit=10)",
+          "request": { "method": "GET", "url": "{{api_base}}/api/game/history?limit=10" }
+        }
+      ]
+    },
+    {
+      "name": "Round Details",
+      "item": [
+        {
+          "name": "POST Open Trade (round_id)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"roundId\": \"{{round_id}}\",\n  \"direction\": \"LONG\",\n  \"size\": 100,\n  \"entryPrice\": 100.0,\n  \"entryCandleIndex\": 1\n}"
+            },
+            "url": "{{api_base}}/api/game/trade/open"
+          }
+        },
+        {
+          "name": "POST Close Trade (tradeId)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tradeId\": \"<set from response>\",\n  \"exitPrice\": 105.0,\n  \"exitCandleIndex\": 120,\n  \"pnl\": 500\n}"
+            },
+            "url": "{{api_base}}/api/game/trade/close"
+          }
+        },
+        {
+          "name": "POST Event (round_id)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"roundId\": \"{{round_id}}\",\n  \"candleIndex\": 150,\n  \"type\": \"LIQUIDATION\",\n  \"data\": {\n    \"price\": 0.01\n  }\n}"
+            },
+            "url": "{{api_base}}/api/game/event"
+          }
+        },
+        {
+          "name": "POST Metrics (round_id)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"roundId\": \"{{round_id}}\",\n  \"max_drawdown\": -0.2,\n  \"max_runup\": 0.3,\n  \"peak_pnl\": 600,\n  \"liquidation_occurred\": 0\n}"
+            },
+            "url": "{{api_base}}/api/game/metrics"
+          }
+        },
+        {
+          "name": "GET Trades (round_id)",
+          "request": { "method": "GET", "url": "{{api_base}}/api/game/round/{{round_id}}/trades" }
+        },
+        {
+          "name": "GET Events (round_id)",
+          "request": { "method": "GET", "url": "{{api_base}}/api/game/round/{{round_id}}/events" }
+        },
+        {
+          "name": "GET Metrics (round_id)",
+          "request": { "method": "GET", "url": "{{api_base}}/api/game/round/{{round_id}}/metrics" }
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "GET All Users",
+          "request": { "method": "GET", "url": "{{api_base}}/api/users" }
+        }
+      ]
+    }
+  ]
+}

@@ -5,12 +5,14 @@ import Footer from './Footer';
 import { getTopMargin, getSafeBottom, DEBUG_MODE, isStandalone } from '../utils/helpers';
 import generateBitcoinData from '../utils/generateBitcoinData';
 import useP5Chart from '../hooks/useP5Chart';
+import { useDebug } from '../debug/DebugContext';
 
 /**
  * Main candlestick chart component for the trading app/game.
  * Handles state management and renders overlays/footer.
  */
 const CandlestickChart = () => {
+    const dbg = useDebug();
     const chartRef = useRef<HTMLDivElement>(null);
     const p5InstanceRef = useRef<p5 | null>(null);
     const modalOpenRef = useRef(false);
@@ -73,6 +75,9 @@ const CandlestickChart = () => {
 
     // Setup p5 sketch using custom hook.
     const bitcoinData = generateBitcoinData();
+    // Expose balance + local setter to debug overlay
+    useEffect(() => { dbg.setMetadata({ balance }); }, [balance]);
+    useEffect(() => { (dbg as any).setLocalBalance = (val: number) => setBalance(val); }, [dbg]);
     useP5Chart({
         chartRef,
         p5InstanceRef,
@@ -89,6 +94,11 @@ const CandlestickChart = () => {
         bitcoinData,
         balance,
         isModalOpen,
+        isPaused: dbg.isPaused,
+        overlayActive: dbg.overlayActive,
+        onRoundMeta: (meta) => dbg.setMetadata(meta),
+        debugEnabled: dbg.enabled,
+        disableClicks: dbg.enabled,
     });
 
     // Prevent unwanted mobile behaviors like scrolling or context menus.

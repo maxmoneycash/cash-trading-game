@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import p5 from 'p5';
 import { getTopMargin, getSafeBottom, isStandalone } from '../utils/helpers';
 
@@ -22,6 +22,11 @@ const useP5Chart = ({
     bitcoinData,
     balance,
     isModalOpen,
+    isPaused = false,
+    overlayActive = false,
+    onRoundMeta,
+    debugEnabled = false,
+    disableClicks = false,
 }: {
     chartRef: React.RefObject<HTMLDivElement>;
     p5InstanceRef: React.RefObject<p5 | null>;
@@ -38,10 +43,31 @@ const useP5Chart = ({
     bitcoinData: any[];
     balance: number;
     isModalOpen: boolean;
+    isPaused?: boolean;
+    overlayActive?: boolean;
+    onRoundMeta?: (meta: { roundId?: string; seed?: string; userId?: string; wallet?: string }) => void;
+    debugEnabled?: boolean;
+    disableClicks?: boolean;
 }) => {
+    const flagsRef = useRef({ overlayActive, isPaused, disableClicks })
+    const debugListenersRef = useRef<{ start?: any; end?: any }>({})
+    // Keep interaction guards in sync for p5 handlers
+    useEffect(() => {
+        flagsRef.current.overlayActive = overlayActive
+    }, [overlayActive])
+    useEffect(() => {
+        flagsRef.current.isPaused = isPaused
+    }, [isPaused])
+    useEffect(() => {
+        flagsRef.current.disableClicks = disableClicks
+    }, [disableClicks])
+
     useEffect(() => {
         const sketch = (p: p5) => {
             // Local state for chart elements and animations.
+            // Backend logging helpers
+            const API_BASE_URL = (import.meta as any)?.env?.VITE_API_URL || 'http://localhost:3001';
+            let currentRoundId: string | null = null;
             let candles: any[] = [];
             let allRoundCandles: any[] = [];
             let currentIndex = 0;
@@ -70,6 +96,9 @@ const useP5Chart = ({
             let rugpullZoom = 1;
             let liquidationCandleCreated = false;
             let currentPosition: any = null;
+            // Track entry index and backend trade id
+            let currentTradeId: string | null = null;
+            let currentEntryIndex: number | null = null;
             let completedTrades: any[] = [];
             let currentPnl = 0;
             let isHoldingPosition = false;
@@ -218,6 +247,33 @@ const useP5Chart = ({
 
             // Handle game end due to liquidation or rugpull.
             const endGameLiquidation = () => {
+                // Record event + complete round if possible
+                try {
+                    const lastIndex = Math.max(0, allRoundCandles.length - 1);
+                    const last = allRoundCandles[lastIndex];
+                    if (currentRoundId && last) {
+                        fetch(`${API_BASE_URL}/api/game/event`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                roundId: currentRoundId,
+                                candleIndex: lastIndex,
+                                type: 'LIQUIDATION',
+                                data: { price: last.close }
+                            })
+                        }).catch(() => {});
+                        fetch(`${API_BASE_URL}/api/game/complete`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                roundId: currentRoundId,
+                                finalPrice: last.close,
+                                candleCount: allRoundCandles.length,
+                                completedAt: new Date().toISOString()
+                            })
+                        }).catch(() => {});
+                    }
+                } catch {}
                 rugpullActive = false;
                 rugpullSlowMotion = false;
                 rugpullZoom = 1;
@@ -278,13 +334,33 @@ const useP5Chart = ({
                 explosionCenter = null;
                 liquidationCandleCreated = false;
                 console.log(`✅ Round started - liquidation risk increases with position duration`);
+                // Reset paused tracking for this round
+                (p as any).__pausedMs = 0;
+                (p as any).__pauseStart = null;
+                // Start backend round
+                try {
+                    fetch(`${API_BASE_URL}/api/game/start`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' }
+                    }).then(async (res) => {
+                        if (!res.ok) return;
+                        const data = await res.json();
+                        if (data?.success && data.round?.id) {
+                            currentRoundId = data.round.id;
+                            if (onRoundMeta) {
+                                onRoundMeta({ roundId: data.round.id, seed: data.round.seed, userId: data.user?.id, wallet: data.user?.wallet_address })
+                            }
+                        }
+                    }).catch(() => {});
+                } catch {}
             };
 
             // Check if current round should end.
             const checkRoundEnd = () => {
                 if (!isRoundActive) return;
                 const elapsed = p.millis() - roundStartTime;
-                if (elapsed >= roundDuration) {
+                const pausedMs = (p as any).__pausedMs || 0;
+                if (elapsed - pausedMs >= roundDuration) {
                     endRound();
                 }
             };
@@ -301,6 +377,23 @@ const useP5Chart = ({
                 explosionCenter = null;
                 isHistoricalView = true;
                 zoomStartTime = p.millis();
+                // Complete round in backend
+                try {
+                    const lastIndex = Math.max(0, allRoundCandles.length - 1);
+                    const last = allRoundCandles[lastIndex];
+                    if (currentRoundId && last) {
+                        fetch(`${API_BASE_URL}/api/game/complete`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                roundId: currentRoundId,
+                                finalPrice: last.close,
+                                candleCount: allRoundCandles.length,
+                                completedAt: new Date().toISOString()
+                            })
+                        }).catch(() => {});
+                    }
+                } catch {}
                 setTimeout(() => {
                     startRound();
                 }, 3000);
@@ -721,11 +814,35 @@ const useP5Chart = ({
                         positionSize: positionSize,
                         candlesElapsed: 0
                     };
+                    currentEntryIndex = allRoundCandles.length - 1;
                     isHoldingPosition = true;
                     setIsHolding(true);
                     currentPnl = 0;
                     setPnl(0);
                     p.redraw();
+                    // Persist open trade
+                    try {
+                        if (currentRoundId != null && currentEntryIndex != null) {
+                            fetch(`${API_BASE_URL}/api/game/trade/open`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    roundId: currentRoundId,
+                                    direction: 'LONG',
+                                    size: positionSize,
+                                    entryPrice: lastCandle.close,
+                                    entryCandleIndex: currentEntryIndex,
+                                })
+                            }).then(async (res) => {
+                                if (res.ok) {
+                                    const data = await res.json();
+                                    if (data?.success && data.trade?.id) {
+                                        currentTradeId = data.trade.id;
+                                    }
+                                }
+                            }).catch(() => {});
+                        }
+                    } catch {}
                 } catch (error) {
                     console.error('❌ Error in startPosition:', error);
                 }
@@ -747,6 +864,23 @@ const useP5Chart = ({
                         netProfit: netProfit,
                         exitElapsed: 0
                     });
+                    // Persist close trade
+                    try {
+                        const lastIndex = Math.max(0, allRoundCandles.length - 1);
+                        const last = allRoundCandles[lastIndex];
+                        if (currentTradeId && last) {
+                            fetch(`${API_BASE_URL}/api/game/trade/close`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    tradeId: currentTradeId,
+                                    exitPrice: last.close,
+                                    exitCandleIndex: lastIndex,
+                                    pnl: netProfit,
+                                })
+                            }).catch(() => {});
+                        }
+                    } catch {}
                     setBalance(prevBalance => {
                         const newBalance = prevBalance + netProfit;
                         return newBalance;
@@ -775,6 +909,8 @@ const useP5Chart = ({
                         lossSound.play().catch(err => console.log('Could not play loss sound:', err));
                     }
                     currentPosition = null;
+                    currentTradeId = null;
+                    currentEntryIndex = null;
                     if (!liquidationCandleCreated && !rugpullActive) {
                         currentPnl = 0;
                         setPnl(0);
@@ -811,6 +947,9 @@ const useP5Chart = ({
             // p5 draw loop: Main rendering and update cycle.
             p.draw = () => {
                 p.background(12, 12, 12);
+                if (isPaused) {
+                    return;
+                }
                 
                 // Apply screen shake for loss effect
                 if (screenShake > 0) {
@@ -915,7 +1054,9 @@ const useP5Chart = ({
             // Mouse/touch handlers for buying/selling.
             let touchActive = false;
             p.mousePressed = () => {
-                if (modalOpenRef.current) return false;
+                if (modalOpenRef.current) return true;
+                const f = flagsRef.current
+                if (f.isPaused || f.overlayActive || f.disableClicks) return true;
                 try {
                     if (!touchActive) {
                         startPosition();
@@ -923,10 +1064,13 @@ const useP5Chart = ({
                 } catch (error) {
                     console.log('❌ Mouse handler error, p5 not ready');
                 }
+                // Prevent default only when we handle the press
                 return false;
             };
             p.mouseReleased = () => {
-                if (modalOpenRef.current) return false;
+                if (modalOpenRef.current) return true;
+                const f = flagsRef.current
+                if (f.isPaused || f.overlayActive || f.disableClicks) return true;
                 try {
                     if (!touchActive) {
                         closePosition();
@@ -937,9 +1081,10 @@ const useP5Chart = ({
                 return false;
             };
             p.touchStarted = (event?: any) => {
-                if (modalOpenRef.current) {
-                    if (event && event.preventDefault) event.preventDefault();
-                    return false;
+                const f = flagsRef.current
+                if (modalOpenRef.current || f.isPaused || f.overlayActive || f.disableClicks) {
+                    // Allow default so inputs/buttons can be focused
+                    return true;
                 }
                 touchActive = true;
                 startPosition();
@@ -951,23 +1096,67 @@ const useP5Chart = ({
                 return false;
             };
             p.touchEnded = (event?: any) => {
-                if (modalOpenRef.current) {
-                    if (event && event.preventDefault) event.preventDefault();
-                    return false;
+                const f = flagsRef.current
+                if (modalOpenRef.current || f.isPaused || f.overlayActive || f.disableClicks) {
+                    return true;
                 }
                 touchActive = false;
                 closePosition();
                 if (event && event.preventDefault) event.preventDefault();
                 return false;
             };
+
+            // Debug: map overlay Buy(hold) to start/close position
+            if (debugEnabled) {
+                const onHoldStart = () => {
+                    const f = flagsRef.current
+                    if (f.isPaused) return
+                    try { startPosition(); } catch {}
+                }
+                const onHoldEnd = () => {
+                    const f = flagsRef.current
+                    if (f.isPaused) return
+                    try { closePosition(); } catch {}
+                }
+                window.addEventListener('debug-hold-start', onHoldStart)
+                window.addEventListener('debug-hold-end', onHoldEnd)
+                debugListenersRef.current.start = onHoldStart
+                debugListenersRef.current.end = onHoldEnd
+            }
         };
         p5InstanceRef.current = new p5(sketch, chartRef.current!);
         return () => {
+            // Cleanup debug listeners
+            if (debugListenersRef.current.start) {
+                window.removeEventListener('debug-hold-start', debugListenersRef.current.start)
+            }
+            if (debugListenersRef.current.end) {
+                window.removeEventListener('debug-hold-end', debugListenersRef.current.end)
+            }
             if (p5InstanceRef.current) {
                 p5InstanceRef.current.remove();
             }
         };
     }, []); // Empty dependency array - only runs once on mount
+
+    // Control p5 draw loop based on pause state
+    useEffect(() => {
+        const inst = p5InstanceRef.current as any
+        if (!inst) return
+        try {
+            const now = inst.millis ? inst.millis() : Date.now()
+            if (isPaused) {
+                inst.__pauseStart = now
+                inst.noLoop()
+            } else {
+                if (inst.__pauseStart) {
+                    inst.__pausedMs = (inst.__pausedMs || 0) + (now - inst.__pauseStart)
+                    inst.__pauseStart = null
+                }
+                inst.loop()
+            }
+        } catch {}
+    }, [isPaused])
 };
 
 export default useP5Chart; 

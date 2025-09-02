@@ -11,7 +11,56 @@
 
 ---
 
-## Current State Analysis
+## ⚠️ CRITICAL UPDATE: Latest PR Changes (December 2024)
+
+### What Actually Got Merged
+Sam's latest PR took a different direction than the `feature/game_manager` branch described below. Here's what ACTUALLY exists now:
+
+**✅ What Was Added:**
+1. **Backend Persistence** - Express + SQLite logging rounds, trades, events, metrics
+2. **Debug Overlay** - Enable with `?debug=true` for pause/resume, metadata display
+3. **REST API** - Complete CRUD for rounds, trades, events (`/api/game/*`)
+4. **Single Test User** - Hardcoded `0x1234...` user for all operations
+5. **Postman Collection** - API testing collection in `postman/` directory
+
+**❌ What Was Removed:**
+1. **GameManager System** - The deterministic generation system described below is GONE
+2. **CandleGenerator** - No seed-based candle generation anymore
+3. **WebSocket Infrastructure** - Completely removed
+4. **Replay System** - No URL-based replay functionality
+5. **Aptos Hooks** - Removed as unused
+
+**⚠️ Current Issues:**
+1. **Seeds Not Used** - Server generates seeds but they DON'T drive candle generation
+2. **LONG/SHORT Trading** - Using futures terminology instead of spot BUY/SELL
+3. **No Determinism** - Candles are generated randomly on client, not from seed
+4. **No Wallet Auth** - Single hardcoded test user, no real authentication
+5. **No Aptos Integration** - Mock seeds only, no blockchain connection
+
+### Immediate Next Steps Required
+
+1. **Fix Trading Terminology** (1 hour)
+   - Change `direction: 'LONG'` to `type: 'BUY'` in client
+   - Update server to accept BUY only
+   - Remove SHORT from database constraints
+
+2. **Implement Seeded Candles** (2-3 hours)
+   - Create `src/lib/seededCandles.ts` module
+   - Use seed from `/api/game/start` to generate deterministic candles
+   - Add `candle_digest` to database for verification
+
+3. **Add Fairness Endpoint** (1 hour)
+   - Create `GET /api/game/fairness/:roundId`
+   - Return seed + digest for public verification
+
+4. **Wire Real Aptos** (4-6 hours)
+   - Replace mock seed with Aptos randomness API
+   - Add wallet authentication flow
+   - Implement deposit/withdrawal endpoints
+
+---
+
+## Current State Analysis (Original Plan - NOW OUTDATED)
 
 ### What We Have (Main Branch)
 ```
@@ -2287,3 +2336,271 @@ This approach gives us the best chance of shipping a working game with real mone
 
 *Document Version: 4.0 | Last Updated: Current Date*
 *Comprehensive implementation plan based on Sam's PR analysis*
+
+---
+
+## 🚀 ACTUAL Implementation Guide (Based on Current State)
+
+### Step 1: Fix Trading to BUY-Only (30 minutes)
+
+#### 1.1 Update Client Trade Requests
+```typescript
+// src/hooks/useP5Chart.ts - Line ~831
+// CHANGE FROM:
+direction: 'LONG',
+
+// TO:
+type: 'BUY',
+```
+
+#### 1.2 Update Server to Accept BUY
+```typescript
+// server/routes/game.ts - Line ~226
+// CHANGE FROM:
+const { roundId, direction, size, entryPrice, entryCandleIndex } = req.body;
+
+// TO:
+const { roundId, type, size, entryPrice, entryCandleIndex } = req.body;
+// Normalize to 'BUY' for now (we can update DB schema later)
+const direction = 'LONG'; // Temporary compatibility
+```
+
+#### 1.3 Update Database Schema (optional for now)
+```sql
+-- Later migration to update trades table
+-- For now, just normalize LONG = BUY on server side
+```
+
+### Step 2: Implement Deterministic Candles (2-3 hours)
+
+#### 2.1 Create Seeded Candle Generator
+```typescript
+// src/lib/seededCandles.ts
+import { createHash } from 'crypto';
+
+export interface CandleData {
+  t: number;     // timestamp (ms)
+  o: number;     // open
+  h: number;     // high  
+  l: number;     // low
+  c: number;     // close
+  isLiquidation?: boolean;
+}
+
+// Simple xorshift PRNG
+class SeededRandom {
+  private seed: number;
+  
+  constructor(seed: string) {
+    // Convert hex seed to number
+    const hash = createHash('sha256').update(seed).digest();
+    this.seed = hash.readUInt32BE(0);
+  }
+  
+  next(): number {
+    this.seed ^= this.seed << 13;
+    this.seed ^= this.seed >> 17;
+    this.seed ^= this.seed << 5;
+    return (this.seed >>> 0) / 0xFFFFFFFF;
+  }
+}
+
+export function generateSeededCandles(
+  seedHex: string,
+  count: number = 460,
+  intervalMs: number = 65,
+  initialPrice: number = 100
+): CandleData[] {
+  const rng = new SeededRandom(seedHex);
+  const candles: CandleData[] = [];
+  let lastClose = initialPrice;
+  
+  for (let i = 0; i < count; i++) {
+    // Base volatility
+    const change = (rng.next() - 0.5) * 0.02; // ±1% per candle
+    
+    // House edge drift
+    const drift = -0.0001; // Slight downward bias
+    
+    // Calculate OHLC
+    const open = lastClose;
+    const close = open * (1 + change + drift);
+    const high = Math.max(open, close) * (1 + Math.abs(rng.next()) * 0.001);
+    const low = Math.min(open, close) * (1 - Math.abs(rng.next()) * 0.001);
+    
+    // Check for liquidation (0.15% chance after candle 100)
+    const isLiquidation = i > 100 && rng.next() < 0.0015;
+    
+    candles.push({
+      t: i * intervalMs,
+      o: open,
+      h: isLiquidation ? 0 : high,
+      l: isLiquidation ? 0 : low,
+      c: isLiquidation ? 0 : close,
+      isLiquidation
+    });
+    
+    lastClose = isLiquidation ? initialPrice : close;
+  }
+  
+  return candles;
+}
+
+// Generate digest for verification
+export function generateCandleDigest(candles: CandleData[]): string {
+  const canonical = candles
+    .map(c => `{"t":${c.t},"o":${c.o},"h":${c.h},"l":${c.l},"c":${c.c}}`)
+    .join('\n');
+  
+  return createHash('sha256').update(canonical).digest('hex');
+}
+```
+
+#### 2.2 Update useP5Chart to Use Seeded Candles
+```typescript
+// src/hooks/useP5Chart.ts
+import { generateSeededCandles } from '../lib/seededCandles';
+
+// Add to state
+const [precomputedCandles, setPrecomputedCandles] = useState<CandleData[]>([]);
+const [currentCandleIndex, setCurrentCandleIndex] = useState(0);
+
+// When round starts, fetch seed and precompute
+const startRound = async () => {
+  const res = await fetch(`${API_BASE_URL}/api/game/start`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' }
+  });
+  
+  const data = await res.json();
+  if (data.success && data.round) {
+    // Precompute all candles
+    const candles = generateSeededCandles(data.round.seed);
+    setPrecomputedCandles(candles);
+    setCurrentCandleIndex(0);
+    
+    // Start countdown, then play candles
+    startCountdown(5);
+  }
+};
+
+// Play precomputed candles instead of generating randomly
+useEffect(() => {
+  if (currentCandleIndex < precomputedCandles.length) {
+    const timer = setTimeout(() => {
+      const candle = precomputedCandles[currentCandleIndex];
+      // Add candle to chart...
+      setCurrentCandleIndex(i => i + 1);
+    }, 65);
+    
+    return () => clearTimeout(timer);
+  }
+}, [currentCandleIndex, precomputedCandles]);
+```
+
+#### 2.3 Add Candle Digest to Server
+```typescript
+// server/routes/game.ts
+import { generateSeededCandles, generateCandleDigest } from '../../src/lib/seededCandles';
+
+// In POST /api/game/start
+const seed = crypto.randomBytes(32).toString('hex');
+const candles = generateSeededCandles(seed);
+const candle_digest = generateCandleDigest(candles);
+
+// Store digest in database
+await db.run(
+  'UPDATE rounds SET candle_digest = ? WHERE id = ?',
+  [candle_digest, round.id]
+);
+```
+
+### Step 3: Add Fairness Verification (1 hour)
+
+#### 3.1 Add Database Column
+```sql
+-- server/database/migrations/add_candle_digest.sql
+ALTER TABLE rounds ADD COLUMN candle_digest TEXT;
+```
+
+#### 3.2 Add Fairness Endpoint
+```typescript
+// server/routes/game.ts
+router.get('/fairness/:roundId', async (req, res) => {
+  try {
+    const round = await db.getRoundById(req.params.roundId);
+    if (!round) {
+      return res.status(404).json({ error: 'Round not found' });
+    }
+    
+    res.json({
+      success: true,
+      fairness: {
+        round_id: round.id,
+        seed: round.seed,
+        candle_digest: round.candle_digest,
+        total_candles: 460,
+        interval_ms: 65,
+        verification_code: 'https://github.com/yourrepo/verify.js'
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to get fairness data' });
+  }
+});
+```
+
+### Step 4: Test Everything (30 minutes)
+
+```bash
+# 1. Start both servers
+npm run dev:all
+
+# 2. Open debug mode
+open http://localhost:5173/?debug=true
+
+# 3. Test flow:
+# - Click "Buy (hold)" button in debug overlay
+# - Verify seed is shown
+# - Check network tab for API calls
+# - Verify trades are logged
+
+# 4. Test fairness endpoint
+curl http://localhost:3001/api/game/fairness/YOUR_ROUND_ID
+
+# 5. Verify candle generation
+# - Copy seed from debug overlay
+# - Run verification script
+# - Confirm same candles generated
+```
+
+### Next: Aptos Integration (After Above Works)
+
+Once deterministic candles work with mock seeds, we can:
+1. Replace `crypto.randomBytes(32)` with Aptos randomness API call
+2. Add wallet authentication using existing hooks
+3. Implement deposit/withdrawal endpoints
+4. Add real money tracking
+
+---
+
+## Debug Overlay Not Showing?
+
+If you don't see the debug overlay with `?debug=true`:
+
+1. **Check Console** - Look for errors
+2. **Verify Server** - Must see "🚀 Trading game server running on port 3001"
+3. **Check Network** - Debug overlay pings `/health` endpoint
+4. **Hard Refresh** - Cmd+Shift+R to clear cache
+5. **Check URL** - Must be exactly `?debug=true` not `?debug=1`
+
+The overlay appears at top-center with:
+- API status (green/red dot)
+- Round metadata (ID, seed, user)
+- Pause/Resume buttons
+- "Buy (hold)" button for testing
+
+---
+
+*Document Version: 3.0 | Last Updated: December 2024*
+*Major Update: Reflecting actual merged PR state, not theoretical plans*

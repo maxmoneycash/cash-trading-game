@@ -6,7 +6,7 @@
 try {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   require('dotenv').config();
-} catch {}
+} catch { }
 import { db, User, Round } from '../database/connection';
 
 async function ensureUsers(): Promise<User[]> {
@@ -76,11 +76,10 @@ async function createTrades(rounds: Round[], users: User[]) {
     const user = users.find(u => u.id === r.user_id)!;
     const existingTrades = await db.getTradesByRoundId(r.id);
     if (existingTrades.length === 0) {
-      // LONG winner
+      // Buy-and-hold winner
       await db.insertTrade({
         round_id: r.id,
         user_id: user.id,
-        direction: 'LONG',
         size: 100,
         entry_price: 98.0,
         exit_price: 103.5,
@@ -90,17 +89,16 @@ async function createTrades(rounds: Round[], users: User[]) {
         status: 'CLOSED',
       });
 
-      // SHORT loser
+      // Buy-and-hold loser
       await db.insertTrade({
         round_id: r.id,
         user_id: user.id,
-        direction: 'SHORT',
         size: 50,
         entry_price: 101.2,
-        exit_price: 104.1,
+        exit_price: 97.8,
         entry_candle_index: 180,
         exit_candle_index: 210,
-        pnl: (101.2 - 104.1) * 50,
+        pnl: (97.8 - 101.2) * 50,  // Negative PnL
         status: 'CLOSED',
       });
     }

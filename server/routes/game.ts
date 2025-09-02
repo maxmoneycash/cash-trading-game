@@ -17,11 +17,11 @@ router.post('/start', async (req, res) => {
   try {
     // For now, use the seeded test user. In production this would come from auth.
     const testUser = await db.ensureUser('0x1234567890abcdef', 'Test Player');
-    
+
     // Step 1: Generate seed from Aptos (mocked)
     console.log('🎯 Generating new game round...');
     const seedData = await aptosService.generateRandomSeed();
-    
+
     // Step 2: Create round record in database
     const config = {
       candleIntervalMs: 65,
@@ -29,17 +29,17 @@ router.post('/start', async (req, res) => {
       initialPrice: 100.0,
       roundDurationMs: 30000
     };
-    
+
     const round = await db.createRound(testUser.id, seedData.seed);
-    
+
     // Update the round with Aptos data
     await db.updateRound(round.id, {
       block_height: seedData.blockHeight,
       aptos_transaction_hash: seedData.transactionHash
     });
-    
+
     console.log(`✅ Round created: ${round.id} with seed ${seedData.seed.substring(0, 10)}...`);
-    
+
     // Step 3: Return game data to client
     res.json({
       success: true,
@@ -58,13 +58,13 @@ router.post('/start', async (req, res) => {
         wallet_address: testUser.wallet_address
       }
     });
-    
+
   } catch (error: any) {
     console.error('❌ Failed to start game round:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
       error: 'Failed to start game round',
-      details: error.message 
+      details: error.message
     });
   }
 });
@@ -76,14 +76,14 @@ router.post('/start', async (req, res) => {
 router.post('/complete', async (req, res) => {
   try {
     const { roundId, finalPrice, candleCount, completedAt } = req.body;
-    
+
     if (!roundId || typeof finalPrice !== 'number') {
       return res.status(400).json({
         success: false,
         error: 'Invalid request: roundId and finalPrice required'
       });
     }
-    
+
     // Get the round to verify it exists and is active
     const round = await db.getRoundById(roundId);
     if (!round) {
@@ -92,22 +92,22 @@ router.post('/complete', async (req, res) => {
         error: 'Round not found'
       });
     }
-    
+
     if (round.status !== 'ACTIVE') {
       return res.status(400).json({
         success: false,
         error: 'Round is not active'
       });
     }
-    
+
     // TODO: Verify final price by regenerating candles from seed
     // For now, we trust the client (will be implemented with deterministic generation)
-    
+
     // Complete the round
     await db.completeRound(roundId, finalPrice, completedAt ? new Date(completedAt) : new Date());
-    
+
     console.log(`🏁 Round ${roundId} completed with final price: ${finalPrice}`);
-    
+
     res.json({
       success: true,
       round: {
@@ -117,13 +117,13 @@ router.post('/complete', async (req, res) => {
         status: 'COMPLETED'
       }
     });
-    
+
   } catch (error: any) {
     console.error('❌ Failed to complete round:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
       error: 'Failed to complete round',
-      details: error.message 
+      details: error.message
     });
   }
 });
@@ -135,7 +135,7 @@ router.post('/complete', async (req, res) => {
 router.get('/round/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     const round = await db.getRoundById(id);
     if (!round) {
       return res.status(404).json({
@@ -143,7 +143,7 @@ router.get('/round/:id', async (req, res) => {
         error: 'Round not found'
       });
     }
-    
+
     res.json({
       success: true,
       round: {
@@ -160,13 +160,13 @@ router.get('/round/:id', async (req, res) => {
         }
       }
     });
-    
+
   } catch (error: any) {
     console.error('❌ Failed to get round:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
       error: 'Failed to get round',
-      details: error.message 
+      details: error.message
     });
   }
 });
@@ -179,7 +179,7 @@ router.get('/history', async (req, res) => {
   try {
     const limit = parseInt(req.query.limit as string) || 10;
     const rounds = await db.getRecentRounds(limit);
-    
+
     res.json({
       success: true,
       rounds: rounds.map(round => ({
@@ -191,13 +191,13 @@ router.get('/history', async (req, res) => {
         blockHeight: round.block_height
       }))
     });
-    
+
   } catch (error: any) {
     console.error('❌ Failed to get game history:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
       error: 'Failed to get game history',
-      details: error.message 
+      details: error.message
     });
   }
 });
@@ -223,8 +223,8 @@ router.get('/rounds', async (_req, res) => {
  */
 router.post('/trade/open', async (req, res) => {
   try {
-    const { roundId, direction, size, entryPrice, entryCandleIndex } = req.body;
-    if (!roundId || !direction || typeof size !== 'number' || typeof entryPrice !== 'number' || typeof entryCandleIndex !== 'number') {
+    const { roundId, size, entryPrice, entryCandleIndex } = req.body;
+    if (!roundId || typeof size !== 'number' || typeof entryPrice !== 'number' || typeof entryCandleIndex !== 'number') {
       return res.status(400).json({ success: false, error: 'Invalid request body' });
     }
 
@@ -234,7 +234,6 @@ router.post('/trade/open', async (req, res) => {
     const trade = await db.insertTrade({
       round_id: round.id,
       user_id: round.user_id,
-      direction,
       size,
       entry_price: entryPrice,
       entry_candle_index: entryCandleIndex,

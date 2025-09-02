@@ -32,7 +32,6 @@ export interface Trade {
   id: string;
   round_id: string;
   user_id: string;
-  direction: 'LONG' | 'SHORT';
   size: number;
   entry_price: number;
   exit_price?: number;
@@ -65,21 +64,21 @@ export interface RoundMetrics {
 class DatabaseConnection {
   private db: sqlite3.Database;
   private isInitialized = false;
-  
+
   // Promisified methods
   private run: (sql: string, params?: any[]) => Promise<sqlite3.RunResult>;
   private get: (sql: string, params?: any[]) => Promise<any>;
   private all: (sql: string, params?: any[]) => Promise<any[]>;
-  
+
   constructor() {
     const envPath = process.env.DATABASE_PATH;
     const dbPath = envPath
       ? path.resolve(process.cwd(), envPath)
       : path.join(__dirname, 'game.db');
-    
+
     // Enable verbose mode for development
     sqlite3.verbose();
-    
+
     this.db = new sqlite3.Database(dbPath, (err) => {
       if (err) {
         console.error('❌ Failed to open SQLite database:', err.message);
@@ -87,41 +86,41 @@ class DatabaseConnection {
         console.log('✅ Connected to SQLite database at:', dbPath);
       }
     });
-    
+
     // Promisify database methods properly
     this.run = promisify(this.db.run.bind(this.db));
     this.get = promisify(this.db.get.bind(this.db));
     this.all = promisify(this.db.all.bind(this.db));
   }
-  
+
   async initialize() {
     if (this.isInitialized) return;
-    
+
     try {
       const schemaPath = path.join(__dirname, 'schema.sql');
       const schema = fs.readFileSync(schemaPath, 'utf8');
-      
+
       // Execute schema - split by semicolon and run each statement
       const statements = schema.split(';').filter(stmt => stmt.trim());
-      
+
       for (const statement of statements) {
         if (statement.trim()) {
           await this.run(statement.trim());
         }
       }
-      
+
       this.isInitialized = true;
       console.log('🎯 Database schema initialized successfully');
-      
+
       // Create a test user if none exists
       await this.createTestUser();
-      
+
     } catch (error) {
       console.error('❌ Failed to initialize database:', error);
       throw error;
     }
   }
-  
+
   // Helper method to create a test user for proof of concept
   private async createTestUser() {
     try {
@@ -129,7 +128,7 @@ class DatabaseConnection {
         'SELECT * FROM users WHERE wallet_address = ?',
         ['0x1234567890abcdef']
       );
-      
+
       if (!existingUser) {
         await this.run(
           'INSERT INTO users (wallet_address, username, balance) VALUES (?, ?, ?)',
@@ -141,21 +140,21 @@ class DatabaseConnection {
       console.log('Note: Could not create test user (this is fine)');
     }
   }
-  
+
   // Basic user operations
   async createUser(walletAddress: string, username?: string): Promise<User> {
     await this.run(
       'INSERT INTO users (wallet_address, username) VALUES (?, ?)',
       [walletAddress, username || null]
     );
-    
+
     // Return the user we just created
     return await this.get(
       'SELECT * FROM users WHERE wallet_address = ?',
       [walletAddress]
     );
   }
-  
+
   async getUserByWallet(walletAddress: string): Promise<User | null> {
     return await this.get(
       'SELECT * FROM users WHERE wallet_address = ?',
@@ -169,7 +168,7 @@ class DatabaseConnection {
       [userId]
     );
   }
-  
+
   // Basic round operations
   async createRound(userId: string, seed: string): Promise<Round> {
     const config = JSON.stringify({
@@ -178,12 +177,12 @@ class DatabaseConnection {
       initialPrice: 100.0,
       roundDurationMs: 30000
     });
-    
+
     await this.run(
       'INSERT INTO rounds (user_id, seed, config) VALUES (?, ?, ?)',
       [userId, seed, config]
     );
-    
+
     // Return the round we just created (using user_id and seed since they're unique together)
     return await this.get(
       'SELECT * FROM rounds WHERE user_id = ? AND seed = ?',
@@ -212,7 +211,6 @@ class DatabaseConnection {
   async insertTrade(params: {
     round_id: string,
     user_id: string,
-    direction: 'LONG' | 'SHORT',
     size: number,
     entry_price: number,
     exit_price?: number,
@@ -224,12 +222,11 @@ class DatabaseConnection {
     closed_at?: string,
   }): Promise<Trade> {
     await this.run(
-      `INSERT INTO trades (round_id, user_id, direction, size, entry_price, exit_price, entry_candle_index, exit_candle_index, pnl, status, opened_at, closed_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO trades (round_id, user_id, size, entry_price, exit_price, entry_candle_index, exit_candle_index, pnl, status, opened_at, closed_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         params.round_id,
         params.user_id,
-        params.direction,
         params.size,
         params.entry_price,
         params.exit_price ?? null,
@@ -288,17 +285,17 @@ class DatabaseConnection {
       );
     }
   }
-  
+
   // Get all users (for testing)
   async getAllUsers(): Promise<User[]> {
     return await this.all('SELECT * FROM users');
   }
-  
+
   // Get all rounds (for testing)
   async getAllRounds(): Promise<Round[]> {
     return await this.all('SELECT * FROM rounds');
   }
-  
+
   // Get round by ID
   async getRoundById(roundId: string): Promise<Round | null> {
     return await this.get(
@@ -342,22 +339,22 @@ class DatabaseConnection {
   async updateUserBalance(userId: string, balance: number): Promise<void> {
     await this.run('UPDATE users SET balance = ? WHERE id = ?', [balance, userId])
   }
-  
+
   // Update round with additional data
   async updateRound(roundId: string, updates: { block_height?: number, aptos_transaction_hash?: string }): Promise<void> {
     const setParts: string[] = [];
     const values: any[] = [];
-    
+
     if (updates.block_height !== undefined) {
       setParts.push('block_height = ?');
       values.push(updates.block_height);
     }
-    
+
     if (updates.aptos_transaction_hash !== undefined) {
       setParts.push('aptos_transaction_hash = ?');
       values.push(updates.aptos_transaction_hash);
     }
-    
+
     if (setParts.length > 0) {
       values.push(roundId);
       await this.run(
@@ -366,7 +363,7 @@ class DatabaseConnection {
       );
     }
   }
-  
+
   // Complete a round
   async completeRound(roundId: string, finalPrice: number, endedAt: Date): Promise<void> {
     await this.run(
@@ -374,7 +371,7 @@ class DatabaseConnection {
       ['COMPLETED', finalPrice, endedAt.toISOString(), roundId]
     );
   }
-  
+
   // Get recent rounds
   async getRecentRounds(limit: number = 10): Promise<Round[]> {
     return await this.all(
@@ -396,7 +393,7 @@ class DatabaseConnection {
       [params.exit_price, params.exit_candle_index, params.pnl, new Date().toISOString(), tradeId]
     );
   }
-  
+
   // Close database connection
   async close() {
     return new Promise<void>((resolve, reject) => {

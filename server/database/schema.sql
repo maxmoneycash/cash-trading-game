@@ -31,7 +31,6 @@ CREATE TABLE IF NOT EXISTS trades (
     id TEXT PRIMARY KEY DEFAULT (hex(randomblob(16))),
     round_id TEXT NOT NULL,
     user_id TEXT NOT NULL,
-    direction TEXT NOT NULL CHECK (direction IN ('LONG', 'SHORT')),
     size REAL NOT NULL,
     entry_price REAL NOT NULL,
     exit_price REAL,

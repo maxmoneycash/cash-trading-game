@@ -8,8 +8,7 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "db:seed": "ts-node --project tsconfig.json scripts/seed.ts"
-    ,
+    "db:seed": "ts-node --project tsconfig.json scripts/seed.ts",
     "db:clear": "ts-node --project tsconfig.json scripts/clear.ts"
   },
   "keywords": [],

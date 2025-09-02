@@ -261,7 +261,7 @@ const useP5Chart = ({
                                 type: 'LIQUIDATION',
                                 data: { price: last.close }
                             })
-                        }).catch(() => {});
+                        }).catch(() => { });
                         fetch(`${API_BASE_URL}/api/game/complete`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
@@ -271,9 +271,9 @@ const useP5Chart = ({
                                 candleCount: allRoundCandles.length,
                                 completedAt: new Date().toISOString()
                             })
-                        }).catch(() => {});
+                        }).catch(() => { });
                     }
-                } catch {}
+                } catch { }
                 rugpullActive = false;
                 rugpullSlowMotion = false;
                 rugpullZoom = 1;
@@ -351,8 +351,8 @@ const useP5Chart = ({
                                 onRoundMeta({ roundId: data.round.id, seed: data.round.seed, userId: data.user?.id, wallet: data.user?.wallet_address })
                             }
                         }
-                    }).catch(() => {});
-                } catch {}
+                    }).catch(() => { });
+                } catch { }
             };
 
             // Check if current round should end.
@@ -391,9 +391,9 @@ const useP5Chart = ({
                                 candleCount: allRoundCandles.length,
                                 completedAt: new Date().toISOString()
                             })
-                        }).catch(() => {});
+                        }).catch(() => { });
                     }
-                } catch {}
+                } catch { }
                 setTimeout(() => {
                     startRound();
                 }, 3000);
@@ -828,7 +828,6 @@ const useP5Chart = ({
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({
                                     roundId: currentRoundId,
-                                    direction: 'LONG',
                                     size: positionSize,
                                     entryPrice: lastCandle.close,
                                     entryCandleIndex: currentEntryIndex,
@@ -840,9 +839,9 @@ const useP5Chart = ({
                                         currentTradeId = data.trade.id;
                                     }
                                 }
-                            }).catch(() => {});
+                            }).catch(() => { });
                         }
-                    } catch {}
+                    } catch { }
                 } catch (error) {
                     console.error('❌ Error in startPosition:', error);
                 }
@@ -878,9 +877,9 @@ const useP5Chart = ({
                                     exitCandleIndex: lastIndex,
                                     pnl: netProfit,
                                 })
-                            }).catch(() => {});
+                            }).catch(() => { });
                         }
-                    } catch {}
+                    } catch { }
                     setBalance(prevBalance => {
                         const newBalance = prevBalance + netProfit;
                         return newBalance;
@@ -899,11 +898,11 @@ const useP5Chart = ({
                         // Loss animation and sound
                         setShowLossAnimation(true);
                         setTimeout(() => setShowLossAnimation(false), 1500);
-                        
+
                         // Visual effects for loss
                         screenShake = 15; // Screen shake intensity
                         lossFlash = 255; // Red flash intensity
-                        
+
                         const lossSound = new Audio('https://assets.mixkit.co/active_storage/sfx/2037/2037-preview.mp3');
                         lossSound.volume = 0.6;
                         lossSound.play().catch(err => console.log('Could not play loss sound:', err));
@@ -950,7 +949,7 @@ const useP5Chart = ({
                 if (isPaused) {
                     return;
                 }
-                
+
                 // Apply screen shake for loss effect
                 if (screenShake > 0) {
                     p.translate(
@@ -960,7 +959,7 @@ const useP5Chart = ({
                     screenShake *= 0.9; // Decay shake
                     if (screenShake < 0.1) screenShake = 0;
                 }
-                
+
                 // Apply red flash overlay for loss
                 if (lossFlash > 0) {
                     p.fill(255, 0, 0, lossFlash * 0.1); // Red with low opacity
@@ -968,7 +967,7 @@ const useP5Chart = ({
                     lossFlash *= 0.85; // Decay flash
                     if (lossFlash < 1) lossFlash = 0;
                 }
-                
+
                 pulseAnimation += 0.1;
                 checkRoundEnd();
                 const currentSpeed = rugpullSlowMotion ? 0.3 : animationSpeed;
@@ -1111,12 +1110,12 @@ const useP5Chart = ({
                 const onHoldStart = () => {
                     const f = flagsRef.current
                     if (f.isPaused) return
-                    try { startPosition(); } catch {}
+                    try { startPosition(); } catch { }
                 }
                 const onHoldEnd = () => {
                     const f = flagsRef.current
                     if (f.isPaused) return
-                    try { closePosition(); } catch {}
+                    try { closePosition(); } catch { }
                 }
                 window.addEventListener('debug-hold-start', onHoldStart)
                 window.addEventListener('debug-hold-end', onHoldEnd)
@@ -1155,7 +1154,7 @@ const useP5Chart = ({
                 }
                 inst.loop()
             }
-        } catch {}
+        } catch { }
     }, [isPaused])
 };
 

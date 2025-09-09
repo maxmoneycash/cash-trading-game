@@ -25,3 +25,6 @@ server/**/*.js
 *.sln
 *.sw?
 trading_env/
+
+server/database/game.db
+test-determinism.*

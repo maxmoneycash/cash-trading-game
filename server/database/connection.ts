@@ -26,6 +26,16 @@ export interface Round {
   status: 'ACTIVE' | 'COMPLETED' | 'DISPUTED';
   final_price?: number;
   config?: string;
+
+  // Fairness fields (canonical)
+  candle_digest?: string;
+  fairness_version?: string;   // '2'
+  prng?: string;               // 'xorshift128'
+  scale?: number;              // 1_000_000
+  interval_ms?: number;        // 65
+  total_candles?: number;      // 460
+  start_at_ms?: number;        // aligned epoch ms
+  initial_price_fp?: number;   // 100 * 1e6
 }
 
 export interface Trade {
@@ -76,7 +86,6 @@ class DatabaseConnection {
       ? path.resolve(process.cwd(), envPath)
       : path.join(__dirname, 'game.db');
 
-    // Enable verbose mode for development
     sqlite3.verbose();
 
     this.db = new sqlite3.Database(dbPath, (err) => {
@@ -87,7 +96,6 @@ class DatabaseConnection {
       }
     });
 
-    // Promisify database methods properly
     this.run = promisify(this.db.run.bind(this.db));
     this.get = promisify(this.db.get.bind(this.db));
     this.all = promisify(this.db.all.bind(this.db));
@@ -100,9 +108,7 @@ class DatabaseConnection {
       const schemaPath = path.join(__dirname, 'schema.sql');
       const schema = fs.readFileSync(schemaPath, 'utf8');
 
-      // Execute schema - split by semicolon and run each statement
       const statements = schema.split(';').filter(stmt => stmt.trim());
-
       for (const statement of statements) {
         if (statement.trim()) {
           await this.run(statement.trim());
@@ -112,7 +118,6 @@ class DatabaseConnection {
       this.isInitialized = true;
       console.log('🎯 Database schema initialized successfully');
 
-      // Create a test user if none exists
       await this.createTestUser();
 
     } catch (error) {
@@ -147,8 +152,6 @@ class DatabaseConnection {
       'INSERT INTO users (wallet_address, username) VALUES (?, ?)',
       [walletAddress, username || null]
     );
-
-    // Return the user we just created
     return await this.get(
       'SELECT * FROM users WHERE wallet_address = ?',
       [walletAddress]
@@ -171,6 +174,7 @@ class DatabaseConnection {
 
   // Basic round operations
   async createRound(userId: string, seed: string): Promise<Round> {
+    // keep a minimal JSON for UI; canonical values live in columns below
     const config = JSON.stringify({
       candleIntervalMs: 65,
       totalCandles: 460,
@@ -183,7 +187,6 @@ class DatabaseConnection {
       [userId, seed, config]
     );
 
-    // Return the round we just created (using user_id and seed since they're unique together)
     return await this.get(
       'SELECT * FROM rounds WHERE user_id = ? AND seed = ?',
       [userId, seed]
@@ -286,61 +289,40 @@ class DatabaseConnection {
     }
   }
 
-  // Get all users (for testing)
+  // Getters
   async getAllUsers(): Promise<User[]> {
     return await this.all('SELECT * FROM users');
   }
 
-  // Get all rounds (for testing)
   async getAllRounds(): Promise<Round[]> {
     return await this.all('SELECT * FROM rounds');
   }
 
-  // Get round by ID
   async getRoundById(roundId: string): Promise<Round | null> {
-    return await this.get(
-      'SELECT * FROM rounds WHERE id = ?',
-      [roundId]
-    );
+    return await this.get('SELECT * FROM rounds WHERE id = ?', [roundId]);
   }
 
   async getRoundByUserAndSeed(userId: string, seed: string): Promise<Round | null> {
-    return await this.get(
-      'SELECT * FROM rounds WHERE user_id = ? AND seed = ?',
-      [userId, seed]
-    );
+    return await this.get('SELECT * FROM rounds WHERE user_id = ? AND seed = ?', [userId, seed]);
   }
 
-  // Get trades by round ID
   async getTradesByRoundId(roundId: string): Promise<Trade[]> {
-    return await this.all(
-      'SELECT * FROM trades WHERE round_id = ? ORDER BY opened_at ASC',
-      [roundId]
-    );
+    return await this.all('SELECT * FROM trades WHERE round_id = ? ORDER BY opened_at ASC', [roundId]);
   }
 
-  // Get events by round ID
   async getEventsByRoundId(roundId: string): Promise<RoundEvent[]> {
-    return await this.all(
-      'SELECT * FROM round_events WHERE round_id = ? ORDER BY candle_index ASC',
-      [roundId]
-    );
+    return await this.all('SELECT * FROM round_events WHERE round_id = ? ORDER BY candle_index ASC', [roundId]);
   }
 
-  // Get metrics by round ID
   async getMetricsByRoundId(roundId: string): Promise<RoundMetrics | null> {
-    return await this.get(
-      'SELECT * FROM round_metrics WHERE round_id = ?',
-      [roundId]
-    );
+    return await this.get('SELECT * FROM round_metrics WHERE round_id = ?', [roundId]);
   }
 
-  // Update user balance
+  // Updates
   async updateUserBalance(userId: string, balance: number): Promise<void> {
-    await this.run('UPDATE users SET balance = ? WHERE id = ?', [balance, userId])
+    await this.run('UPDATE users SET balance = ? WHERE id = ?', [balance, userId]);
   }
 
-  // Update round with additional data
   async updateRound(roundId: string, updates: { block_height?: number, aptos_transaction_hash?: string }): Promise<void> {
     const setParts: string[] = [];
     const values: any[] = [];
@@ -349,7 +331,6 @@ class DatabaseConnection {
       setParts.push('block_height = ?');
       values.push(updates.block_height);
     }
-
     if (updates.aptos_transaction_hash !== undefined) {
       setParts.push('aptos_transaction_hash = ?');
       values.push(updates.aptos_transaction_hash);
@@ -357,14 +338,10 @@ class DatabaseConnection {
 
     if (setParts.length > 0) {
       values.push(roundId);
-      await this.run(
-        `UPDATE rounds SET ${setParts.join(', ')} WHERE id = ?`,
-        values
-      );
+      await this.run(`UPDATE rounds SET ${setParts.join(', ')} WHERE id = ?`, values);
     }
   }
 
-  // Complete a round
   async completeRound(roundId: string, finalPrice: number, endedAt: Date): Promise<void> {
     await this.run(
       'UPDATE rounds SET status = ?, final_price = ?, ended_at = ? WHERE id = ?',
@@ -372,12 +349,47 @@ class DatabaseConnection {
     );
   }
 
-  // Get recent rounds
-  async getRecentRounds(limit: number = 10): Promise<Round[]> {
-    return await this.all(
-      'SELECT * FROM rounds ORDER BY started_at DESC LIMIT ?',
-      [limit]
+  async markRoundDisputed(roundId: string): Promise<void> {
+    await this.run('UPDATE rounds SET status = ? WHERE id = ?', ['DISPUTED', roundId]);
+  }
+
+  // Canonical fairness setters
+  async setRoundFairness(roundId: string, params: {
+    candle_digest: string;
+    fairness_version: string;
+    prng: string;
+    scale: number;
+    interval_ms: number;
+    total_candles: number;
+    start_at_ms: number;
+    initial_price_fp: number;
+  }): Promise<void> {
+    await this.run(
+      `UPDATE rounds SET 
+        candle_digest = ?, fairness_version = ?, prng = ?, scale = ?, interval_ms = ?, 
+        total_candles = ?, start_at_ms = ?, initial_price_fp = ?
+       WHERE id = ?`,
+      [
+        params.candle_digest,
+        params.fairness_version,
+        params.prng,
+        params.scale,
+        params.interval_ms,
+        params.total_candles,
+        params.start_at_ms,
+        params.initial_price_fp,
+        roundId
+      ]
     );
+  }
+
+  async setRoundConfigJson(roundId: string, cfg: unknown): Promise<void> {
+    await this.run('UPDATE rounds SET config = ? WHERE id = ?', [JSON.stringify(cfg), roundId]);
+  }
+
+  // Lists
+  async getRecentRounds(limit: number = 10): Promise<Round[]> {
+    return await this.all('SELECT * FROM rounds ORDER BY started_at DESC LIMIT ?', [limit]);
   }
 
   // Trades helpers
@@ -394,13 +406,12 @@ class DatabaseConnection {
     );
   }
 
-  // Close database connection
+  // Maintenance helpers
   async close() {
     return new Promise<void>((resolve, reject) => {
       this.db.close((err) => {
-        if (err) {
-          reject(err);
-        } else {
+        if (err) reject(err);
+        else {
           console.log('📁 Database connection closed');
           resolve();
         }
@@ -408,9 +419,7 @@ class DatabaseConnection {
     });
   }
 
-  // Maintenance helpers
   async clearAllButTestUser(testWalletAddress: string): Promise<void> {
-    // Remove dependent tables first
     await this.run('DELETE FROM trades');
     await this.run('DELETE FROM round_events');
     await this.run('DELETE FROM round_metrics');

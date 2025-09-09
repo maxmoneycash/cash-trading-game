@@ -1,52 +1,84 @@
 /**
- * Game API Routes
- * Handles round management, seed distribution, and game state
+ * Game API Routes with Deterministic Candle Generation & Fairness
  */
 
 import express from 'express';
-import { db } from '../database/connection';
+import { db, Round } from '../database/connection';
 import { aptosService } from '../services/AptosService';
+
+import {
+  createDefaultConfig,
+  generateSeededCandles,
+  generateCandleDigestSync,
+  assertAligned,
+  CandleConfig
+} from '../src/utils/seededCandles';
 
 const router = express.Router();
 
 /**
  * POST /api/game/start
- * Start a new game round with Aptos seed
+ * Start a new deterministic round (seed + canonical config + digest)
  */
-router.post('/start', async (req, res) => {
+router.post('/start', async (_req, res) => {
   try {
-    // For now, use the seeded test user. In production this would come from auth.
-    const testUser = await db.ensureUser('0x1234567890abcdef', 'Test Player');
+    // 1) user (replace with real auth later)
+    const user = await db.ensureUser('0x1234567890abcdef', 'Test Player');
 
-    // Step 1: Generate seed from Aptos (mocked)
-    console.log('🎯 Generating new game round...');
+    // 2) seed (Aptos service; mocked or real)
     const seedData = await aptosService.generateRandomSeed();
+    const seedHex = seedData.seed;
 
-    // Step 2: Create round record in database
-    const config = {
-      candleIntervalMs: 65,
-      totalCandles: 460, // ~30 seconds at 65ms
-      initialPrice: 100.0,
-      roundDurationMs: 30000
-    };
+    // 3) canonical, aligned start time (+ small headroom)
+    const interval = 65;
+    const padTicks = 2;
+    const now = Date.now();
+    const aligned = now - (now % interval) + padTicks * interval;
 
-    const round = await db.createRound(testUser.id, seedData.seed);
+    // 4) canonical config (NO defaults at client)
+    const config = createDefaultConfig(aligned);
+    assertAligned(config);
 
-    // Update the round with Aptos data
+    // 5) generate on server + digest
+    const candles = generateSeededCandles(seedHex, config);
+    const digest = generateCandleDigestSync(seedHex, config, candles);
+
+    // 6) create round + persist canonical fairness and proof
+    const round = await db.createRound(user.id, seedHex);
+
+    await db.setRoundFairness(round.id, {
+      candle_digest: digest,
+      fairness_version: config.fairness_version,
+      prng: config.prng,
+      scale: config.scale,
+      interval_ms: config.interval_ms,
+      total_candles: config.total_candles,
+      start_at_ms: config.start_at_ms,
+      initial_price_fp: config.initial_price_fp
+    });
+
     await db.updateRound(round.id, {
       block_height: seedData.blockHeight,
       aptos_transaction_hash: seedData.transactionHash
     });
 
-    console.log(`✅ Round created: ${round.id} with seed ${seedData.seed.substring(0, 10)}...`);
+    // Optional: store JSON copy for UI/debug
+    await db.setRoundConfigJson(round.id, config);
 
-    // Step 3: Return game data to client
+    console.log(`✅ Round created: ${round.id}`);
+    console.log(`🎲 Seed: ${seedHex.substring(0, 16)}...`);
+    console.log(`🔒 Digest: ${digest.substring(0, 16)}...`);
+    console.log(`⏰ Start: ${new Date(aligned).toISOString()}`);
+    console.log(`📈 Generated ${candles.length} deterministic candles`);
+
+    // 7) respond (client will replay exactly)
     res.json({
       success: true,
       round: {
         id: round.id,
-        seed: seedData.seed,
+        seed: seedHex,
         config,
+        digest,
         proof: {
           blockHeight: seedData.blockHeight,
           transactionHash: seedData.transactionHash,
@@ -54,96 +86,253 @@ router.post('/start', async (req, res) => {
         }
       },
       user: {
-        id: testUser.id,
-        wallet_address: testUser.wallet_address
+        id: user.id,
+        wallet_address: user.wallet_address
       }
     });
-
   } catch (error: any) {
-    console.error('❌ Failed to start game round:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to start game round',
-      details: error.message
+    console.error('❌ Failed to start round:', error);
+    res.status(500).json({ success: false, error: 'Failed to start round', details: error.message });
+  }
+});
+
+/**
+ * GET /api/game/fairness/:roundId
+ * Returns canonical fairness data for client/3rd-party verification
+ */
+router.get('/fairness/:roundId', async (req, res) => {
+  try {
+    const round = await db.getRoundById(req.params.roundId);
+    if (!round) return res.status(404).json({ success: false, error: 'Round not found' });
+
+    // Check all canonical fields exist (no defaults/fallbacks)
+    if (!round.seed || !round.candle_digest || !round.fairness_version || !round.prng ||
+      !round.scale || !round.interval_ms || !round.total_candles ||
+      !round.start_at_ms || !round.initial_price_fp) {
+      return res.status(400).json({
+        success: false,
+        error: 'Round missing required fairness fields'
+      });
+    }
+
+    const cfg: CandleConfig = {
+      fairness_version: round.fairness_version,
+      prng: round.prng,
+      scale: round.scale,
+      interval_ms: round.interval_ms,
+      total_candles: round.total_candles,
+      initial_price_fp: round.initial_price_fp,
+      start_at_ms: round.start_at_ms
+    };
+
+    res.json({
+      success: true,
+      fairness: {
+        roundId: round.id,
+        seed: round.seed,
+        digest: round.candle_digest,
+        config: cfg,
+        proof: {
+          blockHeight: round.block_height,
+          transactionHash: round.aptos_transaction_hash
+        },
+        instructions: "Regenerate with generateSeededCandles(seed, config) and verify digest."
+      }
     });
+  } catch (error: any) {
+    console.error('❌ Failed to get fairness:', error);
+    res.status(500).json({ success: false, error: 'Failed to get fairness', details: error.message });
+  }
+});
+
+/**
+ * GET /api/game/verify/:roundId
+ * Server-side re-verification for audits/debug
+ */
+router.get('/verify/:roundId', async (req, res) => {
+  try {
+    const round = await db.getRoundById(req.params.roundId);
+    if (!round || !round.candle_digest) {
+      return res.status(404).json({ success: false, error: 'Round not found or no digest' });
+    }
+
+    if (!round.fairness_version || !round.prng || !round.scale || !round.interval_ms ||
+      !round.total_candles || !round.start_at_ms || !round.initial_price_fp) {
+      return res.status(400).json({ success: false, error: 'Round missing fairness fields' });
+    }
+
+    const cfg: CandleConfig = {
+      fairness_version: round.fairness_version,
+      prng: round.prng,
+      scale: round.scale,
+      interval_ms: round.interval_ms,
+      total_candles: round.total_candles,
+      initial_price_fp: round.initial_price_fp,
+      start_at_ms: round.start_at_ms
+    };
+
+    const candles = generateSeededCandles(round.seed, cfg);
+    const computed = generateCandleDigestSync(round.seed, cfg, candles);
+    const valid = computed === round.candle_digest;
+
+    res.json({
+      success: true,
+      verification: {
+        roundId: round.id,
+        valid,
+        computedDigest: computed,
+        storedDigest: round.candle_digest,
+        candleCount: candles.length,
+        config: cfg
+      }
+    });
+  } catch (error: any) {
+    console.error('❌ Failed to verify round:', error);
+    res.status(500).json({ success: false, error: 'Failed to verify round', details: error.message });
+  }
+});
+
+/**
+ * POST /api/game/trade/open
+ * Open a trade with server-side price verification (1-tick tolerance)
+ */
+router.post('/trade/open', async (req, res) => {
+  try {
+    const { roundId, size, entryPrice, entryCandleIndex } = req.body;
+    if (!roundId || typeof size !== 'number' || typeof entryPrice !== 'number' || typeof entryCandleIndex !== 'number') {
+      return res.status(400).json({ success: false, error: 'Invalid request body' });
+    }
+
+    const round = await db.getRoundById(roundId);
+    if (!round) return res.status(404).json({ success: false, error: 'Round not found' });
+
+    if (!round.candle_digest || !round.start_at_ms || !round.fairness_version || !round.prng ||
+      !round.scale || !round.interval_ms || !round.total_candles || !round.initial_price_fp) {
+      return res.status(400).json({ success: false, error: 'Round missing canonical fairness data' });
+    }
+
+    const cfg: CandleConfig = {
+      fairness_version: round.fairness_version,
+      prng: round.prng,
+      scale: round.scale,
+      interval_ms: round.interval_ms,
+      total_candles: round.total_candles,
+      initial_price_fp: round.initial_price_fp,
+      start_at_ms: round.start_at_ms
+    };
+
+    const candles = generateSeededCandles(round.seed, cfg);
+    if (entryCandleIndex < 0 || entryCandleIndex >= candles.length) {
+      return res.status(400).json({ success: false, error: 'entryCandleIndex out of range' });
+    }
+
+    const expectedCloseFP = candles[entryCandleIndex].close;
+    const expectedPrice = expectedCloseFP / cfg.scale;
+    const tolerance = 1 / cfg.scale;
+
+    if (Math.abs(expectedPrice - entryPrice) > tolerance) {
+      return res.status(400).json({
+        success: false,
+        error: 'Price verification failed',
+        expected: expectedPrice,
+        received: entryPrice,
+        tolerance,
+        candleIndex: entryCandleIndex
+      });
+    }
+
+    // Store canonical server price
+    const trade = await db.insertTrade({
+      round_id: round.id,
+      user_id: round.user_id,
+      size,
+      entry_price: expectedPrice,
+      entry_candle_index: entryCandleIndex,
+      status: 'OPEN'
+    });
+
+    res.json({ success: true, trade });
+  } catch (error: any) {
+    console.error('❌ Failed to open trade:', error);
+    res.status(500).json({ success: false, error: 'Failed to open trade', details: error.message });
   }
 });
 
 /**
  * POST /api/game/complete
- * Complete a game round and settle results
+ * Complete a round after verifying final price
  */
 router.post('/complete', async (req, res) => {
   try {
     const { roundId, finalPrice, candleCount, completedAt } = req.body;
 
     if (!roundId || typeof finalPrice !== 'number') {
-      return res.status(400).json({
-        success: false,
-        error: 'Invalid request: roundId and finalPrice required'
-      });
+      return res.status(400).json({ success: false, error: 'Invalid request: roundId and finalPrice required' });
     }
 
-    // Get the round to verify it exists and is active
     const round = await db.getRoundById(roundId);
-    if (!round) {
-      return res.status(404).json({
-        success: false,
-        error: 'Round not found'
-      });
+    if (!round) return res.status(404).json({ success: false, error: 'Round not found' });
+    if (round.status !== 'ACTIVE') return res.status(400).json({ success: false, error: 'Round is not active' });
+
+    if (!round.candle_digest || !round.start_at_ms || !round.fairness_version || !round.prng ||
+      !round.scale || !round.interval_ms || !round.total_candles || !round.initial_price_fp) {
+      return res.status(400).json({ success: false, error: 'Round missing canonical fairness data' });
     }
 
-    if (round.status !== 'ACTIVE') {
+    const cfg: CandleConfig = {
+      fairness_version: round.fairness_version,
+      prng: round.prng,
+      scale: round.scale,
+      interval_ms: round.interval_ms,
+      total_candles: round.total_candles,
+      initial_price_fp: round.initial_price_fp,
+      start_at_ms: round.start_at_ms
+    };
+
+    const candles = generateSeededCandles(round.seed, cfg);
+    const finalIdx = candles.length - 1;
+    const expectedCloseFP = candles[finalIdx].close;
+    const expectedFinalPrice = expectedCloseFP / cfg.scale;
+    const tolerance = 1 / cfg.scale;
+
+    if (Math.abs(expectedFinalPrice - finalPrice) > tolerance) {
+      await db.markRoundDisputed(roundId);
       return res.status(400).json({
         success: false,
-        error: 'Round is not active'
+        error: 'Final price verification failed',
+        expected: expectedFinalPrice,
+        received: finalPrice,
+        tolerance
       });
     }
 
-    // TODO: Verify final price by regenerating candles from seed
-    // For now, we trust the client (will be implemented with deterministic generation)
-
-    // Complete the round
-    await db.completeRound(roundId, finalPrice, completedAt ? new Date(completedAt) : new Date());
-
-    console.log(`🏁 Round ${roundId} completed with final price: ${finalPrice}`);
+    await db.completeRound(roundId, expectedFinalPrice, completedAt ? new Date(completedAt) : new Date());
 
     res.json({
       success: true,
       round: {
         id: roundId,
-        finalPrice,
-        candleCount: candleCount || 0,
+        finalPrice: expectedFinalPrice,
+        candleCount: candleCount ?? candles.length,
         status: 'COMPLETED'
       }
     });
-
   } catch (error: any) {
     console.error('❌ Failed to complete round:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to complete round',
-      details: error.message
-    });
+    res.status(500).json({ success: false, error: 'Failed to complete round', details: error.message });
   }
 });
 
 /**
  * GET /api/game/round/:id
- * Get round information
  */
 router.get('/round/:id', async (req, res) => {
   try {
     const { id } = req.params;
-
     const round = await db.getRoundById(id);
     if (!round) {
-      return res.status(404).json({
-        success: false,
-        error: 'Round not found'
-      });
+      return res.status(404).json({ success: false, error: 'Round not found' });
     }
-
     res.json({
       success: true,
       round: {
@@ -157,23 +346,27 @@ router.get('/round/:id', async (req, res) => {
         proof: {
           blockHeight: round.block_height,
           transactionHash: round.aptos_transaction_hash
+        },
+        fairness: {
+          digest: round.candle_digest,
+          version: round.fairness_version,
+          prng: round.prng,
+          scale: round.scale,
+          interval_ms: round.interval_ms,
+          total_candles: round.total_candles,
+          start_at_ms: round.start_at_ms,
+          initial_price_fp: round.initial_price_fp
         }
       }
     });
-
   } catch (error: any) {
     console.error('❌ Failed to get round:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to get round',
-      details: error.message
-    });
+    res.status(500).json({ success: false, error: 'Failed to get round', details: error.message });
   }
 });
 
 /**
  * GET /api/game/history
- * Get recent game rounds (for testing)
  */
 router.get('/history', async (req, res) => {
   try {
@@ -182,33 +375,27 @@ router.get('/history', async (req, res) => {
 
     res.json({
       success: true,
-      rounds: rounds.map(round => ({
-        id: round.id,
-        seed: round.seed,
-        status: round.status,
-        startedAt: round.started_at,
-        finalPrice: round.final_price,
-        blockHeight: round.block_height
+      rounds: rounds.map(r => ({
+        id: r.id,
+        seed: r.seed,
+        status: r.status,
+        startedAt: r.started_at,
+        finalPrice: r.final_price,
+        blockHeight: r.block_height,
+        digest: r.candle_digest
       }))
     });
-
   } catch (error: any) {
-    console.error('❌ Failed to get game history:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to get game history',
-      details: error.message
-    });
+    console.error('❌ Failed to get history:', error);
+    res.status(500).json({ success: false, error: 'Failed to get game history', details: error.message });
   }
 });
 
 /**
  * GET /api/game/rounds
- * Get all rounds (admin/read use)
  */
 router.get('/rounds', async (_req, res) => {
   try {
-    // Reuse db helper to fetch all; returns raw rows
     const rounds = await db.getAllRounds();
     res.json({ success: true, rounds });
   } catch (error: any) {
@@ -218,38 +405,7 @@ router.get('/rounds', async (_req, res) => {
 });
 
 /**
- * POST /api/game/trade/open
- * Open a trade for a given round
- */
-router.post('/trade/open', async (req, res) => {
-  try {
-    const { roundId, size, entryPrice, entryCandleIndex } = req.body;
-    if (!roundId || typeof size !== 'number' || typeof entryPrice !== 'number' || typeof entryCandleIndex !== 'number') {
-      return res.status(400).json({ success: false, error: 'Invalid request body' });
-    }
-
-    const round = await db.getRoundById(roundId);
-    if (!round) return res.status(404).json({ success: false, error: 'Round not found' });
-
-    const trade = await db.insertTrade({
-      round_id: round.id,
-      user_id: round.user_id,
-      size,
-      entry_price: entryPrice,
-      entry_candle_index: entryCandleIndex,
-      status: 'OPEN'
-    });
-
-    res.json({ success: true, trade });
-  } catch (error: any) {
-    console.error('❌ Failed to open trade:', error);
-    res.status(500).json({ success: false, error: 'Failed to open trade', details: error.message });
-  }
-});
-
-/**
  * POST /api/game/trade/close
- * Close a trade by ID
  */
 router.post('/trade/close', async (req, res) => {
   try {
@@ -272,7 +428,6 @@ router.post('/trade/close', async (req, res) => {
 
 /**
  * POST /api/game/event
- * Record a round event (e.g., liquidation)
  */
 router.post('/event', async (req, res) => {
   try {
@@ -293,7 +448,6 @@ router.post('/event', async (req, res) => {
 
 /**
  * POST /api/game/metrics
- * Upsert summary metrics for a round
  */
 router.post('/metrics', async (req, res) => {
   try {
@@ -318,9 +472,7 @@ router.get('/round/:id/trades', async (req, res) => {
   try {
     const { id } = req.params;
     const round = await db.getRoundById(id);
-    if (!round) {
-      return res.status(404).json({ success: false, error: 'Round not found' });
-    }
+    if (!round) return res.status(404).json({ success: false, error: 'Round not found' });
     const trades = await db.getTradesByRoundId(id);
     res.json({ success: true, trades });
   } catch (error: any) {
@@ -336,9 +488,7 @@ router.get('/round/:id/events', async (req, res) => {
   try {
     const { id } = req.params;
     const round = await db.getRoundById(id);
-    if (!round) {
-      return res.status(404).json({ success: false, error: 'Round not found' });
-    }
+    if (!round) return res.status(404).json({ success: false, error: 'Round not found' });
     const events = await db.getEventsByRoundId(id);
     res.json({ success: true, events });
   } catch (error: any) {
@@ -354,9 +504,7 @@ router.get('/round/:id/metrics', async (req, res) => {
   try {
     const { id } = req.params;
     const round = await db.getRoundById(id);
-    if (!round) {
-      return res.status(404).json({ success: false, error: 'Round not found' });
-    }
+    if (!round) return res.status(404).json({ success: false, error: 'Round not found' });
     const metrics = await db.getMetricsByRoundId(id);
     res.json({ success: true, metrics });
   } catch (error: any) {

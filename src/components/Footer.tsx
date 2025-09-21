@@ -68,7 +68,7 @@ const Footer: React.FC<FooterProps> = ({ balance, isHolding, showLiquidation, ru
                         fontSize: 14,
                         whiteSpace: 'nowrap',
                     }}>
-                        Balance: ${balance.toFixed(0)}
+                        Balance: ${balance.toFixed(2)}
                     </div>
                 </div>
 

@@ -1,6 +1,13 @@
 import { useEffect, useRef } from 'react';
 import p5 from 'p5';
 import { getTopMargin, getSafeBottom, isStandalone } from '../utils/helpers';
+import {
+    generateSeededCandles,
+    toFloatingPoint,
+    createDefaultConfig,
+    type CandleData,
+    type CandleConfig,
+} from '../utils/seededCandles';
 
 /**
  * Custom hook to initialize and manage the p5.js sketch for the candlestick chart.
@@ -19,7 +26,6 @@ const useP5Chart = ({
     setShowLiquidation,
     setRugpullType,
     setBalance,
-    bitcoinData,
     balance,
     isModalOpen,
     isPaused = false,
@@ -40,7 +46,6 @@ const useP5Chart = ({
     setShowLiquidation: (show: boolean) => void;
     setRugpullType: (type: string | null) => void;
     setBalance: React.Dispatch<React.SetStateAction<number>>;
-    bitcoinData: any[];
     balance: number;
     isModalOpen: boolean;
     isPaused?: boolean;
@@ -71,6 +76,12 @@ const useP5Chart = ({
             let candles: any[] = [];
             let allRoundCandles: any[] = [];
             let currentIndex = 0;
+            let intervalMs = 65; // default; updated by config from backend
+            let generatedCandles: CandleData[] = [];
+            let activeSeed: string | null = null;
+            let activeConfig: CandleConfig | null = null;
+            let replayEnabled = false;
+            let replayPrimed = false; // set true after first round to reuse same seed/config
             let animationSpeed = 1.8818;
             let isAnimating = true;
             let lastUpdate = 0;
@@ -303,6 +314,16 @@ const useP5Chart = ({
                 }, 3000);
             };
 
+            // Utility: align to interval boundary
+            const alignToInterval = (nowMs: number, interval: number) => Math.floor(nowMs / interval) * interval;
+
+            // Parse URL for replay mode
+            try {
+                const url = new URL(window.location.href);
+                const r = url.searchParams.get('replay');
+                replayEnabled = r === '1' || r === 'true' || r === 'yes';
+            } catch {}
+
             // Start a new trading round.
             const startRound = () => {
                 roundStartTime = p.millis();
@@ -337,22 +358,73 @@ const useP5Chart = ({
                 // Reset paused tracking for this round
                 (p as any).__pausedMs = 0;
                 (p as any).__pauseStart = null;
-                // Start backend round
-                try {
-                    fetch(`${API_BASE_URL}/api/game/start`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' }
-                    }).then(async (res) => {
-                        if (!res.ok) return;
-                        const data = await res.json();
-                        if (data?.success && data.round?.id) {
-                            currentRoundId = data.round.id;
-                            if (onRoundMeta) {
-                                onRoundMeta({ roundId: data.round.id, seed: data.round.seed, userId: data.user?.id, wallet: data.user?.wallet_address })
+                // Seed + config setup
+                const bootstrapWithSeed = (seedHex: string, cfgFromServer?: Partial<CandleConfig>) => {
+                    activeSeed = seedHex;
+                    // Determine interval and start_at_ms
+                    const serverInterval = (cfgFromServer?.interval_ms ?? 65) as number;
+                    intervalMs = serverInterval;
+                    const alignedStart = typeof cfgFromServer?.start_at_ms === 'number'
+                        ? (cfgFromServer.start_at_ms as number)
+                        : alignToInterval(Date.now(), intervalMs);
+                    const cfg = createDefaultConfig(alignedStart);
+                    activeConfig = { ...cfg, ...(cfgFromServer || {}) } as CandleConfig;
+                    // Generate full round candles deterministically
+                    const fp = generateSeededCandles(activeSeed!, activeConfig!);
+                    generatedCandles = toFloatingPoint(fp, activeConfig!.scale);
+                    currentIndex = 0;
+                    // Surface metadata to debug overlay
+                    if (onRoundMeta) onRoundMeta({ roundId: currentRoundId || undefined, seed: activeSeed || undefined, userId: undefined, wallet: undefined });
+                };
+
+                // Start backend round and get seed/config; unless replay is primed
+                if (replayEnabled && replayPrimed && activeSeed && activeConfig) {
+                    // Reuse same seed/config for replay run; avoid backend calls and avoid re-completing round
+                    currentRoundId = null;
+                    bootstrapWithSeed(activeSeed, activeConfig);
+                } else {
+                    try {
+                        fetch(`${API_BASE_URL}/api/game/start`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' }
+                        }).then(async (res) => {
+                            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                            const data = await res.json();
+                            // capture round id and optional meta
+                            if (data?.success && data.round?.id) {
+                                currentRoundId = data.round.id;
                             }
+                            const seedHex = data?.round?.seed || data?.seed;
+                            const cfgFromServer = data?.round?.config || data?.config;
+                            if (!seedHex) throw new Error('No seed in response');
+                            bootstrapWithSeed(seedHex, cfgFromServer);
+                            if (onRoundMeta) {
+                                onRoundMeta({ roundId: data.round?.id, seed: seedHex, userId: data.user?.id, wallet: data.user?.wallet_address });
+                            }
+                        }).catch((err) => {
+                            console.warn('Falling back to local seed; backend start failed:', err?.message || err);
+                            // Fallback: local deterministic seed per session
+                            const bytes = new Uint8Array(32);
+                            if (typeof window !== 'undefined' && (window as any).crypto?.getRandomValues) {
+                                (window as any).crypto.getRandomValues(bytes);
+                            } else {
+                                for (let i = 0; i < bytes.length; i++) bytes[i] = Math.floor(Math.random() * 256);
+                            }
+                            const seedHex = '0x' + Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+                            bootstrapWithSeed(seedHex);
+                        });
+                    } catch (err) {
+                        console.warn('Falling back to local seed; backend start threw:', (err as any)?.message || err);
+                        const bytes = new Uint8Array(32);
+                        if (typeof window !== 'undefined' && (window as any).crypto?.getRandomValues) {
+                            (window as any).crypto.getRandomValues(bytes);
+                        } else {
+                            for (let i = 0; i < bytes.length; i++) bytes[i] = Math.floor(Math.random() * 256);
                         }
-                    }).catch(() => { });
-                } catch { }
+                        const seedHex = '0x' + Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+                        bootstrapWithSeed(seedHex);
+                    }
+                }
             };
 
             // Check if current round should end.
@@ -377,24 +449,33 @@ const useP5Chart = ({
                 explosionCenter = null;
                 isHistoricalView = true;
                 zoomStartTime = p.millis();
-                // Complete round in backend
-                try {
-                    const lastIndex = Math.max(0, allRoundCandles.length - 1);
-                    const last = allRoundCandles[lastIndex];
-                    if (currentRoundId && last) {
-                        fetch(`${API_BASE_URL}/api/game/complete`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                roundId: currentRoundId,
-                                finalPrice: last.close,
-                                candleCount: allRoundCandles.length,
-                                completedAt: new Date().toISOString()
-                            })
-                        }).catch(() => { });
-                    }
-                } catch { }
+                // Complete round in backend (skip if this is a replay run)
+                if (!replayEnabled || !replayPrimed) {
+                    try {
+                        const lastIndex = Math.max(0, allRoundCandles.length - 1);
+                        const last = allRoundCandles[lastIndex];
+                        if (currentRoundId && last) {
+                            fetch(`${API_BASE_URL}/api/game/complete`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    roundId: currentRoundId,
+                                    finalPrice: last.close,
+                                    candleCount: allRoundCandles.length,
+                                    completedAt: new Date().toISOString()
+                                })
+                            }).catch(() => { });
+                        }
+                    } catch { }
+                }
                 setTimeout(() => {
+                    if (replayEnabled && !replayPrimed) {
+                        // Prime replay for next round using same seed/config
+                        replayPrimed = true;
+                    } else if (replayEnabled && replayPrimed) {
+                        // After replay run, reset to fetch new seed next time (optional)
+                        replayPrimed = false;
+                    }
                     startRound();
                 }, 3000);
             };
@@ -971,9 +1052,10 @@ const useP5Chart = ({
                 pulseAnimation += 0.1;
                 checkRoundEnd();
                 const currentSpeed = rugpullSlowMotion ? 0.3 : animationSpeed;
-                if (isAnimating && isRoundActive && !liquidationCandleCreated && !rugpullActive && p.millis() - lastUpdate > (120 / currentSpeed)) {
-                    if (currentIndex < bitcoinData.length) {
-                        addCandle(bitcoinData[currentIndex]);
+                const targetInterval = Math.max(10, intervalMs / currentSpeed);
+                if (isAnimating && isRoundActive && !liquidationCandleCreated && !rugpullActive && p.millis() - lastUpdate > targetInterval) {
+                    if (currentIndex < generatedCandles.length) {
+                        addCandle(generatedCandles[currentIndex]);
                         currentIndex++;
                         lastUpdate = p.millis();
                     }

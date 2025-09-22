@@ -1,6 +1,9 @@
 /* Add Google font for Bai Jamjuree */
 @import url('https://fonts.googleapis.com/css2?family=Bai+Jamjuree:wght@400;600;700&display=swap');
 
+/* Import Silk component styles */
+@import "@silk-hq/components/unlayered-styles";
+
 
 /* Reset + global rules */
 * {

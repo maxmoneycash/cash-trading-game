@@ -1,7 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import p5 from 'p5';
-import PnlOverlay from './PnlOverlay';
-import Footer from './Footer';
+import GameSheet from './GameSheet/GameSheet';
 import { getTopMargin, getSafeBottom, DEBUG_MODE, isStandalone } from '../utils/helpers';
 import generateBitcoinData from '../utils/generateBitcoinData';
 import useP5Chart from '../hooks/useP5Chart';
@@ -26,28 +25,6 @@ const CandlestickChart = () => {
     const [showLiquidation, setShowLiquidation] = useState(false);
     const [rugpullType, setRugpullType] = useState<string | null>(null);
     const [displayPnl, setDisplayPnl] = useState(0);
-    const [isModalOpen, setIsModalOpen] = useState(false);
-
-    // Sync modal ref with state and handle escape key/pointer events.
-    useEffect(() => {
-        modalOpenRef.current = isModalOpen;
-        const handleEscape = (e: KeyboardEvent) => {
-            if (e.key === 'Escape' && isModalOpen) {
-                setIsModalOpen(false);
-            }
-        };
-        if (isModalOpen) {
-            document.addEventListener('keydown', handleEscape);
-            if (p5InstanceRef.current?.canvas) {
-                p5InstanceRef.current.canvas.style.pointerEvents = 'none';
-            }
-        } else {
-            if (p5InstanceRef.current?.canvas) {
-                p5InstanceRef.current.canvas.style.pointerEvents = 'auto';
-            }
-        }
-        return () => document.removeEventListener('keydown', handleEscape);
-    }, [isModalOpen]);
 
     // Animate PNL display smoothly.
     useEffect(() => {
@@ -93,7 +70,7 @@ const CandlestickChart = () => {
         setBalance,
         bitcoinData,
         balance,
-        isModalOpen,
+        isModalOpen: false,
         isPaused: dbg.isPaused,
         overlayActive: dbg.overlayActive,
         onRoundMeta: (meta) => dbg.setMetadata(meta),
@@ -140,14 +117,13 @@ const CandlestickChart = () => {
             }}
         >
             <div ref={chartRef} style={{ flex: '1 1 auto' }} />
-            <PnlOverlay pnl={pnl} displayPnl={displayPnl} isHolding={isHolding} />
-            <Footer
+            <GameSheet
                 balance={balance}
+                pnl={pnl}
+                displayPnl={displayPnl}
                 isHolding={isHolding}
                 showLiquidation={showLiquidation}
                 rugpullType={rugpullType}
-                isModalOpen={isModalOpen}
-                setIsModalOpen={setIsModalOpen}
             />
         </div>
     );

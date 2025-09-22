@@ -3,7 +3,6 @@ import p5 from 'p5';
 import PnlOverlay from './PnlOverlay';
 import Footer from './Footer';
 import { getTopMargin, getSafeBottom, DEBUG_MODE, isStandalone } from '../utils/helpers';
-import generateBitcoinData from '../utils/generateBitcoinData';
 import useP5Chart from '../hooks/useP5Chart';
 import { useDebug } from '../debug/DebugContext';
 
@@ -74,7 +73,6 @@ const CandlestickChart = () => {
     }, [pnl]);
 
     // Setup p5 sketch using custom hook.
-    const bitcoinData = generateBitcoinData();
     // Expose balance + local setter to debug overlay
     useEffect(() => { dbg.setMetadata({ balance }); }, [balance]);
     useEffect(() => { (dbg as any).setLocalBalance = (val: number) => setBalance(val); }, [dbg]);
@@ -91,7 +89,6 @@ const CandlestickChart = () => {
         setShowLiquidation,
         setRugpullType,
         setBalance,
-        bitcoinData,
         balance,
         isModalOpen,
         isPaused: dbg.isPaused,

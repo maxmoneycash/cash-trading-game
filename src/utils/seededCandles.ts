@@ -147,41 +147,45 @@ export function generateSeededCandles(seedHex: string, config: CandleConfig): Ca
     const { interval_ms, total_candles, scale } = config;
 
     // Integer-only state (no floats!)
-    let momentum_bps = 0;                        // basis points (1 bps = 0.01%)
-    const MOM_DECAY_NUM = 85, MOM_DECAY_DEN = 100; // ≈0.85 decay
-    const MOM_KICK_MIN = -6, MOM_KICK_MAX = 6;     // random kick each step
+    let momentum_bps = 0;                              // basis points (1 bps = 0.01%)
+    const MOM_DECAY_NUM = 90, MOM_DECAY_DEN = 100;     // ≈0.90 decay
+    const MOM_KICK_MIN = -8, MOM_KICK_MAX = 8;         // random kick each step
 
-    // Slow triangle-wave trend in bps (integer, no floats)
-    const PERIOD = 256;
-    const HALF = PERIOD >> 1;
-    const TREND_STEP = (rng.nextU32() % 3) + 1;          // 1..3 ticks per candle
-    const TREND_AMPL_BPS = 22;                   // ±0.22%
-    let trend_phase = 0;
+    // Volatility regime (captures clustering); 0=calm,1=volatile,2=very volatile
+    let vol_regime = 0;                                 // start calm
+    const VOL_MULT = [1, 2, 4];                        // multiplier per regime
+    const BASE_VOL_BPS = 10;                            // base shock scale in bps
+    // Regime transition probabilities (per candle)
+    const REGIME_CHANGE_PERMILLE = 8;                   // ~0.8% chance to change
 
     for (let i = 0; i < total_candles; i++) {
-        // Advance triangle wave (pure integer)
-        trend_phase = (trend_phase + TREND_STEP) & 0xff; // mod 256
-        let trend_bps: number;
-        if (trend_phase < HALF) {
-            // -A .. +A
-            trend_bps = -TREND_AMPL_BPS + Math.floor((2 * TREND_AMPL_BPS * trend_phase) / HALF);
-        } else {
-            const p = trend_phase - HALF;
-            trend_bps = TREND_AMPL_BPS - Math.floor((2 * TREND_AMPL_BPS * p) / HALF);
+        // Possibly change volatility regime (small probability)
+        if ((rng.nextU32() % 1000) < REGIME_CHANGE_PERMILLE) {
+            const dir = (rng.nextU32() & 1) ? 1 : -1; // up or down
+            vol_regime = Math.min(2, Math.max(0, vol_regime + dir));
         }
 
-        // Momentum update (integer decay + random kick)
-        momentum_bps = Math.trunc((momentum_bps * MOM_DECAY_NUM) / MOM_DECAY_DEN) + randint(MOM_KICK_MIN, MOM_KICK_MAX);
+        // Momentum update (integer decay + random kick scaled by regime)
+        momentum_bps = Math.trunc((momentum_bps * MOM_DECAY_NUM) / MOM_DECAY_DEN)
+                      + (randint(MOM_KICK_MIN, MOM_KICK_MAX) * VOL_MULT[vol_regime]);
 
-        // Fast "shock" term
-        const shock_bps = randint(-12, 12); // ±0.12%
+        // Shock term (scaled by regime)
+        const shock_scale = BASE_VOL_BPS * VOL_MULT[vol_regime];
+        const shock_bps = randint(-2 * shock_scale, 2 * shock_scale); // wider uniform
+
+        // Occasional jumps (rare, larger moves) scaled by regime
+        let jump_bps = 0;
+        if ((rng.nextU32() % 1000) < 4) { // ~0.4% per candle
+            const mag = randint(30, 120) * VOL_MULT[vol_regime]; // 0.3%..1.2% (times regime)
+            jump_bps = (rng.nextU32() & 1) ? mag : -mag;
+        }
 
         // Total step in bps
-        let step_bps = trend_bps + momentum_bps + shock_bps;
+        let step_bps = momentum_bps + shock_bps + jump_bps;
 
         // Clamp overall step to a sane range
-        if (step_bps > 60) step_bps = 60;
-        if (step_bps < -60) step_bps = -60;
+        if (step_bps > 120) step_bps = 120;
+        if (step_bps < -120) step_bps = -120;
 
         // Integer delta: price * step_bps / 10_000
         const delta_fp = Math.trunc((currentPrice * step_bps) / 10000);
@@ -192,8 +196,8 @@ export function generateSeededCandles(seedHex: string, config: CandleConfig): Ca
 
         // Wicks (all integer)
         const body = Math.abs(close - open);
-        const wickMin = Math.max(Math.trunc((body * 50) / 100), Math.trunc(currentPrice / 1000));      // max(50% body, 0.1%)
-        const wickMax = Math.trunc((body * 250) / 100) + Math.trunc((currentPrice * 3) / 1000);        // 250% body + 0.3%
+        const wickMin = Math.max(Math.trunc((body * 40) / 100), Math.trunc(currentPrice / 1200));      // max(40% body, ~0.083%)
+        const wickMax = Math.trunc((body * 280) / 100) + Math.trunc((currentPrice * 4) / 1000);        // 280% body + 0.4%
         const wickRange = Math.max(1, wickMax - wickMin);
 
         const high = Math.max(open, close) + randint(0, wickRange);

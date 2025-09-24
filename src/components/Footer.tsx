@@ -7,14 +7,17 @@ import ControlCenterModal from './ControlCenter/ControlCenterModal';
  */
 interface FooterProps {
     balance: number;
+    walletBalance?: number;
     isHolding: boolean;
     showLiquidation: boolean;
     rugpullType: string | null;
     isModalOpen: boolean;
     setIsModalOpen: (open: boolean) => void;
+    aptosMode?: boolean;
+    gameState?: 'waiting' | 'playing' | 'completed';
 }
 
-const Footer: React.FC<FooterProps> = ({ balance, isHolding, showLiquidation, rugpullType, isModalOpen, setIsModalOpen }) => {
+const Footer: React.FC<FooterProps> = ({ balance, walletBalance, isHolding, showLiquidation, rugpullType, isModalOpen, setIsModalOpen, aptosMode = false, gameState = 'waiting' }) => {
     const isMobile = typeof window !== 'undefined' ? window.innerWidth < 768 : true;
     const leftPadding = isMobile ? (4 + 15) : (8 + 15);
     const rightPadding = isMobile ? (34 + 10) : (46 + 10);
@@ -68,7 +71,10 @@ const Footer: React.FC<FooterProps> = ({ balance, isHolding, showLiquidation, ru
                         fontSize: 14,
                         whiteSpace: 'nowrap',
                     }}>
-                        Balance: ${balance.toFixed(2)}
+                        {aptosMode && walletBalance !== undefined
+                            ? `${walletBalance.toFixed(4)} APT`
+                            : `Balance: $${balance.toFixed(2)}`
+                        }
                     </div>
                 </div>
 

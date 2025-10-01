@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Sheet } from "@silk-hq/components";
 import "./GameSheet.css";
 import ControlCenterTabs from '../ControlCenter/ControlCenterTabs';
@@ -14,6 +14,7 @@ interface GameSheetProps {
     isHolding: boolean;
     showLiquidation: boolean;
     rugpullType: string | null;
+    onSheetStateChange?: (expanded: boolean) => void;
 }
 
 const GameSheet: React.FC<GameSheetProps> = ({ 
@@ -22,12 +23,18 @@ const GameSheet: React.FC<GameSheetProps> = ({
     displayPnl, 
     isHolding, 
     showLiquidation, 
-    rugpullType 
+    rugpullType,
+    onSheetStateChange
 }) => {
     const [activeTab, setActiveTab] = useState<TabId>('account');
-    const [presented, setPresented] = useState(false);
+    const [isSheetOpen, setIsSheetOpen] = useState(false);
     const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
     const isLiquidationEvent = showLiquidation || rugpullType !== null;
+
+    // Notify parent when sheet state changes
+    useEffect(() => {
+        onSheetStateChange?.(isSheetOpen);
+    }, [isSheetOpen, onSheetStateChange]);
     
     // Persistent content that shows at bottom
     const PersistentBar = () => {
@@ -93,62 +100,127 @@ const GameSheet: React.FC<GameSheetProps> = ({
     };
 
     return (
-        <Sheet.Root 
-            license="non-commercial"
-            presented={presented} 
-            onPresentedChange={setPresented}
-        >
-            {/* Persistent bottom bar - always visible */}
-            <div 
-                className="persistent-wrapper"
-                onClick={() => setPresented(true)}
+        <>
+            {/* Trigger button - always accessible */}
+            <button
+                style={{
+                    position: 'fixed',
+                    bottom: '20px',
+                    left: '20px',
+                    background: 'rgba(255,255,255,0.1)',
+                    border: 'none',
+                    color: 'white',
+                    padding: '10px 20px',
+                    borderRadius: '8px',
+                    zIndex: 1300,
+                    cursor: 'pointer'
+                }}
+                onClick={(e) => {
+                    e.stopPropagation();
+                    setIsSheetOpen(true);
+                }}
+                onTouchStart={(e) => {
+                    e.stopPropagation();
+                }}
+                onTouchEnd={(e) => {
+                    e.stopPropagation();
+                }}
             >
-                <PersistentBar />
-            </div>
+                Open Game Controls
+            </button>
 
-            <Sheet.Portal>
-                <Sheet.View 
-                    className="GameSheet-view" 
-                    contentPlacement="bottom"
-                    swipeDismissal={true}
-                    detents={["60lvh"]}
-                >
-                    <Sheet.Backdrop 
-                        className="GameSheet-backdrop" 
-                        themeColorDimming="auto" 
-                    />
-                    <Sheet.Content className="GameSheet-content">
-                        <Sheet.BleedingBackground className="GameSheet-bleedingBackground" />
-                        
-                        {/* Handle for dragging */}
-                        <div className="sheet-handle-container">
-                            <Sheet.Handle className="sheet-handle">
-                                <span className="visually-hidden">Drag to expand or close</span>
-                            </Sheet.Handle>
-                        </div>
+            {/* Touch-blocking overlay when sheet is open */}
+            {isSheetOpen && (
+                <div
+                    style={{
+                        position: 'fixed',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        zIndex: 1100,
+                        pointerEvents: 'auto',
+                        background: 'transparent'
+                    }}
+                    onTouchStart={(e) => {
+                        e.stopPropagation();
+                    }}
+                    onTouchMove={(e) => {
+                        e.stopPropagation();
+                    }}
+                    onTouchEnd={(e) => {
+                        e.stopPropagation();
+                    }}
+                    onPointerDown={(e) => {
+                        e.stopPropagation();
+                    }}
+                    onPointerMove={(e) => {
+                        e.stopPropagation();
+                    }}
+                    onPointerUp={(e) => {
+                        e.stopPropagation();
+                    }}
+                    onClick={(e) => {
+                        e.stopPropagation();
+                    }}
+                />
+            )}
 
-                        {/* Tab Navigation */}
-                        <div className="sheet-tabs-container">
-                            <ControlCenterTabs
-                                activeTab={activeTab}
-                                onTabChange={(tab) => {
-                                    if (tab === 'close') {
-                                        setPresented(false);
-                                    } else {
-                                        setActiveTab(tab);
-                                    }
-                                }}
-                            />
-                        </div>
+            <Sheet.Root 
+                license="non-commercial"
+                presented={isSheetOpen}
+                onPresentedChange={setIsSheetOpen}
+            >
+                
+                <Sheet.Portal>
+                    <Sheet.View className="GameSheet-view" detents="50vh">
+                        <Sheet.Backdrop 
+                            themeColorDimming="auto"
+                            onClick={() => setIsSheetOpen(false)}
+                        />
+                        <Sheet.Content 
+                            className="GameSheet-content"
+                            onTouchMove={(e) => e.stopPropagation()}
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <Sheet.BleedingBackground className="GameSheet-bleedingBackground" />
+                            
+                            {/* Extended drag handle area */}
+                            <div className="sheet-drag-area">
+                                <div className="sheet-handle-visual" />
+                            </div>
+                            
+                            {/* Persistent content */}
+                            <div 
+                                style={{ padding: '16px' }}
+                                onTouchStart={(e) => e.stopPropagation()}
+                                onTouchEnd={(e) => e.stopPropagation()}
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                <PersistentBar />
+                            </div>
 
-                        {/* Tab Content */}
-                        <div className="sheet-content-container">
-                            {renderTabContent()}
-                        </div>
-                    </Sheet.Content>
-                </Sheet.View>
-            </Sheet.Portal>
-        </Sheet.Root>
+                            {/* Expandable content */}
+                            <div 
+                                style={{ flex: 1, padding: '0 16px 16px' }}
+                                onTouchStart={(e) => e.stopPropagation()}
+                                onTouchEnd={(e) => e.stopPropagation()}
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                <ControlCenterTabs
+                                    activeTab={activeTab}
+                                    onTabChange={setActiveTab}
+                                />
+                                
+                                <div style={{ marginTop: '16px' }}>
+                                    {renderTabContent()}
+                                </div>
+                            </div>
+                        </Sheet.Content>
+                    </Sheet.View>
+                </Sheet.Portal>
+            </Sheet.Root>
+        </>
     );
 };
 

@@ -1,44 +1,83 @@
-/* Persistent bottom bar that's always visible */
-.persistent-wrapper {
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 2000;
-    cursor: pointer;
-    pointer-events: auto;
+/* Based on Silk documentation examples */
+.GameSheet-view {
+    z-index: 1200;
+    height: var(--silk-100-lvh-dvh-pct);
 }
 
-.persistent-bar {
+.GameSheet-backdrop {
+    /* Let Silk handle backdrop styling */
+}
+
+.GameSheet-content {
+    box-sizing: border-box;
+    height: auto;
+    min-height: 100px;
+    display: flex;
+    flex-direction: column;
+    color: #ffffff;
+    font-family: 'Bai Jamjuree', sans-serif;
+    touch-action: pan-y;
+    user-select: none;
+    -webkit-user-select: none;
+    position: relative;
+    z-index: 1001;
+    border-radius: 24px 24px 0 0;
+}
+
+.GameSheet-bleedingBackground {
+    border-radius: 24px 24px 0 0;
     background: linear-gradient(
-        135deg, 
-        rgba(255, 255, 255, 0.08) 0%, 
-        rgba(255, 255, 255, 0.04) 100%
+        135deg,
+        rgba(20, 20, 22, 0.98) 0%,
+        rgba(12, 12, 14, 0.98) 100%
     );
-    backdrop-filter: blur(16px) saturate(100%);
-    -webkit-backdrop-filter: blur(16px) saturate(100%);
     box-shadow: 
+        0 -4px 30px rgba(0, 0, 0, 0.5),
         0 -2px 20px rgba(0, 0, 0, 0.3),
-        0 -1px 10px rgba(0, 0, 0, 0.2),
-        inset 0 1px 0 rgba(255, 255, 255, 0.1),
-        inset 0 -1px 0 rgba(0, 0, 0, 0.2);
-    padding: 16px 24px;
-    padding-bottom: calc(16px + env(safe-area-inset-bottom));
-    border-top: 1px solid rgba(255, 255, 255, 0.06);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
-.persistent-bar:hover {
-    background: linear-gradient(
-        135deg, 
-        rgba(255, 255, 255, 0.10) 0%, 
-        rgba(255, 255, 255, 0.05) 100%
-    );
-    box-shadow: 
-        0 -3px 25px rgba(0, 0, 0, 0.4),
-        0 -2px 15px rgba(0, 0, 0, 0.3),
-        inset 0 1px 0 rgba(255, 255, 255, 0.12),
-        inset 0 -1px 0 rgba(0, 0, 0, 0.3);
+/* Silk Handle - styled like the examples */
+.GameSheet-handle {
+    width: 50px;
+    height: 6px;
+    border: 0;
+    border-radius: 9999px;
+    background-color: rgba(255, 255, 255, 0.4);
+    cursor: pointer;
+    margin: 8px auto;
+    display: block;
+}
+
+/* Persistent content */
+.persistent-bar-content {
+    padding: 8px 20px 16px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* Expandable content */
+.expandable-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.tabs-container {
+    flex-shrink: 0;
+    padding: 0 20px;
+}
+
+.tab-content-container {
+    flex: 1;
+    overflow: auto;
+    padding: 20px;
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+.tab-content-container::-webkit-scrollbar {
+    display: none;
 }
 
 .persistent-content {
@@ -114,10 +153,7 @@
 /* Sheet view styles */
 .GameSheet-view {
     height: var(--silk-100-lvh-dvh-pct);
-}
-
-.GameSheet-backdrop {
-    background-color: rgba(0, 0, 0, 1);
+    z-index: 1200;
 }
 
 .GameSheet-content {
@@ -148,37 +184,42 @@
 .sheet-handle-container {
     display: flex;
     justify-content: center;
-    padding: 12px;
+    padding: 8px;
     position: relative;
     z-index: 10;
 }
 
 .sheet-handle {
-    width: 36px;
-    height: 5px;
-    background: rgba(255, 255, 255, 0.3);
-    border-radius: 100px;
-    transition: all 0.2s ease;
-    cursor: grab;
-    position: relative;
+    background: none;
     border: none;
+    color: transparent;
+    cursor: grab;
     outline: none;
+    font-size: 0;
+    padding: 8px 0;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
-.sheet-handle:hover {
-    background: rgba(255, 255, 255, 0.5);
+.sheet-handle::before {
+    content: '';
+    width: 36px;
+    height: 5px;
+    background: rgba(255, 255, 255, 0.4);
+    border-radius: 100px;
+    transition: all 0.2s ease;
+    display: block;
+}
+
+.sheet-handle:hover::before {
+    background: rgba(255, 255, 255, 0.6);
     width: 48px;
 }
 
 .sheet-handle:active {
     cursor: grabbing;
-    background: rgba(255, 255, 255, 0.6);
-}
-
-.sheet-handle::before {
-    content: '';
-    position: absolute;
-    inset: -12px -20px;
 }
 
 .visually-hidden {
@@ -215,35 +256,85 @@
     display: none;
 }
 
+/* Extended drag handle area */
+.sheet-drag-area {
+    position: relative;
+    width: 100%;
+    height: 32px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: grab;
+    touch-action: pan-y;
+    padding: 8px 0;
+}
+
+.sheet-drag-area:active {
+    cursor: grabbing;
+}
+
+.sheet-handle-visual {
+    width: 48px;
+    height: 5px;
+    background: rgba(255, 255, 255, 0.4);
+    border-radius: 100px;
+    transition: all 0.2s ease;
+}
+
+.sheet-drag-area:hover .sheet-handle-visual {
+    background: rgba(255, 255, 255, 0.6);
+    width: 60px;
+}
+
 /* Mobile responsiveness */
 @media (max-width: 768px) {
     .persistent-content {
-        flex-direction: column;
-        gap: 12px;
-        align-items: stretch;
+        flex-direction: row;
+        gap: 16px;
+        align-items: center;
+        justify-content: space-between;
+        width: 100%;
     }
 
     .info-section {
-        justify-content: center;
-        gap: 40px;
+        justify-content: flex-start;
+        gap: 24px;
+        flex: 1;
     }
     
     .info-value {
-        font-size: 18px;
+        font-size: 16px;
+    }
+    
+    .info-label {
+        font-size: 10px;
     }
     
     .instructions,
     .position-indicator {
         text-align: center;
-        font-size: 12px;
+        font-size: 11px;
+        padding: 4px 8px;
+        flex-shrink: 0;
     }
 
-    .persistent-bar {
-        padding: 12px 16px;
-        padding-bottom: calc(12px + env(safe-area-inset-bottom));
+    .persistent-bar-content {
+        padding: 8px 16px;
+        padding-bottom: calc(8px + env(safe-area-inset-bottom));
     }
 
     .sheet-content-container {
         padding: 16px;
+    }
+    
+    /* Larger drag area on mobile */
+    .sheet-drag-area {
+        height: 44px;
+        padding: 12px 0;
+    }
+    
+    .sheet-handle-visual {
+        width: 56px;
+        height: 6px;
     }
 }

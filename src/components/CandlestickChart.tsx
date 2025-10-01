@@ -124,6 +124,12 @@ const CandlestickChart = () => {
                 isHolding={isHolding}
                 showLiquidation={showLiquidation}
                 rugpullType={rugpullType}
+                onSheetStateChange={(expanded) => {
+                    // We'll use this to disable game clicks when sheet is expanded
+                    if (p5InstanceRef.current?.canvas) {
+                        p5InstanceRef.current.canvas.style.pointerEvents = expanded ? 'none' : 'auto';
+                    }
+                }}
             />
         </div>
     );

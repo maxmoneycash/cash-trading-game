@@ -88,7 +88,7 @@ export function ContractTest() {
         .map(b => b.toString(16).padStart(2, '0')).join('');
       
       addLog('Starting new game...');
-      const txHash = await gameContract.startGame(signAndSubmitTransaction, 0.1, seed);
+      const txHash = await gameContract.startGame(signAndSubmitTransaction, 1.0, seed);
       setLastTxHash(txHash);
       addLog(`Game started! Tx: ${txHash.slice(0, 10)}...`);
       await refreshData();

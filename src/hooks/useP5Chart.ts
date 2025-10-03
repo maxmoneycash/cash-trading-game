@@ -33,6 +33,8 @@ const useP5Chart = ({
     onRoundMeta,
     debugEnabled = false,
     disableClicks = false,
+    onPositionClosed,
+    aptosMode = false,
 }: {
     chartRef: React.RefObject<HTMLDivElement>;
     p5InstanceRef: React.RefObject<p5 | null>;
@@ -53,8 +55,10 @@ const useP5Chart = ({
     onRoundMeta?: (meta: { roundId?: string; seed?: string; userId?: string; wallet?: string }) => void;
     debugEnabled?: boolean;
     disableClicks?: boolean;
+    onPositionClosed?: (positionPnL: number) => void;
+    aptosMode?: boolean;
 }) => {
-    const flagsRef = useRef({ overlayActive, isPaused, disableClicks })
+    const flagsRef = useRef({ overlayActive, isPaused, disableClicks, balance })
     const debugListenersRef = useRef<{ start?: any; end?: any }>({})
     // Keep interaction guards in sync for p5 handlers
     useEffect(() => {
@@ -66,6 +70,9 @@ const useP5Chart = ({
     useEffect(() => {
         flagsRef.current.disableClicks = disableClicks
     }, [disableClicks])
+    useEffect(() => {
+        flagsRef.current.balance = balance
+    }, [balance])
 
     useEffect(() => {
         const sketch = (p: p5) => {
@@ -884,9 +891,24 @@ const useP5Chart = ({
             // Start a new trading position.
             const startPosition = () => {
                 try {
-                    if (currentPosition || candles.length === 0 || !isRoundActive || isHistoricalView) return;
+                    console.log('🟢 BUY CLICKED - startPosition called:', {
+                        hasCurrentPosition: !!currentPosition,
+                        candlesLength: candles.length,
+                        isRoundActive,
+                        isHistoricalView,
+                        balance: flagsRef.current.balance
+                    });
+                    if (currentPosition || candles.length === 0 || !isRoundActive || isHistoricalView) {
+                        console.log('🚫 Buy blocked:', {
+                            currentPosition: !!currentPosition,
+                            noCandlesData: candles.length === 0,
+                            roundNotActive: !isRoundActive,
+                            isHistoricalView
+                        });
+                        return;
+                    }
                     const lastCandle = candles[candles.length - 1];
-                    const currentBalance = balance;
+                    const currentBalance = flagsRef.current.balance;
                     const positionSize = currentBalance * 0.2;
                     const shares = positionSize / lastCandle.close;
                     currentPosition = {
@@ -931,7 +953,18 @@ const useP5Chart = ({
             // Close current trading position.
             const closePosition = () => {
                 try {
-                    if (!currentPosition || !isHoldingPosition) return;
+                    console.log('🔴 SELL CLICKED - closePosition called:', {
+                        hasCurrentPosition: !!currentPosition,
+                        isHoldingPosition,
+                        currentPosition
+                    });
+                    if (!currentPosition || !isHoldingPosition) {
+                        console.log('🚫 Sell blocked:', {
+                            noCurrentPosition: !currentPosition,
+                            notHolding: !isHoldingPosition
+                        });
+                        return;
+                    }
                     isHoldingPosition = false;
                     setIsHolding(false);
                     const profit = currentPnl;
@@ -961,10 +994,15 @@ const useP5Chart = ({
                             }).catch(() => { });
                         }
                     } catch { }
-                    setBalance(prevBalance => {
-                        const newBalance = prevBalance + netProfit;
-                        return newBalance;
-                    });
+                    // Update balance: use callback for Aptos mode, direct update for demo mode
+                    if (aptosMode && onPositionClosed) {
+                        onPositionClosed(netProfit);
+                    } else {
+                        setBalance(prevBalance => {
+                            const newBalance = prevBalance + netProfit;
+                            return newBalance;
+                        });
+                    }
                     if (netProfit > 0) {
                         setShowFireworks(true);
                         setTimeout(() => setShowFireworks(false), 1000);
@@ -1027,7 +1065,9 @@ const useP5Chart = ({
             // p5 draw loop: Main rendering and update cycle.
             p.draw = () => {
                 p.background(12, 12, 12);
-                if (isPaused) {
+                const flags = flagsRef.current;
+                if (flags.isPaused) {
+                    console.log('🛑 Game is paused, not rendering. isPaused:', flags.isPaused, 'overlayActive:', flags.overlayActive);
                     return;
                 }
 
@@ -1114,7 +1154,9 @@ const useP5Chart = ({
             // Handle window resize.
             p.windowResized = () => {
                 p.resizeCanvas(p.windowWidth, p.windowHeight);
-                p.strokeCap(p.ROUND);
+                if (p.strokeCap && p.ROUND) {
+                    p.strokeCap(p.ROUND);
+                }
                 const isMobile = p.windowWidth < 768;
                 const leftMargin = isMobile ? 4 : 8;
                 const rightMargin = isMobile ? 34 : 46;
@@ -1135,11 +1177,19 @@ const useP5Chart = ({
             // Mouse/touch handlers for buying/selling.
             let touchActive = false;
             p.mousePressed = () => {
-                if (modalOpenRef.current) return true;
+                console.log('🖱️ MOUSE CLICK detected');
+                if (modalOpenRef.current) {
+                    console.log('🚫 Click blocked: modal is open');
+                    return true;
+                }
                 const f = flagsRef.current
-                if (f.isPaused || f.overlayActive || f.disableClicks) return true;
+                if (f.isPaused || f.overlayActive || f.disableClicks) {
+                    console.log('🚫 Click blocked by flags:', f);
+                    return true;
+                }
                 try {
                     if (!touchActive) {
+                        console.log('🖱️ Processing mouse click - calling startPosition');
                         startPosition();
                     }
                 } catch (error) {
@@ -1149,11 +1199,13 @@ const useP5Chart = ({
                 return false;
             };
             p.mouseReleased = () => {
+                console.log('🖱️ MOUSE RELEASE detected');
                 if (modalOpenRef.current) return true;
                 const f = flagsRef.current
                 if (f.isPaused || f.overlayActive || f.disableClicks) return true;
                 try {
                     if (!touchActive) {
+                        console.log('🖱️ Processing mouse release - calling closePosition');
                         closePosition();
                     }
                 } catch (error) {
@@ -1226,7 +1278,7 @@ const useP5Chart = ({
         if (!inst) return
         try {
             const now = inst.millis ? inst.millis() : Date.now()
-            if (isPaused) {
+            if (flagsRef.current.isPaused) {
                 inst.__pauseStart = now
                 inst.noLoop()
             } else {

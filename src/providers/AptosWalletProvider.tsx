@@ -10,7 +10,7 @@ export function AptosWalletProvider({ children }: { children: React.ReactNode })
         network: Network.DEVNET
       }}
       onError={(error) => {
-        console.log("Wallet Adapter Error:", error);
+        console.error("Wallet Adapter Error:", error);
       }}
     >
       {children}

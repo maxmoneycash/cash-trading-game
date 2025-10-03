@@ -1,36 +1,29 @@
 import { Aptos, AptosConfig, Network } from "@aptos-labs/ts-sdk";
-import { useWallet } from "@aptos-labs/wallet-adapter-react";
+
+// Contract address on devnet
+const CONTRACT_ADDRESS = "0xfa887d8e30148e28d79c16025e72f88f34d7d3e5a2814c68bae8e8c09f407607";
 
 export interface CandleConfig {
   initial_price_fp: number;
   total_candles: number;
   interval_ms: number;
   fairness_version: number;
-  start_at_ms: number;
 }
 
-export interface Trade {
-  timestamp: number;
-  action: number; // 0: buy, 1: sell
-  price: number;
-  amount: number;
-}
-
-export interface PlayerState {
-  total_winnings: number;
-  total_losses: number;
-  games_played: number;
-  last_round_id: number;
-}
-
-export interface GameRound {
-  id: number;
+export interface GameStartEvent {
+  player: string;
+  bet_amount: number;
   seed: string;
-  candle_config: CandleConfig;
-  start_time: number;
-  end_time: number;
-  pnl: number;
-  status: number;
+  timestamp: number;
+}
+
+export interface GameEndEvent {
+  player: string;
+  bet_amount: number;
+  profit: number;      // 0 if loss
+  loss: number;        // 0 if profit
+  payout: number;
+  timestamp: number;
 }
 
 export class GameContract {
@@ -40,43 +33,30 @@ export class GameContract {
   constructor(network: Network = Network.DEVNET) {
     const config = new AptosConfig({ network });
     this.aptos = new Aptos(config);
-    // This will be set when we deploy the contract
-    this.moduleAddress = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || "0x1";
+    this.moduleAddress = CONTRACT_ADDRESS;
   }
 
-  /// Contract interaction methods
-
-  async initializePlayer(
-    signAndSubmitTransaction: any
-  ): Promise<string> {
-    const transaction = {
-      data: {
-        function: `${this.moduleAddress}::game::initialize_player`,
-        functionArguments: [],
-      },
-    };
-
-    const response = await signAndSubmitTransaction(transaction);
-    await this.aptos.waitForTransaction({ transactionHash: response.hash });
-    return response.hash;
-  }
-
+  /**
+   * Start a new trading game
+   * @param signAndSubmitTransaction - Wallet function to sign transactions
+   * @param betAmountAPT - Bet amount in APT (will be converted to octas)
+   * @returns Transaction hash
+   */
   async startGame(
     signAndSubmitTransaction: any,
-    betAmount: number,
-    seed: string
+    betAmountAPT: number
   ): Promise<string> {
-    // Convert seed from hex string to byte array
-    const seedBytes = this.hexToBytes(seed);
-    
+    const betAmountOctas = Math.floor(betAmountAPT * 100000000); // Convert APT to octas
+
     const transaction = {
       data: {
         function: `${this.moduleAddress}::game::start_game`,
-        functionArguments: [
-          betAmount * 100000000, // Convert APT to octas
-          seedBytes
-        ],
+        functionArguments: [betAmountOctas.toString()],
       },
+      options: {
+        maxGasAmount: 20000,
+        gasUnitPrice: 100,
+      }
     };
 
     const response = await signAndSubmitTransaction(transaction);
@@ -84,21 +64,34 @@ export class GameContract {
     return response.hash;
   }
 
+  /**
+   * Complete a trading game
+   * @param signAndSubmitTransaction - Wallet function to sign transactions
+   * @param seed - Game seed (hex string without 0x prefix)
+   * @param isProfit - True if player made profit, false if loss
+   * @param amountAPT - Profit or loss amount in APT
+   * @returns Transaction hash
+   */
   async completeGame(
     signAndSubmitTransaction: any,
-    roundId: number,
-    finalPrice: number,
-    trades: Trade[]
+    seed: string,
+    isProfit: boolean,
+    amountAPT: number
   ): Promise<string> {
+    const amountOctas = Math.floor(amountAPT * 100000000); // Convert APT to octas
+
+    // Ensure seed is in proper hex format
+    const seedHex = seed.startsWith('0x') ? seed : `0x${seed}`;
+
     const transaction = {
       data: {
         function: `${this.moduleAddress}::game::complete_game`,
-        functionArguments: [
-          roundId,
-          finalPrice,
-          trades
-        ],
+        functionArguments: [seedHex, isProfit, amountOctas.toString()],
       },
+      options: {
+        maxGasAmount: 20000,
+        gasUnitPrice: 100,
+      }
     };
 
     const response = await signAndSubmitTransaction(transaction);
@@ -106,164 +99,85 @@ export class GameContract {
     return response.hash;
   }
 
-  async recordTrade(
-    signAndSubmitTransaction: any,
-    roundId: number,
-    action: number,
-    price: number,
-    amount: number
-  ): Promise<string> {
-    const transaction = {
-      data: {
-        function: `${this.moduleAddress}::game::record_trade`,
-        functionArguments: [
-          roundId,
-          action,
-          price,
-          amount
-        ],
-      },
-    };
-
-    const response = await signAndSubmitTransaction(transaction);
-    await this.aptos.waitForTransaction({ transactionHash: response.hash });
-    return response.hash;
-  }
-
-  async withdrawWinnings(
-    signAndSubmitTransaction: any,
-    amount: number
-  ): Promise<string> {
-    const transaction = {
-      data: {
-        function: `${this.moduleAddress}::game::withdraw_winnings`,
-        functionArguments: [amount * 100000000], // Convert APT to octas
-      },
-    };
-
-    const response = await signAndSubmitTransaction(transaction);
-    await this.aptos.waitForTransaction({ transactionHash: response.hash });
-    return response.hash;
-  }
-
-  /// View functions (read-only)
-
-  async getPlayerState(playerAddress: string): Promise<PlayerState | null> {
+  /**
+   * Get game start events for a player
+   * @param playerAddress - Player's wallet address
+   * @returns Array of game start events
+   */
+  async getPlayerGameStartEvents(playerAddress: string): Promise<GameStartEvent[]> {
     try {
-      const result = await this.aptos.view({
-        payload: {
-          function: `${this.moduleAddress}::game::get_player_state`,
-          functionArguments: [playerAddress],
-        },
-      });
-
-      if (result && result.length >= 4) {
-        return {
-          total_winnings: Number(result[0]) / 100000000, // Convert from octas
-          total_losses: Number(result[1]) / 100000000,
-          games_played: Number(result[2]),
-          last_round_id: Number(result[3]),
-        };
-      }
-      return null;
+      // For now, return empty array - events querying will be implemented later
+      // The events are still being emitted and stored on-chain for verification
+      console.log(`Getting game start events for ${playerAddress}`);
+      return [];
     } catch (error) {
-      console.error('Failed to get player state:', error);
-      return null;
-    }
-  }
-
-  async getGameRound(playerAddress: string): Promise<GameRound | null> {
-    try {
-      const result = await this.aptos.view({
-        payload: {
-          function: `${this.moduleAddress}::game::get_game_round`,
-          functionArguments: [playerAddress],
-        },
-      });
-
-      if (result && result.length >= 7) {
-        return {
-          id: Number(result[0]),
-          seed: this.bytesToHex(result[1] as number[]),
-          candle_config: result[2] as CandleConfig,
-          start_time: Number(result[3]),
-          end_time: Number(result[4]),
-          pnl: Number(result[5]),
-          status: Number(result[6]),
-        };
-      }
-      return null;
-    } catch (error) {
-      console.error('Failed to get game round:', error);
-      return null;
-    }
-  }
-
-  async getGameState(): Promise<{ nextRoundId: number; totalRounds: number; totalVolume: number } | null> {
-    try {
-      const result = await this.aptos.view({
-        payload: {
-          function: `${this.moduleAddress}::game::get_game_state`,
-          functionArguments: [],
-        },
-      });
-
-      if (result && result.length >= 3) {
-        return {
-          nextRoundId: Number(result[0]),
-          totalRounds: Number(result[1]),
-          totalVolume: Number(result[2]) / 100000000, // Convert from octas
-        };
-      }
-      return null;
-    } catch (error) {
-      console.error('Failed to get game state:', error);
-      return null;
-    }
-  }
-
-  /// Utility functions
-
-  private hexToBytes(hex: string): number[] {
-    // Remove 0x prefix if present
-    hex = hex.replace(/^0x/, '');
-    const bytes: number[] = [];
-    for (let i = 0; i < hex.length; i += 2) {
-      bytes.push(parseInt(hex.substr(i, 2), 16));
-    }
-    return bytes;
-  }
-
-  private bytesToHex(bytes: number[]): string {
-    return '0x' + bytes.map(b => b.toString(16).padStart(2, '0')).join('');
-  }
-
-  /// Event listening
-
-  async getGameEvents(playerAddress: string): Promise<any[]> {
-    try {
-      // Get all events for this player
-      const events = await this.aptos.getAccountEventsByEventType({
-        accountAddress: playerAddress,
-        eventType: `${this.moduleAddress}::game::GameStartEvent`,
-      });
-      return events;
-    } catch (error) {
-      console.error('Failed to get game events:', error);
+      console.error('Failed to get game start events:', error);
       return [];
     }
   }
 
-  async getTradeEvents(playerAddress: string): Promise<any[]> {
+  /**
+   * Get game end events for a player
+   * @param playerAddress - Player's wallet address
+   * @returns Array of game end events
+   */
+  async getPlayerGameEndEvents(playerAddress: string): Promise<GameEndEvent[]> {
     try {
-      const events = await this.aptos.getAccountEventsByEventType({
-        accountAddress: playerAddress,
-        eventType: `${this.moduleAddress}::game::TradeEvent`,
-      });
-      return events;
+      // For now, return empty array - events querying will be implemented later
+      // The events are still being emitted and stored on-chain for verification
+      console.log(`Getting game end events for ${playerAddress}`);
+      return [];
     } catch (error) {
-      console.error('Failed to get trade events:', error);
+      console.error('Failed to get game end events:', error);
       return [];
     }
+  }
+
+  /**
+   * Get default candle configuration
+   * Note: This would be a view function call, but for now we return the default
+   */
+  getDefaultCandleConfig(): CandleConfig {
+    return {
+      initial_price_fp: 10000000000, // $100.00 in fixed-point
+      total_candles: 460,
+      interval_ms: 65,
+      fairness_version: 2,
+    };
+  }
+
+  /**
+   * Utility: Convert APT to octas
+   */
+  static aptToOctas(aptAmount: number): number {
+    return Math.floor(aptAmount * 100000000);
+  }
+
+  /**
+   * Utility: Convert octas to APT
+   */
+  static octasToApt(octas: number): number {
+    return octas / 100000000;
+  }
+
+  /**
+   * Get the contract address
+   */
+  getContractAddress(): string {
+    return this.moduleAddress;
+  }
+
+  /**
+   * Estimate transaction gas costs
+   */
+  estimateGasCosts(): { startGame: number; completeGame: number } {
+    // Based on our testing: start_game uses ~17 gas, complete_game uses ~6 gas
+    return {
+      startGame: 0.000017, // APT
+      completeGame: 0.000006, // APT
+    };
   }
 }
+
+// Export the contract instance for easy use
+export const gameContract = new GameContract();

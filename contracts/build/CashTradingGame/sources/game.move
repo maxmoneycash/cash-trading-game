@@ -12,6 +12,8 @@ module cash_trading_game::game {
     const E_INVALID_SEED: u64 = 2;
     const E_TRADE_VERIFICATION_FAILED: u64 = 3;
     const E_INSUFFICIENT_CONTRACT_BALANCE: u64 = 4;
+    const E_ACTIVE_GAME_NOT_FOUND: u64 = 5;
+    const E_SEED_MISMATCH: u64 = 6;
 
     /// Minimum bet amount (0.001 APT = 100,000 octas)
     const MIN_BET_AMOUNT: u64 = 100000;
@@ -56,6 +58,17 @@ module cash_trading_game::game {
         fairness_version: u8,   // Version for fairness verification
     }
 
+    /// Active round tracking for each player
+    struct ActiveGame has drop, store {
+        player: address,
+        bet_amount: u64,
+        seed: vector<u8>,
+    }
+
+    struct ActiveGames has key {
+        games: vector<ActiveGame>,
+    }
+
     /// Event handles for emitting events
     struct EventHandles has key {
         game_start_events: EventHandle<GameStartEvent>,
@@ -85,18 +98,25 @@ module cash_trading_game::game {
             game_start_events: account::new_event_handle<GameStartEvent>(account),
             game_end_events: account::new_event_handle<GameEndEvent>(account),
         });
+
+        // Initialize active game tracking
+        move_to(account, ActiveGames {
+            games: vector::empty<ActiveGame>(),
+        });
     }
 
     /// Start a new trading game
-    /// Player bets APT, receives a seed for deterministic price generation
+    /// Player bets APT, providing the deterministic seed used for the round
     public entry fun start_game(
         account: &signer,
-        bet_amount: u64
-    ) acquires EventHandles, GameTreasury {
+        bet_amount: u64,
+        seed: vector<u8>
+    ) acquires ActiveGames, EventHandles, GameTreasury {
         let player = signer::address_of(account);
 
-        // Validate bet amount
+        // Validate bet amount and seed
         assert!(bet_amount >= MIN_BET_AMOUNT && bet_amount <= MAX_BET_AMOUNT, E_INVALID_BET_AMOUNT);
+        assert!(!vector::is_empty(&seed), E_INVALID_SEED);
 
         // Get treasury address
         let treasury = borrow_global<GameTreasury>(@cash_trading_game);
@@ -105,10 +125,12 @@ module cash_trading_game::game {
         // Transfer bet amount from player to treasury
         coin::transfer<AptosCoin>(account, treasury_address, bet_amount);
 
-        // Generate random seed for deterministic price generation
-        let seed = generate_game_seed();
+        // Track the active game so we can verify completion later
+        let active_games = borrow_global_mut<ActiveGames>(@cash_trading_game);
+        let stored_seed = clone_seed(&seed);
+        upsert_active_game(&mut active_games.games, player, bet_amount, stored_seed);
 
-        // Emit game start event
+        // Emit game start event with the supplied seed
         let event_handles = borrow_global_mut<EventHandles>(@cash_trading_game);
         event::emit_event(&mut event_handles.game_start_events, GameStartEvent {
             player,
@@ -125,11 +147,11 @@ module cash_trading_game::game {
         seed: vector<u8>,
         is_profit: bool,
         amount: u64  // either profit amount or loss amount
-    ) acquires EventHandles, GameTreasury {
+    ) acquires ActiveGames, EventHandles, GameTreasury {
         let player = signer::address_of(account);
 
-        // Verify the seed and get bet amount
-        let bet_amount = verify_seed_and_get_bet(&seed);
+        // Verify the seed and recover the wager that was posted at start_game
+        let bet_amount = verify_seed_and_extract_bet(player, &seed);
 
         // Calculate payout based on profit/loss
         let (payout, profit, loss) = if (is_profit) {
@@ -161,37 +183,91 @@ module cash_trading_game::game {
         });
     }
 
-    /// Generate a random seed for the game
-    fun generate_game_seed(): vector<u8> {
-        // For now, use timestamp for simple randomness
-        let time_bytes = timestamp::now_microseconds();
-        let seed = vector::empty<u8>();
-
-        // Convert timestamp to bytes (simple approach)
-        let i = 0;
-        while (i < 8) {
-            vector::push_back(&mut seed, ((time_bytes >> (i * 8)) & 0xFF as u8));
-            i = i + 1;
-        };
-
-        seed
-    }
-
-    /// Verify the seed and return bet amount
-    /// This is where the fairness verification happens
-    fun verify_seed_and_get_bet(
+    /// Verify the supplied seed, remove the active game record, and return the bet amount
+    fun verify_seed_and_extract_bet(
+        player: address,
         seed: &vector<u8>
-    ): u64 {
-        // For now, return a fixed bet amount for testing
-        // TODO: Implement full verification against seed-generated prices
+    ): u64 acquires ActiveGames {
         assert!(!vector::is_empty(seed), E_INVALID_SEED);
 
-        // Placeholder: In real implementation, this would:
-        // 1. Generate candles from seed
-        // 2. Verify the seed is valid
-        // 3. Return the original bet amount from game start event
+        let active_games = borrow_global_mut<ActiveGames>(@cash_trading_game);
+        let (found, index) = find_game_index(&active_games.games, player);
+        assert!(found, E_ACTIVE_GAME_NOT_FOUND);
 
-        100000000 // 1 APT for testing
+        {
+            let stored_game = vector::borrow(&active_games.games, index);
+            let stored_seed = &stored_game.seed;
+            assert!(seeds_match(seed, stored_seed), E_SEED_MISMATCH);
+        };
+
+        let removed_game = vector::swap_remove(&mut active_games.games, index);
+        let ActiveGame { player: _, bet_amount, seed: _ } = removed_game;
+        bet_amount
+    }
+
+    /// Helper: find an active game for a player
+    fun find_game_index(games: &vector<ActiveGame>, player: address): (bool, u64) {
+        find_game_index_inner(games, player, 0)
+    }
+
+    fun find_game_index_inner(games: &vector<ActiveGame>, player: address, index: u64): (bool, u64) {
+        if (index >= vector::length(games)) {
+            (false, 0)
+        } else {
+            let game_ref = vector::borrow(games, index);
+            if (game_ref.player == player) {
+                (true, index)
+            } else {
+                find_game_index_inner(games, player, index + 1)
+            }
+        }
+    }
+
+    /// Helper: insert or replace the active game entry for a player
+    fun upsert_active_game(
+        games: &mut vector<ActiveGame>,
+        player: address,
+        bet_amount: u64,
+        seed: vector<u8>
+    ) {
+        let (found, index) = find_game_index(games, player);
+        if (found) {
+            let _ = vector::swap_remove(games, index);
+        };
+        vector::push_back(games, ActiveGame { player, bet_amount, seed });
+    }
+
+    /// Helper: clone a seed vector
+    fun clone_seed(seed: &vector<u8>): vector<u8> {
+        let clone = vector::empty<u8>();
+        clone_seed_inner(seed, 0, &mut clone);
+        clone
+    }
+
+    fun clone_seed_inner(seed: &vector<u8>, index: u64, clone_ref: &mut vector<u8>) {
+        if (index >= vector::length(seed)) {
+            return;
+        };
+        vector::push_back(clone_ref, *vector::borrow(seed, index));
+        clone_seed_inner(seed, index + 1, clone_ref);
+    }
+
+    /// Helper: compare two byte seeds
+    fun seeds_match(a: &vector<u8>, b: &vector<u8>): bool {
+        if (vector::length(a) != vector::length(b)) {
+            return false;
+        };
+        seeds_match_inner(a, b, 0)
+    }
+
+    fun seeds_match_inner(a: &vector<u8>, b: &vector<u8>, index: u64): bool {
+        if (index >= vector::length(a)) {
+            true
+        } else if (*vector::borrow(a, index) != *vector::borrow(b, index)) {
+            false
+        } else {
+            seeds_match_inner(a, b, index + 1)
+        }
     }
 
     /// View function to get default candle configuration
@@ -219,21 +295,29 @@ module cash_trading_game::game {
         // Only allow the contract owner to initialize
         assert!(signer::address_of(account) == @cash_trading_game, 999);
 
-        // Check if already initialized
-        if (exists<GameTreasury>(@cash_trading_game)) {
-            return
+        // Initialize treasury if missing
+        if (!exists<GameTreasury>(@cash_trading_game)) {
+            let (treasury_signer, signer_cap) = account::create_resource_account(account, b"treasury");
+            coin::register<AptosCoin>(&treasury_signer);
+            move_to(account, GameTreasury {
+                signer_cap,
+            });
         };
 
-        // Create resource account for treasury
-        let (treasury_signer, signer_cap) = account::create_resource_account(account, b"treasury");
+        // Initialize event handles if missing
+        if (!exists<EventHandles>(@cash_trading_game)) {
+            move_to(account, EventHandles {
+                game_start_events: account::new_event_handle<GameStartEvent>(account),
+                game_end_events: account::new_event_handle<GameEndEvent>(account),
+            });
+        };
 
-        // Register treasury account for APT
-        coin::register<AptosCoin>(&treasury_signer);
-
-        // Store the signer capability
-        move_to(account, GameTreasury {
-            signer_cap,
-        });
+        // Initialize active game tracking if missing
+        if (!exists<ActiveGames>(@cash_trading_game)) {
+            move_to(account, ActiveGames {
+                games: vector::empty<ActiveGame>(),
+            });
+        };
     }
 
     /// Withdraw house profits from treasury to owner's wallet
@@ -252,7 +336,7 @@ module cash_trading_game::game {
         coin::transfer<AptosCoin>(&treasury_signer, signer::address_of(account), amount);
     }
 
-    /// View function to check treasury balance
+    // View function to check treasury balance
     #[view]
     public fun get_treasury_balance(): u64 acquires GameTreasury {
         let treasury = borrow_global<GameTreasury>(@cash_trading_game);

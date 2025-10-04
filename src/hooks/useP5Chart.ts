@@ -52,7 +52,7 @@ const useP5Chart = ({
     isModalOpen: boolean;
     isPaused?: boolean;
     overlayActive?: boolean;
-    onRoundMeta?: (meta: { roundId?: string; seed?: string; userId?: string; wallet?: string }) => void;
+    onRoundMeta?: (meta: { roundId?: string; seed?: string; userId?: string; wallet?: string; gameEnded?: boolean; phase?: 'start' | 'end' }) => void;
     debugEnabled?: boolean;
     disableClicks?: boolean;
     onPositionClosed?: (positionPnL: number) => void;
@@ -77,8 +77,7 @@ const useP5Chart = ({
     useEffect(() => {
         const sketch = (p: p5) => {
             // Local state for chart elements and animations.
-            // Backend logging helpers
-            const API_BASE_URL = (import.meta as any)?.env?.VITE_API_URL || 'http://localhost:3001';
+            // Removed database logging helpers - no longer needed
             let currentRoundId: string | null = null;
             let candles: any[] = [];
             let allRoundCandles: any[] = [];
@@ -265,33 +264,7 @@ const useP5Chart = ({
 
             // Handle game end due to liquidation or rugpull.
             const endGameLiquidation = () => {
-                // Record event + complete round if possible
-                try {
-                    const lastIndex = Math.max(0, allRoundCandles.length - 1);
-                    const last = allRoundCandles[lastIndex];
-                    if (currentRoundId && last) {
-                        fetch(`${API_BASE_URL}/api/game/event`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                roundId: currentRoundId,
-                                candleIndex: lastIndex,
-                                type: 'LIQUIDATION',
-                                data: { price: last.close }
-                            })
-                        }).catch(() => { });
-                        fetch(`${API_BASE_URL}/api/game/complete`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                roundId: currentRoundId,
-                                finalPrice: last.close,
-                                candleCount: allRoundCandles.length,
-                                completedAt: new Date().toISOString()
-                            })
-                        }).catch(() => { });
-                    }
-                } catch { }
+                // Database logging removed - game state handled locally
                 rugpullActive = false;
                 rugpullSlowMotion = false;
                 rugpullZoom = 1;
@@ -381,56 +354,24 @@ const useP5Chart = ({
                     generatedCandles = toFloatingPoint(fp, activeConfig!.scale);
                     currentIndex = 0;
                     // Surface metadata to debug overlay
-                    if (onRoundMeta) onRoundMeta({ roundId: currentRoundId || undefined, seed: activeSeed || undefined, userId: undefined, wallet: undefined });
+                    if (onRoundMeta) onRoundMeta({ roundId: currentRoundId || undefined, seed: activeSeed || undefined, userId: undefined, wallet: undefined, phase: 'start' });
                 };
 
-                // Start backend round and get seed/config; unless replay is primed
+                // Generate local seed for replay mode or new games
                 if (replayEnabled && replayPrimed && activeSeed && activeConfig) {
-                    // Reuse same seed/config for replay run; avoid backend calls and avoid re-completing round
+                    // Reuse same seed/config for replay run
                     currentRoundId = null;
                     bootstrapWithSeed(activeSeed, activeConfig);
                 } else {
-                    try {
-                        fetch(`${API_BASE_URL}/api/game/start`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' }
-                        }).then(async (res) => {
-                            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                            const data = await res.json();
-                            // capture round id and optional meta
-                            if (data?.success && data.round?.id) {
-                                currentRoundId = data.round.id;
-                            }
-                            const seedHex = data?.round?.seed || data?.seed;
-                            const cfgFromServer = data?.round?.config || data?.config;
-                            if (!seedHex) throw new Error('No seed in response');
-                            bootstrapWithSeed(seedHex, cfgFromServer);
-                            if (onRoundMeta) {
-                                onRoundMeta({ roundId: data.round?.id, seed: seedHex, userId: data.user?.id, wallet: data.user?.wallet_address });
-                            }
-                        }).catch((err) => {
-                            console.warn('Falling back to local seed; backend start failed:', err?.message || err);
-                            // Fallback: local deterministic seed per session
-                            const bytes = new Uint8Array(32);
-                            if (typeof window !== 'undefined' && (window as any).crypto?.getRandomValues) {
-                                (window as any).crypto.getRandomValues(bytes);
-                            } else {
-                                for (let i = 0; i < bytes.length; i++) bytes[i] = Math.floor(Math.random() * 256);
-                            }
-                            const seedHex = '0x' + Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
-                            bootstrapWithSeed(seedHex);
-                        });
-                    } catch (err) {
-                        console.warn('Falling back to local seed; backend start threw:', (err as any)?.message || err);
-                        const bytes = new Uint8Array(32);
-                        if (typeof window !== 'undefined' && (window as any).crypto?.getRandomValues) {
-                            (window as any).crypto.getRandomValues(bytes);
-                        } else {
-                            for (let i = 0; i < bytes.length; i++) bytes[i] = Math.floor(Math.random() * 256);
-                        }
-                        const seedHex = '0x' + Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
-                        bootstrapWithSeed(seedHex);
+                    // Generate local deterministic seed per session
+                    const bytes = new Uint8Array(32);
+                    if (typeof window !== 'undefined' && (window as any).crypto?.getRandomValues) {
+                        (window as any).crypto.getRandomValues(bytes);
+                    } else {
+                        for (let i = 0; i < bytes.length; i++) bytes[i] = Math.floor(Math.random() * 256);
                     }
+                    const seedHex = '0x' + Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+                    bootstrapWithSeed(seedHex);
                 }
             };
 
@@ -456,25 +397,21 @@ const useP5Chart = ({
                 explosionCenter = null;
                 isHistoricalView = true;
                 zoomStartTime = p.millis();
-                // Complete round in backend (skip if this is a replay run)
-                if (!replayEnabled || !replayPrimed) {
-                    try {
-                        const lastIndex = Math.max(0, allRoundCandles.length - 1);
-                        const last = allRoundCandles[lastIndex];
-                        if (currentRoundId && last) {
-                            fetch(`${API_BASE_URL}/api/game/complete`, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({
-                                    roundId: currentRoundId,
-                                    finalPrice: last.close,
-                                    candleCount: allRoundCandles.length,
-                                    completedAt: new Date().toISOString()
-                                })
-                            }).catch(() => { });
-                        }
-                    } catch { }
+
+                // Trigger game completion for settlement
+                console.log('🎯 Round ended - triggering settlement');
+                if (onRoundMeta) {
+                    onRoundMeta({
+                        roundId: currentRoundId || undefined,
+                        seed: activeSeed || undefined,
+                        userId: undefined,
+                        wallet: undefined,
+                        gameEnded: true,  // This triggers settlement!
+                        phase: 'end'
+                    });
                 }
+
+                // Game completion handled locally - no database persistence needed
                 setTimeout(() => {
                     if (replayEnabled && !replayPrimed) {
                         // Prime replay for next round using same seed/config
@@ -923,28 +860,7 @@ const useP5Chart = ({
                     currentPnl = 0;
                     setPnl(0);
                     p.redraw();
-                    // Persist open trade
-                    try {
-                        if (currentRoundId != null && currentEntryIndex != null) {
-                            fetch(`${API_BASE_URL}/api/game/trade/open`, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({
-                                    roundId: currentRoundId,
-                                    size: positionSize,
-                                    entryPrice: lastCandle.close,
-                                    entryCandleIndex: currentEntryIndex,
-                                })
-                            }).then(async (res) => {
-                                if (res.ok) {
-                                    const data = await res.json();
-                                    if (data?.success && data.trade?.id) {
-                                        currentTradeId = data.trade.id;
-                                    }
-                                }
-                            }).catch(() => { });
-                        }
-                    } catch { }
+                    // Trade tracking handled locally - no database persistence needed
                 } catch (error) {
                     console.error('❌ Error in startPosition:', error);
                 }
@@ -977,23 +893,7 @@ const useP5Chart = ({
                         netProfit: netProfit,
                         exitElapsed: 0
                     });
-                    // Persist close trade
-                    try {
-                        const lastIndex = Math.max(0, allRoundCandles.length - 1);
-                        const last = allRoundCandles[lastIndex];
-                        if (currentTradeId && last) {
-                            fetch(`${API_BASE_URL}/api/game/trade/close`, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({
-                                    tradeId: currentTradeId,
-                                    exitPrice: last.close,
-                                    exitCandleIndex: lastIndex,
-                                    pnl: netProfit,
-                                })
-                            }).catch(() => { });
-                        }
-                    } catch { }
+                    // Trade completion handled locally - no database persistence needed
                     // Update balance: use callback for Aptos mode, direct update for demo mode
                     if (aptosMode && onPositionClosed) {
                         onPositionClosed(netProfit);

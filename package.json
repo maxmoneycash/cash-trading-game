@@ -12,7 +12,8 @@
     "db:clear": "cd server && npm run db:clear",
     "db:seed": "cd server && npm run db:seed",
     "db:reset": "npm run db:wipe && npm run db:seed",
-    "db:wipe": "rm -f server/database/game.db"
+    "db:wipe": "rm -f server/database/game.db",
+    "publish:devnet": "contracts/scripts/publish_if_missing.sh"
   },
   "dependencies": {
     "@aptos-labs/ts-sdk": "^5.0.0",

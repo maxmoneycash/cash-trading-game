@@ -6,6 +6,7 @@ export interface DebugMetadata {
   userId?: string | null
   wallet?: string | null
   balance?: number | null
+  gameState?: string | null
 }
 
 interface DebugContextValue {
@@ -31,7 +32,7 @@ export const useDebug = () => {
 }
 
 export const DebugProvider: React.FC<{ enabled: boolean; children: React.ReactNode }> = ({ enabled, children }) => {
-  const apiBase = (import.meta as any)?.env?.VITE_API_URL || 'http://localhost:3001'
+  const apiBase = 'http://localhost:3000' // Development server only (not database)
   const [connected, setConnected] = useState(false)
   const [isPaused, setPaused] = useState(false)
   const [overlayActive, setOverlayActive] = useState(false)

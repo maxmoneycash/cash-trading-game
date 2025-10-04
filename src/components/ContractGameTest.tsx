@@ -18,6 +18,7 @@ export function ContractGameTest() {
   const [profitLossAmount, setProfitLossAmount] = useState(0.05);
   const [isProfit, setIsProfit] = useState(true);
   const [logs, setLogs] = useState<string[]>([]);
+  const [lastSeed, setLastSeed] = useState<string | null>(null);
 
   const addLog = (message: string) => {
     const timestamp = new Date().toLocaleTimeString();
@@ -26,11 +27,14 @@ export function ContractGameTest() {
 
   const handleStartGame = async () => {
     try {
+      const seedBytes = crypto.getRandomValues(new Uint8Array(32));
+      const seed = '0x' + Array.from(seedBytes).map(b => b.toString(16).padStart(2, '0')).join('');
+
       addLog(`Starting game with ${betAmount} APT bet...`);
-      const txHash = await startGame(betAmount);
+      const txHash = await startGame(betAmount, seed);
+      setLastSeed(seed);
       addLog(`✅ Game started! Transaction: ${txHash?.slice(0, 16)}...`);
-      addLog(`🎲 For testing: Copy any hex string as seed (e.g., "abcd1234") to complete the game`);
-      addLog(`💡 In production, the seed will be auto-extracted from the transaction`);
+      addLog(`🎲 Seed used: ${seed.slice(0, 12)}...`);
     } catch (error) {
       addLog(`❌ Failed to start game: ${(error as any)?.message || 'Unknown error'}`);
     }
@@ -38,14 +42,17 @@ export function ContractGameTest() {
 
   const handleCompleteGame = async () => {
     try {
-      // Generate a test seed since event querying isn't implemented yet
-      const testSeed = `test_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      if (!lastSeed) {
+        addLog('❌ No recorded seed from start_game - start a round first.');
+        return;
+      }
 
-      addLog(`Completing game with test seed: ${testSeed.slice(0, 12)}...`);
+      addLog(`Completing game with seed: ${lastSeed.slice(0, 12)}...`);
       addLog(`${isProfit ? 'Profit' : 'Loss'}: ${profitLossAmount} APT`);
 
-      const txHash = await completeGame(testSeed, isProfit, profitLossAmount);
+      const txHash = await completeGame(lastSeed, isProfit, profitLossAmount);
       addLog(`✅ Game completed! Transaction: ${txHash?.slice(0, 16)}...`);
+      setLastSeed(null);
 
       if (isProfit) {
         addLog(`💰 Profit paid out: ${profitLossAmount} APT`);

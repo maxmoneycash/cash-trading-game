@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useWallet } from '@aptos-labs/wallet-adapter-react';
 import { gameContract, GameStartEvent, GameEndEvent } from '../contracts/GameContract';
 import { Aptos, AptosConfig, Network } from '@aptos-labs/ts-sdk';
@@ -20,23 +20,35 @@ export function useAptosGameContract() {
     if (connected && account) {
       fetchGameHistory();
       fetchWalletBalance();
-    } else {
+    } else if (!connected) {
+      // Only reset game history when wallet is truly disconnected
+      // Don't reset balance immediately - wait to see if it's just a temporary disconnect
       setGameHistory({ starts: [], ends: [] });
-      setWalletBalance(0);
+
+      // Only reset balance after a delay to avoid transaction-induced resets
+      const resetTimer = setTimeout(() => {
+        if (!connected) {
+          console.log('💰 Wallet still disconnected after delay - resetting balance');
+          setWalletBalance(0);
+        }
+      }, 5000); // 5 second delay
+
+      return () => clearTimeout(resetTimer);
     }
+    // If account is missing but connected is true, don't reset - might be temporary
   }, [connected, account]);
 
   /**
    * Start a new game with APT bet
    */
-  const startGame = async (betAmountAPT: number): Promise<string | null> => {
+  const startGame = async (betAmountAPT: number, seedHex: string): Promise<string | null> => {
     if (!connected || !account || !signAndSubmitTransaction) {
       throw new Error('Wallet not connected');
     }
 
     setIsLoading(true);
     try {
-      const txHash = await gameContract.startGame(signAndSubmitTransaction, betAmountAPT);
+      const txHash = await gameContract.startGame(signAndSubmitTransaction, betAmountAPT, seedHex);
 
       // Don't refresh game history immediately - it will be refreshed when game completes
       // This prevents triggering the gameEnded detection prematurely
@@ -87,27 +99,41 @@ export function useAptosGameContract() {
   };
 
   /**
-   * Fetch wallet APT balance
+   * Fetch wallet APT balance with rate limiting protection
    */
-  const fetchWalletBalance = async () => {
+  const fetchWalletBalance = useCallback(async (retryCount = 0) => {
     if (!account) return;
 
     try {
-      console.log('Fetching balance for account:', account.address.toString());
-
       // Try using the more direct balance fetch method
       const balance = await aptos.getAccountAPTAmount({
         accountAddress: account.address
       });
 
       const aptBalance = balance / 100000000; // Convert octas to APT
+      console.log(`💰 Wallet balance updated: ${aptBalance.toFixed(4)} APT`);
       setWalletBalance(aptBalance);
-      console.log(`Wallet APT balance: ${aptBalance} APT (${balance} octas)`);
 
     } catch (error: any) {
+      // Handle 429 rate limiting errors with exponential backoff
+      if (error.status === 429 || (error.message && error.message.includes('429'))) {
+        console.warn(`Rate limit hit, retry ${retryCount + 1}/3`);
+
+        if (retryCount < 3) {
+          const delay = Math.pow(2, retryCount) * 2000; // 2s, 4s, 8s
+          setTimeout(() => {
+            fetchWalletBalance(retryCount + 1);
+          }, delay);
+          return;
+        } else {
+          console.error('Rate limit exceeded, giving up on balance fetch');
+          return; // Don't reset balance to 0 on rate limit
+        }
+      }
+
       console.error('Failed to fetch wallet balance:', error);
 
-      // Fallback: try resource method
+      // Fallback: try resource method (but not if we hit rate limit)
       try {
         const resources = await aptos.getAccountResources({
           accountAddress: account.address
@@ -121,18 +147,20 @@ export function useAptosGameContract() {
         if (aptResource) {
           const balance = (aptResource.data as any).coin.value;
           const aptBalance = parseInt(balance) / 100000000; // Convert octas to APT
+          console.log(`💰 Wallet balance updated (fallback): ${aptBalance.toFixed(4)} APT`);
           setWalletBalance(aptBalance);
-          console.log(`Wallet APT balance (fallback): ${aptBalance} APT`);
         } else {
           setWalletBalance(0);
-          console.log('No APT resource found - account may need to be funded');
         }
-      } catch (fallbackError) {
-        console.error('Fallback balance fetch also failed:', fallbackError);
-        setWalletBalance(0);
+      } catch (fallbackError: any) {
+        // Don't reset balance on rate limit errors
+        if (!(fallbackError.status === 429 || (fallbackError.message && fallbackError.message.includes('429')))) {
+          console.error('Fallback balance fetch also failed:', fallbackError);
+          setWalletBalance(0);
+        }
       }
     }
-  };
+  }, [account]); // Add account as dependency
 
   /**
    * Fetch player's game history

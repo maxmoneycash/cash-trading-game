@@ -28,3 +28,10 @@ trading_env/
 
 server/database/game.db
 test-determinism.*
+
+# Aptos/Move contract build artifacts
+contracts/build/
+contracts/.aptos/
+
+# Example/reference projects
+passkey-react-aptos/

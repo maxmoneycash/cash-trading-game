@@ -1,7 +1,7 @@
 import { Aptos, AptosConfig, Network } from "@aptos-labs/ts-sdk";
 
 // Contract address on devnet
-const CONTRACT_ADDRESS = "0xfa887d8e30148e28d79c16025e72f88f34d7d3e5a2814c68bae8e8c09f407607";
+const CONTRACT_ADDRESS = "0xac90639e0d28963f6d370fbb363d9a120b5ed00660cd276b4b1a58d499ceee34";
 
 export interface CandleConfig {
   initial_price_fp: number;
@@ -39,27 +39,34 @@ export class GameContract {
   /**
    * Start a new trading game
    * @param signAndSubmitTransaction - Wallet function to sign transactions
-   * @param betAmountAPT - Bet amount in APT (will be converted to octas)
+   * @param betAmountAPT - Bet amount in APT
    * @returns Transaction hash
    */
   async startGame(
     signAndSubmitTransaction: any,
     betAmountAPT: number
   ): Promise<string> {
-    const betAmountOctas = Math.floor(betAmountAPT * 100000000); // Convert APT to octas
+    if (!signAndSubmitTransaction) {
+      throw new Error('signAndSubmitTransaction function not provided');
+    }
+
+    const betAmountOctas = Math.floor(betAmountAPT * 100000000);
 
     const transaction = {
       data: {
         function: `${this.moduleAddress}::game::start_game`,
         functionArguments: [betAmountOctas.toString()],
-      },
-      options: {
-        maxGasAmount: 20000,
-        gasUnitPrice: 100,
       }
     };
 
+    console.log('Submitting transaction:', transaction);
+
     const response = await signAndSubmitTransaction(transaction);
+
+    if (!response || !response.hash) {
+      throw new Error('Invalid transaction response');
+    }
+
     await this.aptos.waitForTransaction({ transactionHash: response.hash });
     return response.hash;
   }
@@ -78,23 +85,28 @@ export class GameContract {
     isProfit: boolean,
     amountAPT: number
   ): Promise<string> {
-    const amountOctas = Math.floor(amountAPT * 100000000); // Convert APT to octas
+    if (!signAndSubmitTransaction) {
+      throw new Error('signAndSubmitTransaction function not provided');
+    }
 
-    // Ensure seed is in proper hex format
+    const amountOctas = Math.floor(amountAPT * 100000000);
     const seedHex = seed.startsWith('0x') ? seed : `0x${seed}`;
 
     const transaction = {
       data: {
         function: `${this.moduleAddress}::game::complete_game`,
         functionArguments: [seedHex, isProfit, amountOctas.toString()],
-      },
-      options: {
-        maxGasAmount: 20000,
-        gasUnitPrice: 100,
       }
     };
 
+    console.log('Submitting transaction:', transaction);
+
     const response = await signAndSubmitTransaction(transaction);
+
+    if (!response || !response.hash) {
+      throw new Error('Invalid transaction response');
+    }
+
     await this.aptos.waitForTransaction({ transactionHash: response.hash });
     return response.hash;
   }

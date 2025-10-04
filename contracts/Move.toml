@@ -4,13 +4,16 @@ version = "1.0.0"
 authors = ["Cash Trading Game Team"]
 
 [addresses]
-cash_trading_game = "0xfa887d8e30148e28d79c16025e72f88f34d7d3e5a2814c68bae8e8c09f407607"
+cash_trading_game = "_"
 
 [dev-addresses]
 
 [dependencies.AptosFramework]
 git = "https://github.com/aptos-labs/aptos-core.git"
-rev = "mainnet"
+rev = "aptos-release-v1.21"
 subdir = "aptos-move/framework/aptos-framework"
 
 [dev-dependencies]
+
+[move]
+compiler-version = "2.0"

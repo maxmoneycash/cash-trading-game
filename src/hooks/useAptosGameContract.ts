@@ -29,21 +29,35 @@ export function useAptosGameContract() {
   /**
    * Start a new game with APT bet
    */
-  const startGame = async (betAmountAPT: number): Promise<string | null> => {
-    if (!connected || !account || !signAndSubmitTransaction) {
+  const startGame = async (betAmountAPT: number): Promise<string> => {
+    if (!connected) {
       throw new Error('Wallet not connected');
     }
 
+    if (!signAndSubmitTransaction) {
+      throw new Error('signAndSubmitTransaction function not available');
+    }
+
+    console.log('Starting game with wallet:', {
+      connected,
+      account: account?.address,
+      signAndSubmitTransaction: typeof signAndSubmitTransaction
+    });
+
     setIsLoading(true);
     try {
-      const txHash = await gameContract.startGame(signAndSubmitTransaction, betAmountAPT);
+      const txHash = await gameContract.startGame(
+        signAndSubmitTransaction,
+        betAmountAPT
+      );
 
-      // Don't refresh game history immediately - it will be refreshed when game completes
-      // This prevents triggering the gameEnded detection prematurely
-      console.log('Game started successfully, transaction hash:', txHash);
+      console.log('Game started:', txHash);
+
+      // Update balance after transaction
+      await fetchWalletBalance();
 
       return txHash;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to start game:', error);
       throw error;
     } finally {
@@ -58,8 +72,8 @@ export function useAptosGameContract() {
     seed: string,
     isProfit: boolean,
     amountAPT: number
-  ): Promise<string | null> => {
-    if (!connected || !account || !signAndSubmitTransaction) {
+  ): Promise<string> => {
+    if (!connected || !signAndSubmitTransaction) {
       throw new Error('Wallet not connected');
     }
 
@@ -72,13 +86,13 @@ export function useAptosGameContract() {
         amountAPT
       );
 
-      // Refresh game history after successful transaction
-      setTimeout(() => {
-        fetchGameHistory();
-      }, 2000); // Wait 2 seconds for indexing
+      console.log('Game completed:', txHash);
+
+      // Update balance after transaction
+      await fetchWalletBalance();
 
       return txHash;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to complete game:', error);
       throw error;
     } finally {

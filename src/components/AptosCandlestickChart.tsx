@@ -210,14 +210,35 @@ const AptosCandlestickChart = () => {
         });
 
         if (hasWalletConnection) {
-            setIsWaitingForWallet(!hasWalletBalance);
+            // Don't set waiting for wallet during active gameplay
+            if (!hasActiveGameActivity) {
+                console.log('💳 Setting isWaitingForWallet:', !hasWalletBalance, { hasWalletBalance, hasActiveGameActivity });
+                setIsWaitingForWallet(!hasWalletBalance);
+            } else {
+                console.log('🎮 Keeping isWaitingForWallet during active game:', { hasWalletBalance, hasActiveGameActivity });
+            }
             if (hasWalletBalance) {
                 console.log('✅ Wallet ready - setting appropriate game state');
+                // Always clear waiting state when wallet becomes ready with balance
+                console.log('🔓 Setting isWaitingForWallet to FALSE');
+                setIsWaitingForWallet(false);
                 setGameStateWithLogging(prev => {
-                    // Don't override active game states
-                    if (prev === 'playing' || prev === 'settling' || prev === 'starting') {
+                    // Special case: if we're settling with a queued seed and wallet is ready, start the game
+                    if (prev === 'settling' && queuedSeed) {
+                        console.log(`🎮 Wallet ready during settling with queued seed - transitioning to playing`);
+                        // Process the queued seed immediately
+                        setTimeout(() => startRoundOnChain(queuedSeed), 0);
+                        return 'playing';
+                    }
+                    // Don't override other active game states
+                    if (prev === 'playing' || prev === 'starting') {
                         console.log(`🎮 Keeping active game state: ${prev}`);
                         return prev;
+                    }
+                    // For settling without queued seed, transition to ready
+                    if (prev === 'settling') {
+                        console.log(`🎮 Settling complete - transitioning to ready`);
+                        return 'ready';
                     }
                     return 'ready';
                 });
@@ -511,6 +532,18 @@ const AptosCandlestickChart = () => {
     }, [gameState, connected, walletBalance, gameStartTransaction, isStartingGame, hasWalletConnection, hasWalletBalance]);
 
     const pausedState = dbg.isPaused || isWaitingForWallet;
+
+    // Log when pause state changes
+    useEffect(() => {
+        console.log('⏸️ Pause state changed:', {
+            pausedState,
+            debugPaused: dbg.isPaused,
+            isWaitingForWallet,
+            gameState,
+            connected,
+            walletBalance
+        });
+    }, [pausedState, dbg.isPaused, isWaitingForWallet, gameState, connected, walletBalance]);
 
     useP5Chart({
         chartRef,

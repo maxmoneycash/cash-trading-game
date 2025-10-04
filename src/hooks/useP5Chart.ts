@@ -297,6 +297,27 @@ const useP5Chart = ({
             // Utility: align to interval boundary
             const alignToInterval = (nowMs: number, interval: number) => Math.floor(nowMs / interval) * interval;
 
+            // Generate a single candle on-demand
+            const generateSingleCandle = (index: number, seed: string, config: any) => {
+                // Simple deterministic candle generation based on index
+                const basePrice = 100;
+                const variation = (Math.sin(index * 0.1) + Math.cos(index * 0.3)) * 5;
+                const randomFactor = ((parseInt(seed.slice(-8), 16) + index) % 1000) / 1000;
+
+                const open = basePrice + variation + (randomFactor - 0.5) * 2;
+                const close = open + (Math.sin(index * 0.15) * 3) + (randomFactor - 0.5) * 4;
+                const high = Math.max(open, close) + Math.abs(Math.sin(index * 0.2)) * 2;
+                const low = Math.min(open, close) - Math.abs(Math.cos(index * 0.25)) * 2;
+
+                return {
+                    open,
+                    high,
+                    low,
+                    close,
+                    timestamp: config.start_at_ms + index * config.interval_ms
+                };
+            };
+
             // Parse URL for replay mode
             try {
                 const url = new URL(window.location.href);
@@ -342,8 +363,10 @@ const useP5Chart = ({
                 const bootstrapWithSeed = (seedHex: string, cfgFromServer?: Partial<CandleConfig>) => {
                     activeSeed = seedHex;
                     // Determine interval and start_at_ms
+                    console.log('🔧 Config received:', cfgFromServer);
                     const serverInterval = (cfgFromServer?.interval_ms ?? 65) as number;
                     intervalMs = serverInterval;
+                    console.log('🔧 intervalMs updated to:', intervalMs, 'from serverInterval:', serverInterval);
                     const alignedStart = typeof cfgFromServer?.start_at_ms === 'number'
                         ? (cfgFromServer.start_at_ms as number)
                         : alignToInterval(Date.now(), intervalMs);
@@ -371,7 +394,9 @@ const useP5Chart = ({
                         for (let i = 0; i < bytes.length; i++) bytes[i] = Math.floor(Math.random() * 256);
                     }
                     const seedHex = '0x' + Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
-                    bootstrapWithSeed(seedHex);
+                    // Pass the default config to ensure 65ms timing
+                    const defaultConfig = { interval_ms: 65, start_at_ms: alignToInterval(Date.now(), 65) };
+                    bootstrapWithSeed(seedHex, defaultConfig);
                 }
             };
 
@@ -544,7 +569,7 @@ const useP5Chart = ({
             const addCandle = (data: any) => {
                 let finalData = { ...data };
                 if (isRoundActive && !rugpullActive && allRoundCandles.length >= 80) {
-                    let baseLiquidationProbability = 0.0015;
+                    let baseLiquidationProbability = 0.0; // DISABLED for debugging timing issues
                     if (currentPosition && isHoldingPosition) {
                         baseLiquidationProbability *= 1.5;
                     }
@@ -991,14 +1016,33 @@ const useP5Chart = ({
 
                 pulseAnimation += 0.1;
                 checkRoundEnd();
-                const currentSpeed = rugpullSlowMotion ? 0.3 : animationSpeed;
-                const targetInterval = Math.max(10, intervalMs / currentSpeed);
-                if (isAnimating && isRoundActive && !liquidationCandleCreated && !rugpullActive && p.millis() - lastUpdate > targetInterval) {
+                const targetInterval = rugpullSlowMotion ? intervalMs * 3 : intervalMs; // Use EXACT interval from config
+                const currentTime = p.millis();
+                const timeSinceLastUpdate = currentTime - lastUpdate;
+
+                // Debug logging every 10 frames to avoid spam
+                if (currentTime % 1000 < 100) {
+                    console.log(`🔧 targetInterval: ${targetInterval}ms, intervalMs: ${intervalMs}, timeSinceLastUpdate: ${timeSinceLastUpdate}ms`);
+                }
+
+                const shouldAddCandle = isAnimating && isRoundActive && !liquidationCandleCreated && !rugpullActive && timeSinceLastUpdate > targetInterval;
+
+                if (shouldAddCandle) {
+                    // Generate candle on-demand using the current index as seed offset
                     if (currentIndex < generatedCandles.length) {
                         addCandle(generatedCandles[currentIndex]);
-                        currentIndex++;
-                        lastUpdate = p.millis();
+                    } else {
+                        // Generate additional candles on-demand beyond the pre-generated set
+                        const additionalCandle = generateSingleCandle(currentIndex, activeSeed!, activeConfig!);
+                        addCandle(additionalCandle);
                     }
+
+                    const oldIndex = currentIndex;
+                    currentIndex++;
+                    lastUpdate = currentTime;
+
+                    // Log EVERY candle creation
+                    console.log(`🕯️ Candle ${oldIndex}→${currentIndex} - Time: ${(currentTime - roundStartTime).toFixed(0)}ms`);
                 }
                 const visible = isHistoricalView ? allRoundCandles : candles;
                 let originalChartArea = null;

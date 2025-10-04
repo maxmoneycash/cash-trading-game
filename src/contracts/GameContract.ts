@@ -153,7 +153,7 @@ export class GameContract {
   getDefaultCandleConfig(): CandleConfig {
     return {
       initial_price_fp: 10000000000, // $100.00 in fixed-point
-      total_candles: 460,
+      total_candles: 462, // Exactly 30s at 65ms interval - aligned with seededCandles.ts
       interval_ms: 65,
       fairness_version: 2,
     };

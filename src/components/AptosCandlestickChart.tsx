@@ -74,30 +74,13 @@ const AptosCandlestickChart = () => {
 
     const [gameState, setGameState] = useState<GameState>(getInitialGameState);
 
-    // Debug: Track component mount/unmount and expose init function
+    // Expose init function for console access
     useEffect(() => {
-        const componentId = Math.random().toString(36).substring(7);
-        console.log('🏗️ AptosCandlestickChart MOUNTED with ID:', componentId);
-
-        // Expose initializeContract globally for console access
         (window as any).initializeContract = initializeContract;
-
-        // Check if contract owner is connected and log instructions
-        if (account && account.address.toString() === '0x37691b1a87e7d1054007c5687424ef10438993722925b189c09f1bc7fe172ac5') {
-            console.log('\n🏗️ ═══════════════════════════════════════════════════════');
-            console.log('   CONTRACT OWNER DETECTED!');
-            console.log('═══════════════════════════════════════════════════════\n');
-            console.log('⚠️  The contract needs to be initialized before it can be used.');
-            console.log('   Run this command in the console:\n');
-            console.log('   await window.initializeContract()');
-            console.log('\n═══════════════════════════════════════════════════════\n');
-        }
-
         return () => {
-            console.log('💥 AptosCandlestickChart UNMOUNTED with ID:', componentId);
             delete (window as any).initializeContract;
         };
-    }, [initializeContract, account]);
+    }, [initializeContract]);
     const [isWaitingForWallet, setIsWaitingForWallet] = useState(!connected);
     const [gameSeed, setGameSeed] = useState<string | null>(null); // Never restore - always start fresh
     const [queuedSeed, setQueuedSeed] = useState<string | null>(null);
@@ -129,43 +112,17 @@ const AptosCandlestickChart = () => {
         gameStartTransactionRef.current = gameStartTransaction;
     }, [gameStartTransaction]);
 
-    // Debug: Track all gameState changes with protective guards
+    // Track gameState changes with protective guards
     const setGameStateWithLogging = useCallback((newState: GameState | ((prev: GameState) => GameState)) => {
-        console.log('🎮 setGameStateWithLogging called:', {
-            newState: typeof newState === 'function' ? 'function' : newState,
-            currentGameState: gameState,
-            connected,
-            walletBalance,
-            gameStartTransaction,
-            isStartingGame
-        });
-
         const actualNewState = typeof newState === 'function' ? newState(gameState) : newState;
 
         // GUARD: Prevent setting to 'disconnected' if we have active game activity
         if (actualNewState === 'disconnected') {
             const hasActiveActivity = gameStartTransaction || isStartingGame || gameState === 'playing' || gameState === 'settling' || gameState === 'starting';
             if (hasActiveActivity) {
-                console.log('🛡️ BLOCKED: Attempted to set state to disconnected during active game:', {
-                    from: gameState,
-                    to: actualNewState,
-                    gameStartTransaction,
-                    isStartingGame,
-                    hasActiveActivity,
-                    stack: new Error().stack?.split('\n').slice(1, 4).join('\n')
-                });
                 return; // Block the state change!
             }
         }
-
-        console.log('🎮 GAME STATE CHANGING:', {
-            from: gameState,
-            to: actualNewState,
-            connected,
-            walletBalance,
-            timestamp: new Date().toISOString(),
-            stack: new Error().stack?.split('\n').slice(1, 4).join('\n')
-        });
 
         // Persist game state to sessionStorage to survive component remounts
         if (actualNewState === 'playing' || actualNewState === 'starting' || actualNewState === 'settling') {
@@ -219,59 +176,22 @@ const AptosCandlestickChart = () => {
 
     // React to wallet connection changes with debouncing to prevent transaction-induced resets
     useEffect(() => {
-        console.log('🔄 Wallet state change:', {
-            hasWalletConnection,
-            hasWalletBalance,
-            connected,
-            walletBalance,
-            currentGameState: gameState,
-            isStartingGame,
-            gameStartTransaction
-        });
-
         // If we have an active game or are starting one, be more conservative about state changes
         const persistedTransaction = sessionStorage.getItem('aptosGameTransaction');
         const persistedState = sessionStorage.getItem('aptosGameState');
         const persistedSeed = sessionStorage.getItem('aptosGameSeed');
         const hasActiveGameActivity = gameStartTransaction || isStartingGame || gameState === 'playing' || gameState === 'settling' || gameState === 'starting' || persistedTransaction || persistedSeed || (persistedState && ['playing', 'settling', 'starting'].includes(persistedState));
 
-        console.log('🔍 hasActiveGameActivity evaluation:', {
-            hasActiveGameActivity,
-            gameStartTransaction: !!gameStartTransaction,
-            isStartingGame,
-            gameState,
-            gameStateMatches: ['playing', 'settling', 'starting'].includes(gameState),
-            persistedTransaction: !!persistedTransaction,
-            persistedState,
-            persistedSeed: !!persistedSeed,
-            gameSeed: !!gameSeed
-        });
-
         if (hasWalletConnection) {
             // Don't set waiting for wallet during active gameplay
             if (!hasActiveGameActivity) {
-                console.log('💳 Setting isWaitingForWallet:', !hasWalletBalance, { hasWalletBalance, hasActiveGameActivity });
                 setIsWaitingForWallet(!hasWalletBalance);
-            } else {
-                console.log('🎮 Keeping isWaitingForWallet during active game:', { hasWalletBalance, hasActiveGameActivity });
             }
             if (hasWalletBalance) {
-                console.log('✅ Wallet ready - setting appropriate game state');
-                // Always clear waiting state when wallet becomes ready with balance
-                console.log('🔓 Setting isWaitingForWallet to FALSE');
                 setIsWaitingForWallet(false);
                 setGameStateWithLogging(prev => {
-                    // DISABLED FOR TESTING: Auto-start after settling
-                    // // Special case: if we're settling with a queued seed and wallet is ready, start the game
-                    // if (prev === 'settling' && queuedSeed) {
-                    //     console.log(`🎮 Wallet ready during settling with queued seed - transitioning to playing`);
-                    //     // Process the queued seed immediately
-                    //     setTimeout(() => startRoundOnChain(queuedSeed), 0);
-                    //     return 'playing';
-                    // }
                     // Don't override other active game states (including settling!)
                     if (prev === 'playing' || prev === 'starting' || prev === 'settling') {
-                        console.log(`🎮 Keeping active game state during wallet changes: ${prev}`);
                         return prev;
                     }
                     return 'ready';
@@ -281,19 +201,11 @@ const AptosCandlestickChart = () => {
             // Only reset to disconnected if we don't have active game activity
             // This prevents transaction-induced temporary disconnections from resetting the game
             if (!hasActiveGameActivity) {
-                console.log('❌ Wallet disconnected with no active game - resetting state', {
-                    connected,
-                    walletBalance,
-                    gameState,
-                    gameStartTransaction,
-                    isStartingGame
-                });
                 setIsWaitingForWallet(true);
                 setGameStateWithLogging('disconnected');
                 setGameSeed(null);
                 sessionStorage.removeItem('aptosGameSeed');
                 setQueuedSeed(null);
-                console.log('🔄 RESET gameStartTransaction (wallet disconnect)', { gameState, connected, walletBalance, stack: new Error().stack?.split('\n').slice(1, 3).join('\n') });
                 setGameStartTransaction(null);
                 setIsStartingGame(false);
                 setAccumulatedPnL(0);
@@ -302,12 +214,6 @@ const AptosCandlestickChart = () => {
                 sessionStorage.removeItem('aptosGameState');
                 sessionStorage.removeItem('aptosGameSeed');
             } else {
-                console.log('⏳ Wallet temporarily disconnected during transaction - keeping game state', {
-                    connected,
-                    walletBalance,
-                    gameState,
-                    hasActiveGameActivity
-                });
                 // Just set waiting for wallet but keep game state intact
                 setIsWaitingForWallet(true);
             }
@@ -380,38 +286,16 @@ const AptosCandlestickChart = () => {
         const currentHasWalletConnection = currentConnected;
         const currentHasWalletBalance = currentWalletBalance > 0;
 
-        console.log('🔍 startRoundOnChain called:', {
-            seed,
-            hasWalletConnection,
-            hasWalletBalance,
-            connected,
-            walletBalance,
-            gameState,
-            // Current values from refs
-            currentConnected,
-            currentWalletBalance,
-            currentHasWalletConnection,
-            currentHasWalletBalance
-        });
-
         if (!currentHasWalletConnection) {
-            console.log('Deferring start until wallet connects');
             setQueuedSeed(seed);
             return;
         }
         if (!currentHasWalletBalance) {
-            console.log('Deferring start until wallet balance is available');
             setQueuedSeed(seed);
             fetchWalletBalance();
             return;
         }
         if (gameState !== 'ready' || isStartingGame) {
-            console.log('Queuing round start until previous settlement completes', {
-                seed,
-                gameState,
-                isStartingGame,
-                previousQueuedSeed: queuedSeed
-            });
             // Only queue if we don't already have a queued seed
             if (!queuedSeed) {
                 setQueuedSeed(seed);
@@ -462,7 +346,6 @@ const AptosCandlestickChart = () => {
         // Set new game seed
         setGameSeed(seed);
         sessionStorage.setItem('aptosGameSeed', seed);
-        console.log('✅ gameSeed set in state and sessionStorage:', seed);
         setAccumulatedPnL(0);
 
         // Reset trades for new game
@@ -498,14 +381,7 @@ const AptosCandlestickChart = () => {
             // Store balance before start for end game summary
             sessionStorage.setItem('aptosGameBalanceBeforeStart', balanceBeforeStart.toString());
 
-            console.log(`🔍 Start Game Debug:`);
-            console.log(`   Calling startGame with:`);
-            console.log(`   - Bet: ${betAmount} APT`);
-            console.log(`   - Seed: ${seed}`);
-
-            // Debug: Check if there's already an active game in the contract
-            console.log('🔍 Checking for existing active game in contract...');
-            await debugCheckActiveGame();
+            console.log(`🔍 Start Game: ${betAmount} APT with seed ${seed.substring(0, 10)}...`);
 
             const txHash = await startGame(betAmount, seed);
 

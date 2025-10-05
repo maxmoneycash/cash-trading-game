@@ -56,7 +56,6 @@ export class GameContract {
 
     const functionArguments: string[] = [betAmountOctas.toString()];
     const supportsSeedArgument = import.meta.env.VITE_APTOS_START_ACCEPTS_SEED === 'true';
-    console.log('[GameContract] Seed support:', { supportsSeedArgument, seed, envValue: import.meta.env.VITE_APTOS_START_ACCEPTS_SEED });
     if (supportsSeedArgument && seed) {
       const seedHex = seed.startsWith('0x') ? seed : `0x${seed}`;
       functionArguments.push(seedHex);
@@ -73,17 +72,13 @@ export class GameContract {
       }
     };
 
-    console.log('[GameContract] Submitting start_game transaction:', transaction);
     const response = await signAndSubmitTransaction(transaction);
-    console.log('[GameContract] Transaction submitted, response:', response);
 
     if (!response || !response.hash) {
       throw new Error('Transaction failed - no hash received');
     }
 
-    console.log('[GameContract] Waiting for transaction confirmation...');
     await this.aptos.waitForTransaction({ transactionHash: response.hash });
-    console.log('[GameContract] Transaction confirmed:', response.hash);
     return response.hash;
   }
 
@@ -116,20 +111,6 @@ export class GameContract {
         gasUnitPrice: 100,
       }
     };
-
-    console.log('📤 completeGame transaction details:');
-    console.log('   Seed (hex):', seedHex);
-    console.log('   Is Profit:', isProfit);
-    console.log('   Amount (APT):', amountAPT);
-    console.log('   Amount (octas):', amountOctas);
-    console.log('   Function:', transaction.data.function);
-    console.log('   Args:', transaction.data.functionArguments);
-    console.log('   Full transaction object:', JSON.stringify(transaction, null, 2));
-
-    console.log('⚠️  IMPORTANT: The Petra popup may show DIFFERENT values than above!');
-    console.log('⚠️  This indicates the contract has stale ActiveGames records.');
-    console.log('⚠️  Petra calculates payout using: stored_bet_amount + profit_amount');
-    console.log('⚠️  If stored_bet_amount is wrong (e.g., 1 APT from old game), payout will be wrong.');
 
     const response = await signAndSubmitTransaction(transaction);
     await this.aptos.waitForTransaction({ transactionHash: response.hash });
@@ -259,7 +240,6 @@ export class GameContract {
     try {
       // For now, return empty array - events querying will be implemented later
       // The events are still being emitted and stored on-chain for verification
-      console.log(`Getting game start events for ${playerAddress}`);
       return [];
     } catch (error) {
       console.error('Failed to get game start events:', error);
@@ -276,7 +256,6 @@ export class GameContract {
     try {
       // For now, return empty array - events querying will be implemented later
       // The events are still being emitted and stored on-chain for verification
-      console.log(`Getting game end events for ${playerAddress}`);
       return [];
     } catch (error) {
       console.error('Failed to get game end events:', error);
@@ -378,7 +357,7 @@ export class GameContract {
         console.error('   This must be done by the contract owner.');
         return false;
       }
-      console.error('Failed to check active games:', error);
+      // Silently fail - this is a debug function
       return false;
     }
   }

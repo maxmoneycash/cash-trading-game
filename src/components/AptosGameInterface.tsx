@@ -20,7 +20,6 @@ export function AptosGameInterface({
   const { connected, account } = useWallet();
   const {
     startGame,
-    completeGame,
     isLoading,
     getGameStats,
     walletBalance,
@@ -54,12 +53,13 @@ export function AptosGameInterface({
     setIsProcessing(true);
     try {
       console.log('Starting blockchain game with bet amount:', betAmount);
+      const seedBytes = crypto.getRandomValues(new Uint8Array(32));
+      const seed = '0x' + Array.from(seedBytes).map(b => b.toString(16).padStart(2, '0')).join('');
+
       // Start blockchain game
-      const txHash = await startGame(betAmount);
+      const txHash = await startGame(betAmount, seed);
       console.log('Game started on blockchain:', txHash);
 
-      // Generate a seed for this game session
-      const seed = `game_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
       setCurrentGameSeed(seed);
       console.log('Generated game seed:', seed);
 

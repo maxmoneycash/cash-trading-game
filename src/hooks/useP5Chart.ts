@@ -33,8 +33,10 @@ const useP5Chart = ({
     onRoundMeta,
     debugEnabled = false,
     disableClicks = false,
+    onPositionOpened,
     onPositionClosed,
     aptosMode = false,
+    resetKey,
 }: {
     chartRef: React.RefObject<HTMLDivElement>;
     p5InstanceRef: React.RefObject<p5 | null>;
@@ -52,14 +54,30 @@ const useP5Chart = ({
     isModalOpen: boolean;
     isPaused?: boolean;
     overlayActive?: boolean;
-    onRoundMeta?: (meta: { roundId?: string; seed?: string; userId?: string; wallet?: string }) => void;
+    onRoundMeta?: (meta: { roundId?: string; seed?: string; userId?: string; wallet?: string; gameEnded?: boolean; phase?: 'start' | 'end' }) => void;
     debugEnabled?: boolean;
     disableClicks?: boolean;
-    onPositionClosed?: (positionPnL: number) => void;
+    onPositionOpened?: (entryPrice: number, entryCandleIndex: number) => void;
+    onPositionClosed?: (exitPrice: number, exitCandleIndex: number, positionPnL: number) => void;
     aptosMode?: boolean;
+    resetKey?: number;
 }) => {
     const flagsRef = useRef({ overlayActive, isPaused, disableClicks, balance })
     const debugListenersRef = useRef<{ start?: any; end?: any }>({})
+    const callbacksRef = useRef<{
+        onPositionOpened?: (entryPrice: number, entryCandleIndex: number) => void;
+        onPositionClosed?: (exitPrice: number, exitCandleIndex: number, positionPnL: number) => void;
+    }>({
+        onPositionOpened: undefined,
+        onPositionClosed: undefined
+    })
+
+    // Keep callbacks in sync
+    useEffect(() => {
+        if (onPositionOpened) callbacksRef.current.onPositionOpened = onPositionOpened
+        if (onPositionClosed) callbacksRef.current.onPositionClosed = onPositionClosed
+    }, [onPositionOpened, onPositionClosed])
+
     // Keep interaction guards in sync for p5 handlers
     useEffect(() => {
         flagsRef.current.overlayActive = overlayActive
@@ -77,8 +95,7 @@ const useP5Chart = ({
     useEffect(() => {
         const sketch = (p: p5) => {
             // Local state for chart elements and animations.
-            // Backend logging helpers
-            const API_BASE_URL = (import.meta as any)?.env?.VITE_API_URL || 'http://localhost:3001';
+            // Removed database logging helpers - no longer needed
             let currentRoundId: string | null = null;
             let candles: any[] = [];
             let allRoundCandles: any[] = [];
@@ -100,7 +117,7 @@ const useP5Chart = ({
             let gridAlpha = 0;
             let pulseAnimation = 0;
             let roundStartTime = 0;
-            let roundDuration = 30000;
+            let roundDuration = 10000; // 10 seconds for testing
             let isRoundActive = false;
             let isHistoricalView = false;
             let zoomTransition = 0;
@@ -265,33 +282,7 @@ const useP5Chart = ({
 
             // Handle game end due to liquidation or rugpull.
             const endGameLiquidation = () => {
-                // Record event + complete round if possible
-                try {
-                    const lastIndex = Math.max(0, allRoundCandles.length - 1);
-                    const last = allRoundCandles[lastIndex];
-                    if (currentRoundId && last) {
-                        fetch(`${API_BASE_URL}/api/game/event`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                roundId: currentRoundId,
-                                candleIndex: lastIndex,
-                                type: 'LIQUIDATION',
-                                data: { price: last.close }
-                            })
-                        }).catch(() => { });
-                        fetch(`${API_BASE_URL}/api/game/complete`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                roundId: currentRoundId,
-                                finalPrice: last.close,
-                                candleCount: allRoundCandles.length,
-                                completedAt: new Date().toISOString()
-                            })
-                        }).catch(() => { });
-                    }
-                } catch { }
+                // Database logging removed - game state handled locally
                 rugpullActive = false;
                 rugpullSlowMotion = false;
                 rugpullZoom = 1;
@@ -324,12 +315,33 @@ const useP5Chart = ({
             // Utility: align to interval boundary
             const alignToInterval = (nowMs: number, interval: number) => Math.floor(nowMs / interval) * interval;
 
+            // Generate a single candle on-demand
+            const generateSingleCandle = (index: number, seed: string, config: any) => {
+                // Simple deterministic candle generation based on index
+                const basePrice = 100;
+                const variation = (Math.sin(index * 0.1) + Math.cos(index * 0.3)) * 5;
+                const randomFactor = ((parseInt(seed.slice(-8), 16) + index) % 1000) / 1000;
+
+                const open = basePrice + variation + (randomFactor - 0.5) * 2;
+                const close = open + (Math.sin(index * 0.15) * 3) + (randomFactor - 0.5) * 4;
+                const high = Math.max(open, close) + Math.abs(Math.sin(index * 0.2)) * 2;
+                const low = Math.min(open, close) - Math.abs(Math.cos(index * 0.25)) * 2;
+
+                return {
+                    open,
+                    high,
+                    low,
+                    close,
+                    timestamp: config.start_at_ms + index * config.interval_ms
+                };
+            };
+
             // Parse URL for replay mode
             try {
                 const url = new URL(window.location.href);
                 const r = url.searchParams.get('replay');
                 replayEnabled = r === '1' || r === 'true' || r === 'yes';
-            } catch {}
+            } catch { }
 
             // Start a new trading round.
             const startRound = () => {
@@ -369,8 +381,10 @@ const useP5Chart = ({
                 const bootstrapWithSeed = (seedHex: string, cfgFromServer?: Partial<CandleConfig>) => {
                     activeSeed = seedHex;
                     // Determine interval and start_at_ms
+                    console.log('🔧 Config received:', cfgFromServer);
                     const serverInterval = (cfgFromServer?.interval_ms ?? 65) as number;
                     intervalMs = serverInterval;
+                    console.log('🔧 intervalMs updated to:', intervalMs, 'from serverInterval:', serverInterval);
                     const alignedStart = typeof cfgFromServer?.start_at_ms === 'number'
                         ? (cfgFromServer.start_at_ms as number)
                         : alignToInterval(Date.now(), intervalMs);
@@ -381,56 +395,26 @@ const useP5Chart = ({
                     generatedCandles = toFloatingPoint(fp, activeConfig!.scale);
                     currentIndex = 0;
                     // Surface metadata to debug overlay
-                    if (onRoundMeta) onRoundMeta({ roundId: currentRoundId || undefined, seed: activeSeed || undefined, userId: undefined, wallet: undefined });
+                    if (onRoundMeta) onRoundMeta({ roundId: currentRoundId || undefined, seed: activeSeed || undefined, userId: undefined, wallet: undefined, phase: 'start' });
                 };
 
-                // Start backend round and get seed/config; unless replay is primed
+                // Generate local seed for replay mode or new games
                 if (replayEnabled && replayPrimed && activeSeed && activeConfig) {
-                    // Reuse same seed/config for replay run; avoid backend calls and avoid re-completing round
+                    // Reuse same seed/config for replay run
                     currentRoundId = null;
                     bootstrapWithSeed(activeSeed, activeConfig);
                 } else {
-                    try {
-                        fetch(`${API_BASE_URL}/api/game/start`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' }
-                        }).then(async (res) => {
-                            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                            const data = await res.json();
-                            // capture round id and optional meta
-                            if (data?.success && data.round?.id) {
-                                currentRoundId = data.round.id;
-                            }
-                            const seedHex = data?.round?.seed || data?.seed;
-                            const cfgFromServer = data?.round?.config || data?.config;
-                            if (!seedHex) throw new Error('No seed in response');
-                            bootstrapWithSeed(seedHex, cfgFromServer);
-                            if (onRoundMeta) {
-                                onRoundMeta({ roundId: data.round?.id, seed: seedHex, userId: data.user?.id, wallet: data.user?.wallet_address });
-                            }
-                        }).catch((err) => {
-                            console.warn('Falling back to local seed; backend start failed:', err?.message || err);
-                            // Fallback: local deterministic seed per session
-                            const bytes = new Uint8Array(32);
-                            if (typeof window !== 'undefined' && (window as any).crypto?.getRandomValues) {
-                                (window as any).crypto.getRandomValues(bytes);
-                            } else {
-                                for (let i = 0; i < bytes.length; i++) bytes[i] = Math.floor(Math.random() * 256);
-                            }
-                            const seedHex = '0x' + Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
-                            bootstrapWithSeed(seedHex);
-                        });
-                    } catch (err) {
-                        console.warn('Falling back to local seed; backend start threw:', (err as any)?.message || err);
-                        const bytes = new Uint8Array(32);
-                        if (typeof window !== 'undefined' && (window as any).crypto?.getRandomValues) {
-                            (window as any).crypto.getRandomValues(bytes);
-                        } else {
-                            for (let i = 0; i < bytes.length; i++) bytes[i] = Math.floor(Math.random() * 256);
-                        }
-                        const seedHex = '0x' + Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
-                        bootstrapWithSeed(seedHex);
+                    // Generate local deterministic seed per session
+                    const bytes = new Uint8Array(32);
+                    if (typeof window !== 'undefined' && (window as any).crypto?.getRandomValues) {
+                        (window as any).crypto.getRandomValues(bytes);
+                    } else {
+                        for (let i = 0; i < bytes.length; i++) bytes[i] = Math.floor(Math.random() * 256);
                     }
+                    const seedHex = '0x' + Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+                    // Pass the default config to ensure 65ms timing
+                    const defaultConfig = { interval_ms: 65, start_at_ms: alignToInterval(Date.now(), 65) };
+                    bootstrapWithSeed(seedHex, defaultConfig);
                 }
             };
 
@@ -456,25 +440,21 @@ const useP5Chart = ({
                 explosionCenter = null;
                 isHistoricalView = true;
                 zoomStartTime = p.millis();
-                // Complete round in backend (skip if this is a replay run)
-                if (!replayEnabled || !replayPrimed) {
-                    try {
-                        const lastIndex = Math.max(0, allRoundCandles.length - 1);
-                        const last = allRoundCandles[lastIndex];
-                        if (currentRoundId && last) {
-                            fetch(`${API_BASE_URL}/api/game/complete`, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({
-                                    roundId: currentRoundId,
-                                    finalPrice: last.close,
-                                    candleCount: allRoundCandles.length,
-                                    completedAt: new Date().toISOString()
-                                })
-                            }).catch(() => { });
-                        }
-                    } catch { }
+
+                // Trigger game completion for settlement
+                console.log('🎯 Round ended - triggering settlement');
+                if (onRoundMeta) {
+                    onRoundMeta({
+                        roundId: currentRoundId || undefined,
+                        seed: activeSeed || undefined,
+                        userId: undefined,
+                        wallet: undefined,
+                        gameEnded: true,  // This triggers settlement!
+                        phase: 'end'
+                    });
                 }
+
+                // Game completion handled locally - no database persistence needed
                 setTimeout(() => {
                     if (replayEnabled && !replayPrimed) {
                         // Prime replay for next round using same seed/config
@@ -483,7 +463,8 @@ const useP5Chart = ({
                         // After replay run, reset to fetch new seed next time (optional)
                         replayPrimed = false;
                     }
-                    startRound();
+                    // DISABLED FOR TESTING: Auto-start next chart round
+                    // startRound();
                 }, 3000);
             };
 
@@ -607,7 +588,7 @@ const useP5Chart = ({
             const addCandle = (data: any) => {
                 let finalData = { ...data };
                 if (isRoundActive && !rugpullActive && allRoundCandles.length >= 80) {
-                    let baseLiquidationProbability = 0.0015;
+                    let baseLiquidationProbability = 0.0; // DISABLED for debugging timing issues
                     if (currentPosition && isHoldingPosition) {
                         baseLiquidationProbability *= 1.5;
                     }
@@ -891,13 +872,7 @@ const useP5Chart = ({
             // Start a new trading position.
             const startPosition = () => {
                 try {
-                    console.log('🟢 BUY CLICKED - startPosition called:', {
-                        hasCurrentPosition: !!currentPosition,
-                        candlesLength: candles.length,
-                        isRoundActive,
-                        isHistoricalView,
-                        balance: flagsRef.current.balance
-                    });
+                    console.log('[TRADE] Opening position');
                     if (currentPosition || candles.length === 0 || !isRoundActive || isHistoricalView) {
                         console.log('🚫 Buy blocked:', {
                             currentPosition: !!currentPosition,
@@ -911,40 +886,27 @@ const useP5Chart = ({
                     const currentBalance = flagsRef.current.balance;
                     const positionSize = currentBalance * 0.2;
                     const shares = positionSize / lastCandle.close;
+                    const entryCandleIndex = allRoundCandles.length - 1;
+
                     currentPosition = {
                         entryPrice: lastCandle.close,
                         shares: shares,
                         positionSize: positionSize,
                         candlesElapsed: 0
                     };
-                    currentEntryIndex = allRoundCandles.length - 1;
+                    currentEntryIndex = entryCandleIndex;
                     isHoldingPosition = true;
                     setIsHolding(true);
                     currentPnl = 0;
                     setPnl(0);
                     p.redraw();
-                    // Persist open trade
-                    try {
-                        if (currentRoundId != null && currentEntryIndex != null) {
-                            fetch(`${API_BASE_URL}/api/game/trade/open`, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({
-                                    roundId: currentRoundId,
-                                    size: positionSize,
-                                    entryPrice: lastCandle.close,
-                                    entryCandleIndex: currentEntryIndex,
-                                })
-                            }).then(async (res) => {
-                                if (res.ok) {
-                                    const data = await res.json();
-                                    if (data?.success && data.trade?.id) {
-                                        currentTradeId = data.trade.id;
-                                    }
-                                }
-                            }).catch(() => { });
-                        }
-                    } catch { }
+
+                    // Notify parent component about position opened
+                    if (callbacksRef.current.onPositionOpened) {
+                        callbacksRef.current.onPositionOpened(lastCandle.close, entryCandleIndex);
+                    }
+
+                    // Trade tracking handled locally - no database persistence needed
                 } catch (error) {
                     console.error('❌ Error in startPosition:', error);
                 }
@@ -953,11 +915,7 @@ const useP5Chart = ({
             // Close current trading position.
             const closePosition = () => {
                 try {
-                    console.log('🔴 SELL CLICKED - closePosition called:', {
-                        hasCurrentPosition: !!currentPosition,
-                        isHoldingPosition,
-                        currentPosition
-                    });
+                    console.log('[TRADE] Closing position');
                     if (!currentPosition || !isHoldingPosition) {
                         console.log('🚫 Sell blocked:', {
                             noCurrentPosition: !currentPosition,
@@ -977,26 +935,13 @@ const useP5Chart = ({
                         netProfit: netProfit,
                         exitElapsed: 0
                     });
-                    // Persist close trade
-                    try {
-                        const lastIndex = Math.max(0, allRoundCandles.length - 1);
-                        const last = allRoundCandles[lastIndex];
-                        if (currentTradeId && last) {
-                            fetch(`${API_BASE_URL}/api/game/trade/close`, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({
-                                    tradeId: currentTradeId,
-                                    exitPrice: last.close,
-                                    exitCandleIndex: lastIndex,
-                                    pnl: netProfit,
-                                })
-                            }).catch(() => { });
-                        }
-                    } catch { }
+                    // Trade completion handled locally - no database persistence needed
                     // Update balance: use callback for Aptos mode, direct update for demo mode
-                    if (aptosMode && onPositionClosed) {
-                        onPositionClosed(netProfit);
+                    const exitPrice = candles[candles.length - 1].close;
+                    const exitCandleIndex = allRoundCandles.length - 1;
+
+                    if (aptosMode && callbacksRef.current.onPositionClosed) {
+                        callbacksRef.current.onPositionClosed(exitPrice, exitCandleIndex, netProfit);
                     } else {
                         setBalance(prevBalance => {
                             const newBalance = prevBalance + netProfit;
@@ -1067,7 +1012,7 @@ const useP5Chart = ({
                 p.background(12, 12, 12);
                 const flags = flagsRef.current;
                 if (flags.isPaused) {
-                    console.log('🛑 Game is paused, not rendering. isPaused:', flags.isPaused, 'overlayActive:', flags.overlayActive);
+                    // Paused state - silent return
                     return;
                 }
 
@@ -1091,14 +1036,33 @@ const useP5Chart = ({
 
                 pulseAnimation += 0.1;
                 checkRoundEnd();
-                const currentSpeed = rugpullSlowMotion ? 0.3 : animationSpeed;
-                const targetInterval = Math.max(10, intervalMs / currentSpeed);
-                if (isAnimating && isRoundActive && !liquidationCandleCreated && !rugpullActive && p.millis() - lastUpdate > targetInterval) {
+                const targetInterval = rugpullSlowMotion ? intervalMs * 3 : intervalMs; // Use EXACT interval from config
+                const currentTime = p.millis();
+                const timeSinceLastUpdate = currentTime - lastUpdate;
+
+                // Debug logging disabled to reduce noise
+                // if (currentTime % 1000 < 100) {
+                //     console.log(`🔧 targetInterval: ${targetInterval}ms, intervalMs: ${intervalMs}, timeSinceLastUpdate: ${timeSinceLastUpdate}ms`);
+                // }
+
+                const shouldAddCandle = isAnimating && isRoundActive && !liquidationCandleCreated && !rugpullActive && timeSinceLastUpdate > targetInterval;
+
+                if (shouldAddCandle) {
+                    // Generate candle on-demand using the current index as seed offset
                     if (currentIndex < generatedCandles.length) {
                         addCandle(generatedCandles[currentIndex]);
-                        currentIndex++;
-                        lastUpdate = p.millis();
+                    } else {
+                        // Generate additional candles on-demand beyond the pre-generated set
+                        const additionalCandle = generateSingleCandle(currentIndex, activeSeed!, activeConfig!);
+                        addCandle(additionalCandle);
                     }
+
+                    const oldIndex = currentIndex;
+                    currentIndex++;
+                    lastUpdate = currentTime;
+
+                    // Candle creation logging disabled to reduce noise
+                    // console.log(`🕯️ Candle ${oldIndex}→${currentIndex} - Time: ${(currentTime - roundStartTime).toFixed(0)}ms`);
                 }
                 const visible = isHistoricalView ? allRoundCandles : candles;
                 let originalChartArea = null;
@@ -1177,7 +1141,7 @@ const useP5Chart = ({
             // Mouse/touch handlers for buying/selling.
             let touchActive = false;
             p.mousePressed = () => {
-                console.log('🖱️ MOUSE CLICK detected');
+                // console.log('🖱️ MOUSE CLICK detected');
                 if (modalOpenRef.current) {
                     console.log('🚫 Click blocked: modal is open');
                     return true;
@@ -1189,7 +1153,7 @@ const useP5Chart = ({
                 }
                 try {
                     if (!touchActive) {
-                        console.log('🖱️ Processing mouse click - calling startPosition');
+                        // console.log('🖱️ Processing mouse click - calling startPosition');
                         startPosition();
                     }
                 } catch (error) {
@@ -1199,13 +1163,13 @@ const useP5Chart = ({
                 return false;
             };
             p.mouseReleased = () => {
-                console.log('🖱️ MOUSE RELEASE detected');
+                // console.log('🖱️ MOUSE RELEASE detected');
                 if (modalOpenRef.current) return true;
                 const f = flagsRef.current
                 if (f.isPaused || f.overlayActive || f.disableClicks) return true;
                 try {
                     if (!touchActive) {
-                        console.log('🖱️ Processing mouse release - calling closePosition');
+                        // console.log('🖱️ Processing mouse release - calling closePosition');
                         closePosition();
                     }
                 } catch (error) {
@@ -1270,7 +1234,7 @@ const useP5Chart = ({
                 p5InstanceRef.current.remove();
             }
         };
-    }, []); // Empty dependency array - only runs once on mount
+    }, [resetKey]); // Recreate p5 instance when resetKey changes
 
     // Control p5 draw loop based on pause state
     useEffect(() => {

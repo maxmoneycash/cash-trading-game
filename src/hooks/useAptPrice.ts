@@ -37,10 +37,13 @@ export function useAptPrice() {
       console.error('Failed to fetch APT price:', err);
       setError((err as any)?.message || 'Failed to fetch price');
       // Fallback to a reasonable default price if API fails
-      setAptPrice({
-        usd: 4.50, // Reasonable fallback based on current market
-        lastUpdated: new Date()
-      });
+      // Only set fallback if we don't already have a cached price
+      if (!aptPrice) {
+        setAptPrice({
+          usd: 9.50, // More current fallback based on recent market
+          lastUpdated: new Date()
+        });
+      }
     } finally {
       setIsLoading(false);
     }
@@ -62,7 +65,7 @@ export function useAptPrice() {
   };
 
   return {
-    aptPrice: aptPrice?.usd || 4.50, // Default fallback
+    aptPrice: aptPrice?.usd || 9.50, // Default fallback
     lastUpdated: aptPrice?.lastUpdated,
     isLoading,
     error,

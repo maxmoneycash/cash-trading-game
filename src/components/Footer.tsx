@@ -1,6 +1,7 @@
 import React from 'react';
 import { isStandalone } from '../utils/helpers';
 import ControlCenterModal from './ControlCenter/ControlCenterModal';
+import { WalletBalanceDisplay } from './WalletBalanceDisplay';
 
 /**
  * Footer component with balance display, instructions, and modal control center.
@@ -15,9 +16,10 @@ interface FooterProps {
     setIsModalOpen: (open: boolean) => void;
     aptosMode?: boolean;
     gameState?: 'waiting' | 'playing' | 'completed';
+    currentPnL?: number; // Live P&L from current game
 }
 
-const Footer: React.FC<FooterProps> = ({ balance, walletBalance, isHolding, showLiquidation, rugpullType, isModalOpen, setIsModalOpen, aptosMode = false, gameState = 'waiting' }) => {
+const Footer: React.FC<FooterProps> = ({ balance, walletBalance, isHolding, showLiquidation, rugpullType, isModalOpen, setIsModalOpen, aptosMode = false, gameState = 'waiting', currentPnL = 0 }) => {
     const isMobile = typeof window !== 'undefined' ? window.innerWidth < 768 : true;
     const leftPadding = isMobile ? (4 + 15) : (8 + 15);
     const rightPadding = isMobile ? (34 + 10) : (46 + 10);
@@ -43,40 +45,45 @@ const Footer: React.FC<FooterProps> = ({ balance, walletBalance, isHolding, show
                 }}
             >
                 {/* Balance Box */}
-                <div className="glass-container"
-                    onClick={() => setIsModalOpen(true)}
-                    style={{
-                        pointerEvents: 'auto',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        padding: '6px 24px',
-                        height: 50,
-                        minHeight: 50,
-                        width: isMobile ? 140 : 160,
-                        borderRadius: 8,
-                        fontFamily: 'Bai Jamjuree, sans-serif',
-                        background: 'rgba(255, 255, 255, 0.035)',
-                        boxShadow: '0 6px 6px rgba(0, 0, 0, 0.2), 0 0 20px rgba(0, 0, 0, 0.1)',
-                        border: 'none',
-                    }}
-                >
-                    <div className="glass-filter"></div>
-                    <div className="glass-overlay"></div>
-                    <div className="glass-specular"></div>
-                    <div className="glass-content" style={{
-                        color: '#fff',
-                        fontWeight: 600,
-                        fontSize: 14,
-                        whiteSpace: 'nowrap',
-                    }}>
-                        {aptosMode && walletBalance !== undefined
-                            ? `${walletBalance.toFixed(4)} APT`
-                            : `Balance: $${balance.toFixed(2)}`
-                        }
+                {aptosMode ? (
+                    <WalletBalanceDisplay
+                        isMobile={isMobile}
+                        onClick={() => setIsModalOpen(true)}
+                        currentPnL={currentPnL}
+                    />
+                ) : (
+                    <div className="glass-container"
+                        onClick={() => setIsModalOpen(true)}
+                        style={{
+                            pointerEvents: 'auto',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            padding: '6px 24px',
+                            height: 50,
+                            minHeight: 50,
+                            width: isMobile ? 140 : 160,
+                            borderRadius: 8,
+                            fontFamily: 'Bai Jamjuree, sans-serif',
+                            background: 'rgba(255, 255, 255, 0.035)',
+                            boxShadow: '0 6px 6px rgba(0, 0, 0, 0.2), 0 0 20px rgba(0, 0, 0, 0.1)',
+                            border: 'none',
+                        }}
+                    >
+                        <div className="glass-filter"></div>
+                        <div className="glass-overlay"></div>
+                        <div className="glass-specular"></div>
+                        <div className="glass-content" style={{
+                            color: '#fff',
+                            fontWeight: 600,
+                            fontSize: 14,
+                            whiteSpace: 'nowrap',
+                        }}>
+                            {`Balance: $${balance.toFixed(2)}`}
+                        </div>
                     </div>
-                </div>
+                )}
 
                 {/* Instructions Box */}
                 {!isHolding && !isLiquidationEvent && (

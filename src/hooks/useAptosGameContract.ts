@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useWallet } from '@aptos-labs/wallet-adapter-react';
 import { gameContract, GameStartEvent, GameEndEvent } from '../contracts/GameContract';
 import { Aptos, AptosConfig, Network } from '@aptos-labs/ts-sdk';
@@ -12,39 +12,53 @@ export function useAptosGameContract() {
     ends: GameEndEvent[];
   }>({ starts: [], ends: [] });
 
-  // Initialize Aptos client for balance queries
-  const aptos = new Aptos(new AptosConfig({ network: Network.DEVNET }));
-
   // Auto-fetch game history and balance when wallet connects
   useEffect(() => {
     if (connected && account) {
       fetchGameHistory();
       fetchWalletBalance();
-    } else {
+    } else if (!connected) {
+      // Only reset game history when wallet is truly disconnected
+      // Don't reset balance immediately - wait to see if it's just a temporary disconnect
       setGameHistory({ starts: [], ends: [] });
-      setWalletBalance(0);
+
+      // Only reset balance after a delay to avoid transaction-induced resets
+      const resetTimer = setTimeout(() => {
+        if (!connected) {
+          console.log('💰 Wallet still disconnected after delay - resetting balance');
+          setWalletBalance(0);
+        }
+      }, 5000); // 5 second delay
+
+      return () => clearTimeout(resetTimer);
     }
+    // If account is missing but connected is true, don't reset - might be temporary
   }, [connected, account]);
 
   /**
    * Start a new game with APT bet
    */
-  const startGame = async (betAmountAPT: number): Promise<string | null> => {
-    if (!connected || !account || !signAndSubmitTransaction) {
+  const startGame = async (betAmountAPT: number, seedHex: string): Promise<string | null> => {
+    if (!signAndSubmitTransaction) {
       throw new Error('Wallet not connected');
     }
 
     setIsLoading(true);
     try {
-      const txHash = await gameContract.startGame(signAndSubmitTransaction, betAmountAPT);
+      console.log('[useAptosGameContract] Calling gameContract.startGame...');
+      const txHash = await gameContract.startGame(signAndSubmitTransaction, betAmountAPT, seedHex);
 
       // Don't refresh game history immediately - it will be refreshed when game completes
       // This prevents triggering the gameEnded detection prematurely
       console.log('Game started successfully, transaction hash:', txHash);
 
       return txHash;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to start game:', error);
+      // Check if user rejected the transaction
+      if (error?.message?.includes('User rejected') || error?.code === 4001) {
+        console.log('User rejected the transaction');
+      }
       throw error;
     } finally {
       setIsLoading(false);
@@ -59,7 +73,7 @@ export function useAptosGameContract() {
     isProfit: boolean,
     amountAPT: number
   ): Promise<string | null> => {
-    if (!connected || !account || !signAndSubmitTransaction) {
+    if (!signAndSubmitTransaction) {
       throw new Error('Wallet not connected');
     }
 
@@ -87,52 +101,73 @@ export function useAptosGameContract() {
   };
 
   /**
-   * Fetch wallet APT balance
+   * Fetch wallet APT balance with rate limiting protection
+   * IMPORTANT: Creates fresh Aptos client on each call to avoid caching
+   * Uses view function method to query balance directly from chain
+   * @param addressOverride - Optional address string to use instead of account object (useful during transactions when account may be undefined)
+   * @returns The current balance in APT
    */
-  const fetchWalletBalance = async () => {
-    if (!account) return;
+  const fetchWalletBalance = useCallback(async (retryCount = 0, addressOverride?: string): Promise<number | undefined> => {
+    const accountAddressStr = addressOverride || account?.address.toString();
+
+    if (!accountAddressStr) {
+      console.warn('⚠️ fetchWalletBalance called with no account and no address override');
+      return undefined;
+    }
 
     try {
-      console.log('Fetching balance for account:', account.address.toString());
+      // Create a FRESH Aptos client instance to avoid SDK caching
+      const freshAptos = new Aptos(new AptosConfig({ network: Network.DEVNET }));
 
-      // Try using the more direct balance fetch method
-      const balance = await aptos.getAccountAPTAmount({
-        accountAddress: account.address
+      console.log(`🔍 Fetching balance for address: ${accountAddressStr}`);
+
+      // First get the latest ledger version to ensure we're querying fresh data
+      const ledgerInfo = await freshAptos.getLedgerInfo();
+      const latestVersion = BigInt(ledgerInfo.ledger_version);
+      console.log(`📍 Querying at ledger version: ${latestVersion.toString()}`);
+
+      // Query the account's coin balance at the latest ledger version using view function
+      // This method bypasses SDK caching and works even if CoinStore resource isn't initialized
+      const balance = await freshAptos.view({
+        payload: {
+          function: "0x1::coin::balance",
+          typeArguments: ["0x1::aptos_coin::AptosCoin"],
+          functionArguments: [accountAddressStr]
+        },
+        options: {
+          ledgerVersion: latestVersion
+        }
       });
 
-      const aptBalance = balance / 100000000; // Convert octas to APT
+      const balanceValue = parseInt(balance[0] as string);
+      const aptBalance = balanceValue / 100000000;
+      console.log(`💰 Balance fetched (v${latestVersion}): ${aptBalance.toFixed(4)} APT (${balanceValue} octas)`);
       setWalletBalance(aptBalance);
-      console.log(`Wallet APT balance: ${aptBalance} APT (${balance} octas)`);
+      return aptBalance;
 
     } catch (error: any) {
-      console.error('Failed to fetch wallet balance:', error);
+      // Handle 429 rate limiting errors with exponential backoff
+      if (error.status === 429 || (error.message && error.message.includes('429'))) {
+        console.warn(`⚠️ Rate limit hit, retry ${retryCount + 1}/3`);
 
-      // Fallback: try resource method
-      try {
-        const resources = await aptos.getAccountResources({
-          accountAddress: account.address
-        });
-
-        // Find the APT coin resource
-        const aptResource = resources.find(
-          (resource) => resource.type === '0x1::coin::CoinStore<0x1::aptos_coin::AptosCoin>'
-        );
-
-        if (aptResource) {
-          const balance = (aptResource.data as any).coin.value;
-          const aptBalance = parseInt(balance) / 100000000; // Convert octas to APT
-          setWalletBalance(aptBalance);
-          console.log(`Wallet APT balance (fallback): ${aptBalance} APT`);
+        if (retryCount < 3) {
+          const delay = Math.pow(2, retryCount) * 2000; // 2s, 4s, 8s
+          setTimeout(() => {
+            fetchWalletBalance(retryCount + 1, addressOverride);
+          }, delay);
+          return;
         } else {
-          setWalletBalance(0);
-          console.log('No APT resource found - account may need to be funded');
+          console.error('❌ Rate limit exceeded after 3 retries');
+          return; // Don't reset balance to 0 on rate limit
         }
-      } catch (fallbackError) {
-        console.error('Fallback balance fetch also failed:', fallbackError);
-        setWalletBalance(0);
       }
+
+      // For other errors, log and reset balance
+      console.error('❌ Balance fetch failed:', error.message);
+      setWalletBalance(0);
+      return 0;
     }
-  };
+  }, [account]); // Add account as dependency
 
   /**
    * Fetch player's game history
@@ -211,6 +246,121 @@ export function useAptosGameContract() {
       : starts[starts.length - 1] || null;
   };
 
+  // Settle game with trade history
+  const settleGameWithTrades = async (
+    betAmountAPT: number,
+    seed: string,
+    trades: Array<{
+      entryPrice: number;
+      exitPrice: number;
+      entryCandleIndex: number;
+      exitCandleIndex: number;
+      size: number;
+      pnl: number;
+    }>
+  ): Promise<string | null> => {
+    if (!signAndSubmitTransaction) {
+      console.error('Wallet not connected - signAndSubmitTransaction not available');
+      return null;
+    }
+
+    setIsLoading(true);
+    try {
+      const txHash = await gameContract.settleGameWithTrades(
+        signAndSubmitTransaction,
+        betAmountAPT,
+        seed,
+        trades
+      );
+      console.log('Game settled with trades successfully:', txHash);
+
+      // Update balance and game history after transaction
+      setTimeout(() => {
+        fetchWalletBalance();
+        fetchGameHistory();
+      }, 2000);
+
+      return txHash;
+    } catch (error: any) {
+      console.error('Failed to settle game with trades:', error);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // New function for single payout transaction
+  const processGamePayout = async (
+    betAmountAPT: number,
+    seed: string,
+    isProfit: boolean,
+    pnlAmountAPT: number
+  ): Promise<string | null> => {
+    if (!connected || !signAndSubmitTransaction) {
+      console.error('Wallet not connected');
+      return null;
+    }
+
+    setIsLoading(true);
+    try {
+      const txHash = await gameContract.processGamePayout(
+        signAndSubmitTransaction,
+        betAmountAPT,
+        seed,
+        isProfit,
+        pnlAmountAPT
+      );
+      console.log('Game payout processed successfully:', txHash);
+
+      // Update balance and game history after transaction
+      setTimeout(() => {
+        fetchWalletBalance();
+        fetchGameHistory();
+      }, 2000);
+
+      return txHash;
+    } catch (error: any) {
+      console.error('Failed to process game payout:', error);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  /**
+   * Debug: Check active game status in contract
+   */
+  const debugCheckActiveGame = async (): Promise<boolean> => {
+    if (!account) {
+      // Silently fail if no account - this can happen during transaction processing
+      return false;
+    }
+    return await gameContract.debugCheckActiveGame(account.address.toString());
+  };
+
+  /**
+   * Initialize the contract treasury (must be called by contract owner)
+   */
+  const initializeContract = async (): Promise<string | null> => {
+    if (!connected || !signAndSubmitTransaction) {
+      console.error('❌ Wallet not connected');
+      return null;
+    }
+
+    try {
+      const txHash = await gameContract.initializeTreasury(signAndSubmitTransaction);
+      console.log('✅ Contract initialized successfully:', txHash);
+      return txHash;
+    } catch (error: any) {
+      console.error('❌ Failed to initialize contract:', error);
+      if (error.message && error.message.includes('999')) {
+        console.error('   ERROR: You are not the contract owner!');
+        console.error('   Only the contract owner can initialize the treasury.');
+      }
+      throw error;
+    }
+  };
+
   return {
     // Core functions
     startGame,
@@ -229,6 +379,8 @@ export function useAptosGameContract() {
     getContractInfo,
     getGameStats,
     getMostRecentGame,
+    debugCheckActiveGame,
+    initializeContract,
 
     // Contract utilities
     aptToOctas: (apt: number) => Math.floor(apt * 100000000),

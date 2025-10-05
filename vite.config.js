@@ -10,5 +10,16 @@ export default defineConfig({
         { from: /^\/test$/, to: '/index.html' }
       ]
     }
-  }
+  },
+  define: {
+    global: 'globalThis',
+  },
+  resolve: {
+    alias: {
+      buffer: 'buffer',
+    },
+  },
+  optimizeDeps: {
+    include: ['buffer'],
+  },
 })

@@ -28,7 +28,8 @@ const generateHexSeed = () => {
       bytes[i] = Math.floor(Math.random() * 256);
     }
   }
-  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
+  const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
+  return `0x${hex}`;
 };
 
 export function SimplifiedAptosTest() {
@@ -144,7 +145,7 @@ export function SimplifiedAptosTest() {
         message: `Starting game with bet ${requiredBet.toFixed(4)} APT...`
       });
 
-      const startTxHash = await startGame(requiredBet);
+      const startTxHash = await startGame(requiredBet, seed);
       startSuccessful = true;
       updateLogEntry(startLogId, {
         status: 'success',

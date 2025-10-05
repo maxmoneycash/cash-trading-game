@@ -115,7 +115,7 @@ const useP5Chart = ({
             let gridAlpha = 0;
             let pulseAnimation = 0;
             let roundStartTime = 0;
-            let roundDuration = 30000;
+            let roundDuration = 10000; // 10 seconds for testing
             let isRoundActive = false;
             let isHistoricalView = false;
             let zoomTransition = 0;
@@ -461,7 +461,8 @@ const useP5Chart = ({
                         // After replay run, reset to fetch new seed next time (optional)
                         replayPrimed = false;
                     }
-                    startRound();
+                    // DISABLED FOR TESTING: Auto-start next chart round
+                    // startRound();
                 }, 3000);
             };
 

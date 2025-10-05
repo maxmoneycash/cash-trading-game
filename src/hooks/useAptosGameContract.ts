@@ -12,9 +12,6 @@ export function useAptosGameContract() {
     ends: GameEndEvent[];
   }>({ starts: [], ends: [] });
 
-  // Initialize Aptos client for balance queries
-  const aptos = new Aptos(new AptosConfig({ network: Network.DEVNET }));
-
   // Auto-fetch game history and balance when wallet connects
   useEffect(() => {
     if (connected && account) {
@@ -105,13 +102,17 @@ export function useAptosGameContract() {
 
   /**
    * Fetch wallet APT balance with rate limiting protection
+   * IMPORTANT: Creates fresh Aptos client on each call to avoid caching
    */
   const fetchWalletBalance = useCallback(async (retryCount = 0) => {
     if (!account) return;
 
     try {
+      // Create a FRESH Aptos client instance to avoid SDK caching
+      const freshAptos = new Aptos(new AptosConfig({ network: Network.DEVNET }));
+
       // Try using the more direct balance fetch method
-      const balance = await aptos.getAccountAPTAmount({
+      const balance = await freshAptos.getAccountAPTAmount({
         accountAddress: account.address
       });
 
@@ -140,7 +141,9 @@ export function useAptosGameContract() {
 
       // Fallback: try resource method (but not if we hit rate limit)
       try {
-        const resources = await aptos.getAccountResources({
+        // Use fresh client for fallback too
+        const freshAptos = new Aptos(new AptosConfig({ network: Network.DEVNET }));
+        const resources = await freshAptos.getAccountResources({
           accountAddress: account.address
         });
 

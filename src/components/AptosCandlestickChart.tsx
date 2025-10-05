@@ -6,6 +6,7 @@ import useP5Chart from '../hooks/useP5Chart';
 import { useDebug } from '../debug/DebugContext';
 import { useWallet } from '@aptos-labs/wallet-adapter-react';
 import { useAptosGameContract } from '../hooks/useAptosGameContract';
+import { gameContract } from '../contracts/GameContract';
 import { Trade, GameSession } from '../types/trading';
 
 type GameState = 'disconnected' | 'ready' | 'starting' | 'playing' | 'settling';
@@ -24,7 +25,6 @@ const AptosCandlestickChart = () => {
         walletBalance,
         fetchWalletBalance,
         startGame,
-        completeGame,
         processGamePayout,
         settleGameWithTrades
     } = useAptosGameContract();
@@ -98,9 +98,11 @@ const AptosCandlestickChart = () => {
         };
     }, []);
     const [isWaitingForWallet, setIsWaitingForWallet] = useState(!connected);
-    const [gameSeed, setGameSeed] = useState<string | null>(
-        sessionStorage.getItem('aptosGameSeed')
-    );
+    const [gameSeed, setGameSeed] = useState<string | null>(() => {
+        const restoredSeed = sessionStorage.getItem('aptosGameSeed');
+        console.log('🔑 Initializing gameSeed from sessionStorage:', { restoredSeed, hasRestoredSeed: !!restoredSeed });
+        return restoredSeed;
+    });
     const [queuedSeed, setQueuedSeed] = useState<string | null>(null);
     const [gameStartTransaction, setGameStartTransaction] = useState<string | null>(
         sessionStorage.getItem('aptosGameTransaction')
@@ -113,11 +115,16 @@ const AptosCandlestickChart = () => {
     const [trades, setTrades] = useState<Trade[]>([]);
     const currentTradeRef = useRef<Trade | null>(null);
     const tradesRef = useRef<Trade[]>([]);
+    const gameSeedRef = useRef<string | null>(gameSeed);
 
     // Update refs to avoid stale closures
     useEffect(() => {
         gameStateRef.current = gameState;
     }, [gameState]);
+
+    useEffect(() => {
+        gameSeedRef.current = gameSeed;
+    }, [gameSeed]);
 
     useEffect(() => {
         accumulatedPnLRef.current = accumulatedPnL;
@@ -259,22 +266,18 @@ const AptosCandlestickChart = () => {
                 console.log('🔓 Setting isWaitingForWallet to FALSE');
                 setIsWaitingForWallet(false);
                 setGameStateWithLogging(prev => {
-                    // Special case: if we're settling with a queued seed and wallet is ready, start the game
-                    if (prev === 'settling' && queuedSeed) {
-                        console.log(`🎮 Wallet ready during settling with queued seed - transitioning to playing`);
-                        // Process the queued seed immediately
-                        setTimeout(() => startRoundOnChain(queuedSeed), 0);
-                        return 'playing';
-                    }
-                    // Don't override other active game states
-                    if (prev === 'playing' || prev === 'starting') {
-                        console.log(`🎮 Keeping active game state: ${prev}`);
+                    // DISABLED FOR TESTING: Auto-start after settling
+                    // // Special case: if we're settling with a queued seed and wallet is ready, start the game
+                    // if (prev === 'settling' && queuedSeed) {
+                    //     console.log(`🎮 Wallet ready during settling with queued seed - transitioning to playing`);
+                    //     // Process the queued seed immediately
+                    //     setTimeout(() => startRoundOnChain(queuedSeed), 0);
+                    //     return 'playing';
+                    // }
+                    // Don't override other active game states (including settling!)
+                    if (prev === 'playing' || prev === 'starting' || prev === 'settling') {
+                        console.log(`🎮 Keeping active game state during wallet changes: ${prev}`);
                         return prev;
-                    }
-                    // For settling without queued seed, transition to ready
-                    if (prev === 'settling') {
-                        console.log(`🎮 Settling complete - transitioning to ready`);
-                        return 'ready';
                     }
                     return 'ready';
                 });
@@ -444,12 +447,20 @@ const AptosCandlestickChart = () => {
         const capped = Math.min(desired, availableForBetting);
         const betAmount = Math.max(MIN_WAGER_APT, Number(capped.toFixed(6)));
 
-        console.log('[GAME] Starting with bet:', betAmount, 'APT (Balance:', currentBalance.toFixed(4), 'APT)');
+        console.log('═══════════════════════════════════════════════════════');
+        console.log('🎮 STARTING NEW GAME (startRoundOnChain called)');
+        console.log('═══════════════════════════════════════════════════════');
+        console.log(`📊 Game Details:`);
+        console.log(`   Bet Amount: ${betAmount.toFixed(4)} APT`);
+        console.log(`   Current Balance: ${currentBalance.toFixed(4)} APT`);
+        console.log(`   Seed: ${seed}`);
+        console.log('═══════════════════════════════════════════════════════');
 
         setIsStartingGame(true);
         setGameStateWithLogging('starting');
         setGameSeed(seed);
         sessionStorage.setItem('aptosGameSeed', seed);
+        console.log('✅ gameSeed set in state and sessionStorage:', seed);
         setAccumulatedPnL(0);
 
         // Reset trades for new game
@@ -469,31 +480,49 @@ const AptosCandlestickChart = () => {
         }, 10000); // 10 second timeout
 
         // Start the game on-chain with the existing start_game function
-        console.log('[GAME] Starting game on blockchain');
-        console.log('[GAME] Bet amount:', betAmount, 'APT');
-        console.log('[GAME] Wallet status:', {
-            connected: connectedRef.current,
-            hasSignFunction: !!signAndSubmitTransactionRef.current,
-            balance: walletBalanceRef.current
-        });
+        console.log('═══════════════════════════════════════════════════════');
+        console.log('🎮 STARTING NEW GAME');
+        console.log('═══════════════════════════════════════════════════════');
+        console.log(`📊 Game Details:`);
+        console.log(`   Bet Amount: ${betAmount.toFixed(4)} APT`);
+        console.log(`   Current Balance: ${walletBalanceRef.current.toFixed(4)} APT`);
+        console.log(`   Seed: ${seed}`);
+        console.log('═══════════════════════════════════════════════════════');
 
         // Store bet amount for the end transaction
         sessionStorage.setItem('aptosGameBetAmount', betAmount.toString());
 
         try {
             // Call the blockchain start_game function
-            console.log('[GAME] Calling startGame function...');
+            console.log('📝 Submitting START transaction to blockchain...');
+
+            // Capture wallet balance BEFORE transaction
+            const balanceBeforeStart = walletBalanceRef.current;
+
             const txHash = await startGame(betAmount, seed);
-            console.log('[GAME] startGame returned:', txHash);
 
             if (txHash) {
                 clearTimeout(startTimeout);
                 setGameStartTransaction(txHash);
                 sessionStorage.setItem('aptosGameTransaction', txHash);
-                console.log('[GAME] Game started on-chain:', txHash);
+                console.log(`✅ START TRANSACTION CONFIRMED: ${txHash}`);
+                console.log('🎯 Game is now active - trade to accumulate P&L!');
 
+                // Set game to playing immediately (don't block on balance check)
                 setGameStateWithLogging('playing');
                 setIsStartingGame(false);
+
+                // Check balance in background (non-blocking, wait 5s for blockchain finality)
+                setTimeout(async () => {
+                    await fetchWalletBalance();
+                    const balanceAfterStart = walletBalanceRef.current;
+                    console.log('═══════════════════════════════════════════════════════');
+                    console.log('💰 WALLET AFTER START TRANSACTION');
+                    console.log(`   Balance Before START: ${balanceBeforeStart.toFixed(4)} APT`);
+                    console.log(`   Balance After START:  ${balanceAfterStart.toFixed(4)} APT`);
+                    console.log(`   Bet Deducted: ${(balanceBeforeStart - balanceAfterStart >= 0 ? '-' : '+')}${Math.abs(balanceBeforeStart - balanceAfterStart).toFixed(6)} APT`);
+                    console.log('═══════════════════════════════════════════════════════');
+                }, 5000);
             } else {
                 clearTimeout(startTimeout);
                 console.error('[GAME] Failed to start game - no transaction hash returned');
@@ -525,26 +554,27 @@ const AptosCandlestickChart = () => {
         const currentHasWalletConnection = currentConnected;
         const currentHasWalletBalance = currentWalletBalance > 0;
 
+        // Process queued seed when wallet is ready (first round only, not after settlement)
         if (queuedSeed && currentHasWalletConnection && currentHasWalletBalance && gameState === 'ready' && !isStartingGame) {
-            console.log('🚀 Processing queued seed with current values:', {
-                queuedSeed,
-                currentConnected,
-                currentWalletBalance,
-                currentHasWalletConnection,
-                currentHasWalletBalance,
-                gameState,
-                isStartingGame
-            });
-            const seedToStart = queuedSeed;
-            setQueuedSeed(null);
-            startRoundOnChain(seedToStart);
+            const currentGameStartTransaction = gameStartTransactionRef.current;
+
+            // Only auto-start if this is the FIRST round (no previous transaction)
+            if (!currentGameStartTransaction) {
+                console.log('🚀 Processing queued seed from wallet connection:', queuedSeed);
+                const seedToStart = queuedSeed;
+                setQueuedSeed(null);
+                startRoundOnChain(seedToStart);
+            } else {
+                console.log('📌 Seed queued but auto-start disabled after first round:', queuedSeed);
+                setQueuedSeed(null);
+            }
         }
     }, [queuedSeed, gameState, isStartingGame, startRoundOnChain]);
 
     const settleRoundOnChain = useCallback(async () => {
         // Use refs to get current values
         const currentSignAndSubmitTransaction = signAndSubmitTransactionRef.current;
-        const currentGameSeed = gameSeed;
+        const currentGameSeed = gameSeedRef.current;
         const currentGameStartTransaction = gameStartTransactionRef.current;
         const currentAccumulatedPnL = accumulatedPnLRef.current;
         const currentTrades = tradesRef.current;
@@ -586,13 +616,6 @@ const AptosCandlestickChart = () => {
             ? betAmount + netPnL
             : Math.max(0, betAmount + netPnL); // netPnL is negative for losses
 
-        console.log('[GAME] Settlement calculation:', {
-            betAmount,
-            netPnL,
-            isProfit,
-            totalPayout
-        });
-
         setGameStateWithLogging('settling');
         try {
             // If we have trades, use the detailed settlement. Otherwise use simple payout
@@ -607,31 +630,67 @@ const AptosCandlestickChart = () => {
                     pnl: trade.pnl!
                 }));
 
-                console.log('[GAME] Settling with trade history:', {
-                    tradeCount: tradesForSettlement.length,
-                    trades: tradesForSettlement
-                });
+                console.log('📝 Submitting END transaction to blockchain...');
+                console.log(`   Function: complete_game`);
+                console.log(`   Seed: ${effectiveGameSeed}`);
+                console.log(`   Is Profit: ${isProfit}`);
+                console.log(`   Amount: ${Math.abs(netPnL).toFixed(6)} APT`);
 
-                // For now, use the existing complete_game function until new contract is deployed
-                console.log('[GAME] Using legacy complete_game for now');
-                const txHash = await completeGame(effectiveGameSeed, isProfit, Math.abs(netPnL));
-                console.log('[GAME] Settlement transaction submitted:', txHash);
-                console.log('[GAME] Total payout:', totalPayout.toFixed(6), 'APT (Bet:', betAmount, 'APT, P&L:', netPnL.toFixed(6), 'APT)');
-                console.log('[GAME] Trades settled:', tradesForSettlement.length, 'trades');
+                const oldBalance = walletBalanceRef.current;
+
+                const txHash = await gameContract.completeGame(
+                    currentSignAndSubmitTransaction,
+                    effectiveGameSeed,
+                    isProfit,
+                    Math.abs(netPnL)
+                );
+                console.log(`✅ END TRANSACTION CONFIRMED: ${txHash}`);
+
+                // Fetch updated balance after settlement
+                console.log('⏳ Waiting for balance to update (checking blockchain)...');
+
+                // Wait longer for blockchain to update and finalize (5 seconds)
+                await new Promise(resolve => setTimeout(resolve, 5000));
+                await fetchWalletBalance();
+                const newBalance = walletBalanceRef.current;
+
+                // Print comprehensive end game summary
+                const pnlSign = isProfit ? '🟢' : '🔴';
+                console.log('');
+                console.log('═══════════════════════════════════════════════════════');
+                console.log('🏁 ROUND ENDED - FINAL SETTLEMENT COMPLETE');
+                console.log('═══════════════════════════════════════════════════════');
+                console.log(`📊 Round Summary:`);
+                console.log(`   Bet Amount:          ${betAmount.toFixed(4)} APT`);
+                console.log(`   ${pnlSign} Final P&L:           ${netPnL >= 0 ? '+' : ''}${netPnL.toFixed(6)} APT`);
+                console.log(`   Expected Payout:     ${totalPayout.toFixed(6)} APT`);
+                console.log('');
+                console.log('💰 Wallet Balance Changes:');
+                console.log(`   Balance Before END:  ${oldBalance.toFixed(4)} APT`);
+                console.log(`   Balance After END:   ${newBalance.toFixed(4)} APT`);
+                console.log(`   Actual Change:       ${(newBalance - oldBalance >= 0 ? '+' : '')}${(newBalance - oldBalance).toFixed(6)} APT`);
+                console.log(`   Expected Change:     ${(totalPayout >= 0 ? '+' : '')}${totalPayout.toFixed(6)} APT`);
+                console.log('');
+                console.log(`🔗 Transaction Hash: ${txHash}`);
+                console.log('═══════════════════════════════════════════════════════');
+                console.log('');
             } else {
                 // Fallback to simple payout if no trades (shouldn't happen in normal flow)
-                const txHash = await completeGame(effectiveGameSeed, isProfit, Math.abs(netPnL));
+                const txHash = await gameContract.completeGame(
+                    currentSignAndSubmitTransaction,
+                    effectiveGameSeed,
+                    isProfit,
+                    Math.abs(netPnL)
+                );
                 console.log('[GAME] Payout transaction submitted:', txHash);
                 console.log('[GAME] Total payout:', totalPayout.toFixed(6), 'APT (Bet:', betAmount, 'APT, P&L:', netPnL.toFixed(6), 'APT)');
             }
-
-            setTimeout(() => {
-                fetchWalletBalance();
-            }, 3000);
         } catch (error) {
-            console.error('[GAME] Failed to complete:', error.message || error);
+            console.error('❌ SETTLEMENT FAILED:', error instanceof Error ? error.message : error);
+            console.log('🔄 Settlement failed - resetting to allow retry or new game...');
         } finally {
-            // Reset game state after completion
+            // Reset game state after completion (or failure)
+            console.log('🔄 Resetting game state for next round...');
             setGameStartTransaction(null);
             setGameSeed(null);
             setAccumulatedPnL(0);
@@ -639,14 +698,18 @@ const AptosCandlestickChart = () => {
             tradesRef.current = [];
             setCurrentTrade(null);
             currentTradeRef.current = null;
-            setGameStateWithLogging('ready');
+
+            // Wait a bit before transitioning to ready to ensure settlement completes
+            setTimeout(() => {
+                setGameStateWithLogging('ready');
+            }, 500);
             // Clear persisted state since game is actually completed
             sessionStorage.removeItem('aptosGameTransaction');
             sessionStorage.removeItem('aptosGameState');
             sessionStorage.removeItem('aptosGameSeed');
             sessionStorage.removeItem('aptosGameBetAmount');
         }
-    }, [gameSeed, processGamePayout, settleGameWithTrades, fetchWalletBalance, completeGame]);
+    }, [gameSeed, processGamePayout, settleGameWithTrades, fetchWalletBalance]);
 
     // Handle position opened
     const handlePositionOpened = useCallback((entryPrice: number, entryCandleIndex: number) => {
@@ -664,18 +727,16 @@ const AptosCandlestickChart = () => {
 
         setCurrentTrade(newTrade);
         currentTradeRef.current = newTrade;
-        console.log('[TRADE] Opened new position:', {
-            id: newTrade.id,
-            entryPrice,
-            size: newTrade.size,
-            entryCandleIndex
+        console.log('🟢 BUY POSITION OPENED:', {
+            entryPrice: `$${entryPrice.toFixed(2)}`,
+            positionSize: `${newTrade.size.toFixed(4)} APT`,
+            candleIndex: entryCandleIndex,
+            tradeId: newTrade.id
         });
     }, [gameState]);
 
     // Handle position closed
     const handlePositionClosed = useCallback((exitPrice: number, exitCandleIndex: number, netProfitAPT: number) => {
-        console.log('[POSITION] Closed with P&L:', netProfitAPT.toFixed(6), 'APT');
-
         if (gameState !== 'playing') {
             // Log only critical errors when debugging
             if (dbg.enabled) {
@@ -708,36 +769,44 @@ const AptosCandlestickChart = () => {
             setCurrentTrade(null);
             currentTradeRef.current = null;
 
-            console.log('[TRADE] Closed position:', {
-                id: closedTrade.id,
-                entryPrice: closedTrade.entryPrice,
-                exitPrice,
-                pnl: netProfitAPT,
-                exitCandleIndex
+            const pnlSign = netProfitAPT >= 0 ? '🟢' : '🔴';
+            console.log(`${pnlSign} SELL POSITION CLOSED:`, {
+                entryPrice: `$${closedTrade.entryPrice.toFixed(2)}`,
+                exitPrice: `$${exitPrice.toFixed(2)}`,
+                pnl: `${netProfitAPT >= 0 ? '+' : ''}${netProfitAPT.toFixed(6)} APT`,
+                candleIndex: exitCandleIndex
             });
         }
 
         setAccumulatedPnL(prev => {
             const updated = prev + netProfitAPT;
-            console.log(`📈 Total accumulated P&L this round: ${updated} APT`);
-            console.log(`📊 Total trades completed: ${tradesRef.current.length}`);
+            const totalSign = updated >= 0 ? '🟢' : '🔴';
+            console.log(`${totalSign} ACCUMULATED P&L THIS ROUND: ${updated >= 0 ? '+' : ''}${updated.toFixed(6)} APT (${tradesRef.current.length + 1} trades)`);
             return updated;
         });
     }, [gameState, connected, walletBalance, gameStartTransaction, isStartingGame, hasWalletConnection, hasWalletBalance]);
 
+    // Pause the game for debug OR when waiting for wallet connection
     const pausedState = dbg.isPaused || isWaitingForWallet;
 
-    // Log when pause state changes
+    // Log critical pause state changes
+    const prevPausedRef = useRef(pausedState);
+    const prevWaitingRef = useRef(isWaitingForWallet);
     useEffect(() => {
-        console.log('⏸️ Pause state changed:', {
-            pausedState,
-            debugPaused: dbg.isPaused,
-            isWaitingForWallet,
-            gameState,
-            connected,
-            walletBalance
-        });
-    }, [pausedState, dbg.isPaused, isWaitingForWallet, gameState, connected, walletBalance]);
+        if (prevPausedRef.current !== pausedState || prevWaitingRef.current !== isWaitingForWallet) {
+            if (pausedState) {
+                if (isWaitingForWallet) {
+                    console.log('⏸️ GAME PAUSED (waiting for wallet connection)');
+                } else if (dbg.isPaused) {
+                    console.log('⏸️ GAME PAUSED (debug mode)');
+                }
+            } else {
+                console.log('▶️ GAME RESUMED');
+            }
+            prevPausedRef.current = pausedState;
+            prevWaitingRef.current = isWaitingForWallet;
+        }
+    }, [pausedState, isWaitingForWallet, dbg.isPaused]);
 
     useP5Chart({
         chartRef,
@@ -780,6 +849,24 @@ const AptosCandlestickChart = () => {
                 });
 
                 if (currentGameState === 'playing' && currentGameStartTransaction && currentSignAndSubmitTransaction) {
+                    // Check if we have a gameSeed - if not, we can't settle properly
+                    const currentGameSeed = gameSeedRef.current;
+                    if (!currentGameSeed) {
+                        console.error('❌ Cannot settle - gameSeed is missing!', {
+                            gameState: currentGameState,
+                            gameStartTransaction: currentGameStartTransaction,
+                            hasSignFunction: !!currentSignAndSubmitTransaction,
+                            gameSeedRef: currentGameSeed,
+                            sessionStorageSeed: sessionStorage.getItem('aptosGameSeed')
+                        });
+                        // Reset to ready state since we can't settle without seed
+                        setGameStateWithLogging('ready');
+                        setGameStartTransaction(null);
+                        sessionStorage.removeItem('aptosGameTransaction');
+                        sessionStorage.removeItem('aptosGameState');
+                        return;
+                    }
+
                     console.log('✅ Settling completed round with P&L:', currentAccumulatedPnL);
                     // Queue the new seed if present, but don't start it until after settlement
                     if (meta?.seed) {
@@ -809,13 +896,16 @@ const AptosCandlestickChart = () => {
                     }
                 }
             } else if (meta?.seed && (phase === 'start' || !phase)) {
-                // Only start a new round if we're not currently playing or settling
+                // Auto-start FIRST round only (when wallet just connected)
                 const currentGameState = gameStateRef.current;
-                if (currentGameState === 'ready' || currentGameState === 'disconnected') {
+                const currentGameStartTransaction = gameStartTransactionRef.current;
+
+                // Only auto-start if no game has been played yet (fresh connection)
+                if ((currentGameState === 'ready' || currentGameState === 'disconnected') && !currentGameStartTransaction) {
+                    console.log('🎮 Auto-starting FIRST game with seed:', meta.seed);
                     startRoundOnChain(meta.seed);
                 } else {
-                    console.log('📌 Deferring round start - game state is:', currentGameState);
-                    setQueuedSeed(meta.seed);
+                    console.log('📌 New round seed received but auto-start disabled (testing mode):', meta.seed, '(game state:', currentGameState + ')');
                 }
             }
         },

@@ -321,7 +321,7 @@ export function createDefaultConfig(start_at_ms: number): CandleConfig {
         prng: "xorshift128",
         scale: PRICE_SCALE,
         interval_ms: 65,
-        total_candles: 462, // Exactly 30s at 65ms interval (30000ms ÷ 65ms)
+        total_candles: 154, // Exactly 10s at 65ms interval (10000ms ÷ 65ms)
         initial_price_fp: 100 * PRICE_SCALE, // $100
         start_at_ms,
     };

@@ -42,12 +42,13 @@ export function useAptosGameContract() {
    * Start a new game with APT bet
    */
   const startGame = async (betAmountAPT: number, seedHex: string): Promise<string | null> => {
-    if (!connected || !account || !signAndSubmitTransaction) {
+    if (!signAndSubmitTransaction) {
       throw new Error('Wallet not connected');
     }
 
     setIsLoading(true);
     try {
+      console.log('[useAptosGameContract] Calling gameContract.startGame...');
       const txHash = await gameContract.startGame(signAndSubmitTransaction, betAmountAPT, seedHex);
 
       // Don't refresh game history immediately - it will be refreshed when game completes
@@ -55,8 +56,12 @@ export function useAptosGameContract() {
       console.log('Game started successfully, transaction hash:', txHash);
 
       return txHash;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to start game:', error);
+      // Check if user rejected the transaction
+      if (error?.message?.includes('User rejected') || error?.code === 4001) {
+        console.log('User rejected the transaction');
+      }
       throw error;
     } finally {
       setIsLoading(false);
@@ -71,7 +76,7 @@ export function useAptosGameContract() {
     isProfit: boolean,
     amountAPT: number
   ): Promise<string | null> => {
-    if (!connected || !account || !signAndSubmitTransaction) {
+    if (!signAndSubmitTransaction) {
       throw new Error('Wallet not connected');
     }
 
@@ -239,10 +244,93 @@ export function useAptosGameContract() {
       : starts[starts.length - 1] || null;
   };
 
+  // Settle game with trade history
+  const settleGameWithTrades = async (
+    betAmountAPT: number,
+    seed: string,
+    trades: Array<{
+      entryPrice: number;
+      exitPrice: number;
+      entryCandleIndex: number;
+      exitCandleIndex: number;
+      size: number;
+      pnl: number;
+    }>
+  ): Promise<string | null> => {
+    if (!signAndSubmitTransaction) {
+      console.error('Wallet not connected - signAndSubmitTransaction not available');
+      return null;
+    }
+
+    setIsLoading(true);
+    try {
+      const txHash = await gameContract.settleGameWithTrades(
+        signAndSubmitTransaction,
+        betAmountAPT,
+        seed,
+        trades
+      );
+      console.log('Game settled with trades successfully:', txHash);
+
+      // Update balance and game history after transaction
+      setTimeout(() => {
+        fetchWalletBalance();
+        fetchGameHistory();
+      }, 2000);
+
+      return txHash;
+    } catch (error: any) {
+      console.error('Failed to settle game with trades:', error);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // New function for single payout transaction
+  const processGamePayout = async (
+    betAmountAPT: number,
+    seed: string,
+    isProfit: boolean,
+    pnlAmountAPT: number
+  ): Promise<string | null> => {
+    if (!connected || !signAndSubmitTransaction) {
+      console.error('Wallet not connected');
+      return null;
+    }
+
+    setIsLoading(true);
+    try {
+      const txHash = await gameContract.processGamePayout(
+        signAndSubmitTransaction,
+        betAmountAPT,
+        seed,
+        isProfit,
+        pnlAmountAPT
+      );
+      console.log('Game payout processed successfully:', txHash);
+
+      // Update balance and game history after transaction
+      setTimeout(() => {
+        fetchWalletBalance();
+        fetchGameHistory();
+      }, 2000);
+
+      return txHash;
+    } catch (error: any) {
+      console.error('Failed to process game payout:', error);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return {
     // Core functions
     startGame,
     completeGame,
+    processGamePayout,
+    settleGameWithTrades,
 
     // Data
     gameHistory,

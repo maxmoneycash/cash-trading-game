@@ -56,6 +56,7 @@ export class GameContract {
 
     const functionArguments: string[] = [betAmountOctas.toString()];
     const supportsSeedArgument = import.meta.env.VITE_APTOS_START_ACCEPTS_SEED === 'true';
+    console.log('[GameContract] Seed support:', { supportsSeedArgument, seed, envValue: import.meta.env.VITE_APTOS_START_ACCEPTS_SEED });
     if (supportsSeedArgument && seed) {
       const seedHex = seed.startsWith('0x') ? seed : `0x${seed}`;
       functionArguments.push(seedHex);
@@ -72,8 +73,17 @@ export class GameContract {
       }
     };
 
+    console.log('[GameContract] Submitting start_game transaction:', transaction);
     const response = await signAndSubmitTransaction(transaction);
+    console.log('[GameContract] Transaction submitted, response:', response);
+
+    if (!response || !response.hash) {
+      throw new Error('Transaction failed - no hash received');
+    }
+
+    console.log('[GameContract] Waiting for transaction confirmation...');
     await this.aptos.waitForTransaction({ transactionHash: response.hash });
+    console.log('[GameContract] Transaction confirmed:', response.hash);
     return response.hash;
   }
 
@@ -108,6 +118,120 @@ export class GameContract {
     };
 
     const response = await signAndSubmitTransaction(transaction);
+    await this.aptos.waitForTransaction({ transactionHash: response.hash });
+    return response.hash;
+  }
+
+  // Settle game with detailed trade history
+  async settleGameWithTrades(
+    signAndSubmitTransaction: any,
+    betAmountAPT: number,
+    seed: string,
+    trades: Array<{
+      entryPrice: number;
+      exitPrice: number;
+      entryCandleIndex: number;
+      exitCandleIndex: number;
+      size: number; // in APT
+      pnl: number;  // in APT
+    }>
+  ): Promise<string> {
+    // Ensure seed has 0x prefix
+    const seedHex = seed.startsWith('0x') ? seed : `0x${seed}`;
+
+    // Convert bet amount to octas
+    const betAmountOctas = Math.floor(betAmountAPT * 100000000);
+
+    // Calculate net P&L from all trades
+    const netPnLAPT = trades.reduce((sum, trade) => sum + trade.pnl, 0);
+    const isNetProfit = netPnLAPT > 0;
+    const netPnLOctas = Math.floor(Math.abs(netPnLAPT) * 100000000);
+
+    // Prepare trade arrays for the contract
+    const entryPrices = trades.map(t => Math.floor(t.entryPrice * 100000000).toString());
+    const exitPrices = trades.map(t => Math.floor(t.exitPrice * 100000000).toString());
+    const entryCandleIndices = trades.map(t => t.entryCandleIndex.toString());
+    const exitCandleIndices = trades.map(t => t.exitCandleIndex.toString());
+    const sizes = trades.map(t => Math.floor(t.size * 100000000).toString());
+    const pnls = trades.map(t => Math.floor(Math.abs(t.pnl) * 100000000).toString());
+
+    const transaction = {
+      data: {
+        function: `${this.moduleAddress}::game::settle_game_with_trades`,
+        functionArguments: [
+          betAmountOctas.toString(),
+          seedHex,
+          entryPrices,
+          exitPrices,
+          entryCandleIndices,
+          exitCandleIndices,
+          sizes,
+          pnls,
+          isNetProfit,
+          netPnLOctas.toString()
+        ],
+      },
+      options: {
+        maxGasAmount: 50000,  // Higher gas limit for complex transaction
+        gasUnitPrice: 100,
+      }
+    };
+
+    console.log('Submitting settle_game_with_trades transaction:', {
+      betAmount: betAmountAPT,
+      tradeCount: trades.length,
+      netPnL: netPnLAPT,
+      isNetProfit
+    });
+
+    const response = await signAndSubmitTransaction(transaction);
+
+    if (!response || !response.hash) {
+      throw new Error('Transaction failed - no hash received');
+    }
+
+    await this.aptos.waitForTransaction({ transactionHash: response.hash });
+    return response.hash;
+  }
+
+  // New function for single payout transaction
+  async processGamePayout(
+    signAndSubmitTransaction: any,
+    betAmountAPT: number,
+    seed: string,
+    isProfit: boolean,
+    pnlAmountAPT: number  // absolute value of profit/loss
+  ): Promise<string> {
+    // Ensure seed has 0x prefix
+    const seedHex = seed.startsWith('0x') ? seed : `0x${seed}`;
+
+    const betAmountOctas = Math.floor(betAmountAPT * 100000000);
+    const pnlAmountOctas = Math.floor(Math.abs(pnlAmountAPT) * 100000000);
+
+    const transaction = {
+      data: {
+        function: `${this.moduleAddress}::game::process_game_payout`,
+        functionArguments: [
+          betAmountOctas.toString(),
+          seedHex,
+          isProfit,
+          pnlAmountOctas.toString()
+        ],
+      },
+      options: {
+        maxGasAmount: 30000,  // Higher gas limit for the combined transaction
+        gasUnitPrice: 100,
+      }
+    };
+
+    console.log('Submitting process_game_payout transaction:', transaction);
+
+    const response = await signAndSubmitTransaction(transaction);
+
+    if (!response || !response.hash) {
+      throw new Error('Transaction failed - no hash received');
+    }
+
     await this.aptos.waitForTransaction({ transactionHash: response.hash });
     return response.hash;
   }

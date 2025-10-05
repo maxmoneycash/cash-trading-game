@@ -33,6 +33,7 @@ const useP5Chart = ({
     onRoundMeta,
     debugEnabled = false,
     disableClicks = false,
+    onPositionOpened,
     onPositionClosed,
     aptosMode = false,
 }: {
@@ -55,11 +56,26 @@ const useP5Chart = ({
     onRoundMeta?: (meta: { roundId?: string; seed?: string; userId?: string; wallet?: string; gameEnded?: boolean; phase?: 'start' | 'end' }) => void;
     debugEnabled?: boolean;
     disableClicks?: boolean;
-    onPositionClosed?: (positionPnL: number) => void;
+    onPositionOpened?: (entryPrice: number, entryCandleIndex: number) => void;
+    onPositionClosed?: (exitPrice: number, exitCandleIndex: number, positionPnL: number) => void;
     aptosMode?: boolean;
 }) => {
     const flagsRef = useRef({ overlayActive, isPaused, disableClicks, balance })
     const debugListenersRef = useRef<{ start?: any; end?: any }>({})
+    const callbacksRef = useRef<{
+        onPositionOpened?: (entryPrice: number, entryCandleIndex: number) => void;
+        onPositionClosed?: (exitPrice: number, exitCandleIndex: number, positionPnL: number) => void;
+    }>({
+        onPositionOpened: undefined,
+        onPositionClosed: undefined
+    })
+
+    // Keep callbacks in sync
+    useEffect(() => {
+        if (onPositionOpened) callbacksRef.current.onPositionOpened = onPositionOpened
+        if (onPositionClosed) callbacksRef.current.onPositionClosed = onPositionClosed
+    }, [onPositionOpened, onPositionClosed])
+
     // Keep interaction guards in sync for p5 handlers
     useEffect(() => {
         flagsRef.current.overlayActive = overlayActive
@@ -323,7 +339,7 @@ const useP5Chart = ({
                 const url = new URL(window.location.href);
                 const r = url.searchParams.get('replay');
                 replayEnabled = r === '1' || r === 'true' || r === 'yes';
-            } catch {}
+            } catch { }
 
             // Start a new trading round.
             const startRound = () => {
@@ -853,13 +869,7 @@ const useP5Chart = ({
             // Start a new trading position.
             const startPosition = () => {
                 try {
-                    console.log('🟢 BUY CLICKED - startPosition called:', {
-                        hasCurrentPosition: !!currentPosition,
-                        candlesLength: candles.length,
-                        isRoundActive,
-                        isHistoricalView,
-                        balance: flagsRef.current.balance
-                    });
+                    console.log('[TRADE] Opening position');
                     if (currentPosition || candles.length === 0 || !isRoundActive || isHistoricalView) {
                         console.log('🚫 Buy blocked:', {
                             currentPosition: !!currentPosition,
@@ -873,18 +883,26 @@ const useP5Chart = ({
                     const currentBalance = flagsRef.current.balance;
                     const positionSize = currentBalance * 0.2;
                     const shares = positionSize / lastCandle.close;
+                    const entryCandleIndex = allRoundCandles.length - 1;
+
                     currentPosition = {
                         entryPrice: lastCandle.close,
                         shares: shares,
                         positionSize: positionSize,
                         candlesElapsed: 0
                     };
-                    currentEntryIndex = allRoundCandles.length - 1;
+                    currentEntryIndex = entryCandleIndex;
                     isHoldingPosition = true;
                     setIsHolding(true);
                     currentPnl = 0;
                     setPnl(0);
                     p.redraw();
+
+                    // Notify parent component about position opened
+                    if (callbacksRef.current.onPositionOpened) {
+                        callbacksRef.current.onPositionOpened(lastCandle.close, entryCandleIndex);
+                    }
+
                     // Trade tracking handled locally - no database persistence needed
                 } catch (error) {
                     console.error('❌ Error in startPosition:', error);
@@ -894,11 +912,7 @@ const useP5Chart = ({
             // Close current trading position.
             const closePosition = () => {
                 try {
-                    console.log('🔴 SELL CLICKED - closePosition called:', {
-                        hasCurrentPosition: !!currentPosition,
-                        isHoldingPosition,
-                        currentPosition
-                    });
+                    console.log('[TRADE] Closing position');
                     if (!currentPosition || !isHoldingPosition) {
                         console.log('🚫 Sell blocked:', {
                             noCurrentPosition: !currentPosition,
@@ -920,8 +934,11 @@ const useP5Chart = ({
                     });
                     // Trade completion handled locally - no database persistence needed
                     // Update balance: use callback for Aptos mode, direct update for demo mode
-                    if (aptosMode && onPositionClosed) {
-                        onPositionClosed(netProfit);
+                    const exitPrice = candles[candles.length - 1].close;
+                    const exitCandleIndex = allRoundCandles.length - 1;
+
+                    if (aptosMode && callbacksRef.current.onPositionClosed) {
+                        callbacksRef.current.onPositionClosed(exitPrice, exitCandleIndex, netProfit);
                     } else {
                         setBalance(prevBalance => {
                             const newBalance = prevBalance + netProfit;
@@ -992,7 +1009,7 @@ const useP5Chart = ({
                 p.background(12, 12, 12);
                 const flags = flagsRef.current;
                 if (flags.isPaused) {
-                    console.log('🛑 Game is paused, not rendering. isPaused:', flags.isPaused, 'overlayActive:', flags.overlayActive);
+                    // Paused state - silent return
                     return;
                 }
 
@@ -1020,10 +1037,10 @@ const useP5Chart = ({
                 const currentTime = p.millis();
                 const timeSinceLastUpdate = currentTime - lastUpdate;
 
-                // Debug logging every 10 frames to avoid spam
-                if (currentTime % 1000 < 100) {
-                    console.log(`🔧 targetInterval: ${targetInterval}ms, intervalMs: ${intervalMs}, timeSinceLastUpdate: ${timeSinceLastUpdate}ms`);
-                }
+                // Debug logging disabled to reduce noise
+                // if (currentTime % 1000 < 100) {
+                //     console.log(`🔧 targetInterval: ${targetInterval}ms, intervalMs: ${intervalMs}, timeSinceLastUpdate: ${timeSinceLastUpdate}ms`);
+                // }
 
                 const shouldAddCandle = isAnimating && isRoundActive && !liquidationCandleCreated && !rugpullActive && timeSinceLastUpdate > targetInterval;
 
@@ -1041,8 +1058,8 @@ const useP5Chart = ({
                     currentIndex++;
                     lastUpdate = currentTime;
 
-                    // Log EVERY candle creation
-                    console.log(`🕯️ Candle ${oldIndex}→${currentIndex} - Time: ${(currentTime - roundStartTime).toFixed(0)}ms`);
+                    // Candle creation logging disabled to reduce noise
+                    // console.log(`🕯️ Candle ${oldIndex}→${currentIndex} - Time: ${(currentTime - roundStartTime).toFixed(0)}ms`);
                 }
                 const visible = isHistoricalView ? allRoundCandles : candles;
                 let originalChartArea = null;
@@ -1121,7 +1138,7 @@ const useP5Chart = ({
             // Mouse/touch handlers for buying/selling.
             let touchActive = false;
             p.mousePressed = () => {
-                console.log('🖱️ MOUSE CLICK detected');
+                // console.log('🖱️ MOUSE CLICK detected');
                 if (modalOpenRef.current) {
                     console.log('🚫 Click blocked: modal is open');
                     return true;
@@ -1133,7 +1150,7 @@ const useP5Chart = ({
                 }
                 try {
                     if (!touchActive) {
-                        console.log('🖱️ Processing mouse click - calling startPosition');
+                        // console.log('🖱️ Processing mouse click - calling startPosition');
                         startPosition();
                     }
                 } catch (error) {
@@ -1143,13 +1160,13 @@ const useP5Chart = ({
                 return false;
             };
             p.mouseReleased = () => {
-                console.log('🖱️ MOUSE RELEASE detected');
+                // console.log('🖱️ MOUSE RELEASE detected');
                 if (modalOpenRef.current) return true;
                 const f = flagsRef.current
                 if (f.isPaused || f.overlayActive || f.disableClicks) return true;
                 try {
                     if (!touchActive) {
-                        console.log('🖱️ Processing mouse release - calling closePosition');
+                        // console.log('🖱️ Processing mouse release - calling closePosition');
                         closePosition();
                     }
                 } catch (error) {

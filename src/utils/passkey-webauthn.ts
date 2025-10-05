@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { sha3_256 } from "@noble/hashes/sha3";
-import { p256 } from '@noble/curves/nist.js';
+import { p256 } from '@noble/curves/p256';
 import { Buffer } from "buffer";
 import {
     AptosConfig,

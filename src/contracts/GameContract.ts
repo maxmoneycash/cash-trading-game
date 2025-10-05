@@ -117,6 +117,20 @@ export class GameContract {
       }
     };
 
+    console.log('📤 completeGame transaction details:');
+    console.log('   Seed (hex):', seedHex);
+    console.log('   Is Profit:', isProfit);
+    console.log('   Amount (APT):', amountAPT);
+    console.log('   Amount (octas):', amountOctas);
+    console.log('   Function:', transaction.data.function);
+    console.log('   Args:', transaction.data.functionArguments);
+    console.log('   Full transaction object:', JSON.stringify(transaction, null, 2));
+
+    console.log('⚠️  IMPORTANT: The Petra popup may show DIFFERENT values than above!');
+    console.log('⚠️  This indicates the contract has stale ActiveGames records.');
+    console.log('⚠️  Petra calculates payout using: stored_bet_amount + profit_amount');
+    console.log('⚠️  If stored_bet_amount is wrong (e.g., 1 APT from old game), payout will be wrong.');
+
     const response = await signAndSubmitTransaction(transaction);
     await this.aptos.waitForTransaction({ transactionHash: response.hash });
     return response.hash;
@@ -302,6 +316,71 @@ export class GameContract {
    */
   getContractAddress(): string {
     return this.moduleAddress;
+  }
+
+  /**
+   * Initialize the contract treasury and resources (must be called by contract owner)
+   * This is needed if the contract was deployed but not initialized
+   */
+  async initializeTreasury(
+    signAndSubmitTransaction: any
+  ): Promise<string> {
+    const transaction = {
+      data: {
+        function: `${this.moduleAddress}::game::initialize_treasury`,
+        functionArguments: [],
+      },
+      options: {
+        maxGasAmount: 50000,
+        gasUnitPrice: 100,
+      }
+    };
+
+    console.log('🏗️ Initializing contract treasury...');
+    const response = await signAndSubmitTransaction(transaction);
+
+    if (!response || !response.hash) {
+      throw new Error('Initialization transaction failed - no hash received');
+    }
+
+    await this.aptos.waitForTransaction({ transactionHash: response.hash });
+    console.log('✅ Contract initialized successfully:', response.hash);
+    return response.hash;
+  }
+
+  /**
+   * Debug: Check if a player has an active game in the contract
+   * This helps diagnose stale ActiveGames records
+   */
+  async debugCheckActiveGame(playerAddress: string): Promise<boolean> {
+    try {
+      // Query the contract's ActiveGames resource
+      const resource = await this.aptos.getAccountResource({
+        accountAddress: this.moduleAddress,
+        resourceType: `${this.moduleAddress}::game::ActiveGames`
+      });
+
+      const games = (resource.data as any).games || [];
+      const hasActiveGame = games.some((game: any) => game.player === playerAddress);
+
+      console.log('🔍 Active Games Check:', {
+        playerAddress,
+        totalActiveGames: games.length,
+        hasActiveGame,
+        allGames: games
+      });
+
+      return hasActiveGame;
+    } catch (error: any) {
+      if (error.message && error.message.includes('resource_not_found')) {
+        console.error('❌ CRITICAL: ActiveGames resource not found!');
+        console.error('   The contract needs to be initialized by calling initialize_treasury()');
+        console.error('   This must be done by the contract owner.');
+        return false;
+      }
+      console.error('Failed to check active games:', error);
+      return false;
+    }
   }
 
   /**

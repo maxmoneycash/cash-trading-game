@@ -13,7 +13,8 @@
     "db:seed": "cd server && npm run db:seed",
     "db:reset": "npm run db:wipe && npm run db:seed",
     "db:wipe": "rm -f server/database/game.db",
-    "publish:devnet": "contracts/scripts/publish_if_missing.sh"
+    "publish:devnet": "contracts/scripts/publish_if_missing.sh",
+    "init:contract": "tsx scripts/initContract.ts"
   },
   "dependencies": {
     "@aptos-labs/ts-sdk": "^5.0.0",
@@ -31,6 +32,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.30.1",
+    "@types/js-yaml": "^4.0.9",
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
     "@vitejs/plugin-react": "^4.6.0",
@@ -39,6 +41,8 @@
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.20",
     "globals": "^16.3.0",
+    "js-yaml": "^4.1.0",
+    "tsx": "^4.20.6",
     "vite": "^7.0.3"
   }
 }

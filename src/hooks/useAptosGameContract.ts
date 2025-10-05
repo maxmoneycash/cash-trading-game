@@ -328,12 +328,44 @@ export function useAptosGameContract() {
     }
   };
 
+  /**
+   * Debug: Check active game status in contract
+   */
+  const debugCheckActiveGame = async (): Promise<boolean> => {
+    if (!account) {
+      console.log('❌ No account connected');
+      return false;
+    }
+    return await gameContract.debugCheckActiveGame(account.address.toString());
+  };
+
+  /**
+   * Initialize the contract treasury (must be called by contract owner)
+   */
+  const initializeContract = async (): Promise<string | null> => {
+    if (!connected || !signAndSubmitTransaction) {
+      console.error('❌ Wallet not connected');
+      return null;
+    }
+
+    try {
+      const txHash = await gameContract.initializeTreasury(signAndSubmitTransaction);
+      console.log('✅ Contract initialized successfully:', txHash);
+      return txHash;
+    } catch (error: any) {
+      console.error('❌ Failed to initialize contract:', error);
+      if (error.message && error.message.includes('999')) {
+        console.error('   ERROR: You are not the contract owner!');
+        console.error('   Only the contract owner can initialize the treasury.');
+      }
+      throw error;
+    }
+  };
+
   return {
     // Core functions
     startGame,
     completeGame,
-    processGamePayout,
-    settleGameWithTrades,
 
     // Data
     gameHistory,
@@ -348,6 +380,8 @@ export function useAptosGameContract() {
     getContractInfo,
     getGameStats,
     getMostRecentGame,
+    debugCheckActiveGame,
+    initializeContract,
 
     // Contract utilities
     aptToOctas: (apt: number) => Math.floor(apt * 100000000),

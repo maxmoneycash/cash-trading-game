@@ -36,6 +36,7 @@ const useP5Chart = ({
     onPositionOpened,
     onPositionClosed,
     aptosMode = false,
+    resetKey,
 }: {
     chartRef: React.RefObject<HTMLDivElement>;
     p5InstanceRef: React.RefObject<p5 | null>;
@@ -59,6 +60,7 @@ const useP5Chart = ({
     onPositionOpened?: (entryPrice: number, entryCandleIndex: number) => void;
     onPositionClosed?: (exitPrice: number, exitCandleIndex: number, positionPnL: number) => void;
     aptosMode?: boolean;
+    resetKey?: number;
 }) => {
     const flagsRef = useRef({ overlayActive, isPaused, disableClicks, balance })
     const debugListenersRef = useRef<{ start?: any; end?: any }>({})
@@ -1232,7 +1234,7 @@ const useP5Chart = ({
                 p5InstanceRef.current.remove();
             }
         };
-    }, []); // Empty dependency array - only runs once on mount
+    }, [resetKey]); // Recreate p5 instance when resetKey changes
 
     // Control p5 draw loop based on pause state
     useEffect(() => {

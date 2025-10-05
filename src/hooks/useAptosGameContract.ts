@@ -103,70 +103,69 @@ export function useAptosGameContract() {
   /**
    * Fetch wallet APT balance with rate limiting protection
    * IMPORTANT: Creates fresh Aptos client on each call to avoid caching
+   * Uses view function method to query balance directly from chain
+   * @param addressOverride - Optional address string to use instead of account object (useful during transactions when account may be undefined)
+   * @returns The current balance in APT
    */
-  const fetchWalletBalance = useCallback(async (retryCount = 0) => {
-    if (!account) return;
+  const fetchWalletBalance = useCallback(async (retryCount = 0, addressOverride?: string): Promise<number | undefined> => {
+    const accountAddressStr = addressOverride || account?.address.toString();
+
+    if (!accountAddressStr) {
+      console.warn('⚠️ fetchWalletBalance called with no account and no address override');
+      return undefined;
+    }
 
     try {
       // Create a FRESH Aptos client instance to avoid SDK caching
       const freshAptos = new Aptos(new AptosConfig({ network: Network.DEVNET }));
 
-      // Try using the more direct balance fetch method
-      const balance = await freshAptos.getAccountAPTAmount({
-        accountAddress: account.address
+      console.log(`🔍 Fetching balance for address: ${accountAddressStr}`);
+
+      // First get the latest ledger version to ensure we're querying fresh data
+      const ledgerInfo = await freshAptos.getLedgerInfo();
+      const latestVersion = BigInt(ledgerInfo.ledger_version);
+      console.log(`📍 Querying at ledger version: ${latestVersion.toString()}`);
+
+      // Query the account's coin balance at the latest ledger version using view function
+      // This method bypasses SDK caching and works even if CoinStore resource isn't initialized
+      const balance = await freshAptos.view({
+        payload: {
+          function: "0x1::coin::balance",
+          typeArguments: ["0x1::aptos_coin::AptosCoin"],
+          functionArguments: [accountAddressStr]
+        },
+        options: {
+          ledgerVersion: latestVersion
+        }
       });
 
-      const aptBalance = balance / 100000000; // Convert octas to APT
-      console.log(`💰 Wallet balance updated: ${aptBalance.toFixed(4)} APT`);
+      const balanceValue = parseInt(balance[0] as string);
+      const aptBalance = balanceValue / 100000000;
+      console.log(`💰 Balance fetched (v${latestVersion}): ${aptBalance.toFixed(4)} APT (${balanceValue} octas)`);
       setWalletBalance(aptBalance);
+      return aptBalance;
 
     } catch (error: any) {
       // Handle 429 rate limiting errors with exponential backoff
       if (error.status === 429 || (error.message && error.message.includes('429'))) {
-        console.warn(`Rate limit hit, retry ${retryCount + 1}/3`);
+        console.warn(`⚠️ Rate limit hit, retry ${retryCount + 1}/3`);
 
         if (retryCount < 3) {
           const delay = Math.pow(2, retryCount) * 2000; // 2s, 4s, 8s
           setTimeout(() => {
-            fetchWalletBalance(retryCount + 1);
+            fetchWalletBalance(retryCount + 1, addressOverride);
           }, delay);
           return;
         } else {
-          console.error('Rate limit exceeded, giving up on balance fetch');
+          console.error('❌ Rate limit exceeded after 3 retries');
           return; // Don't reset balance to 0 on rate limit
         }
       }
 
-      console.error('Failed to fetch wallet balance:', error);
-
-      // Fallback: try resource method (but not if we hit rate limit)
-      try {
-        // Use fresh client for fallback too
-        const freshAptos = new Aptos(new AptosConfig({ network: Network.DEVNET }));
-        const resources = await freshAptos.getAccountResources({
-          accountAddress: account.address
-        });
-
-        // Find the APT coin resource
-        const aptResource = resources.find(
-          (resource) => resource.type === '0x1::coin::CoinStore<0x1::aptos_coin::AptosCoin>'
-        );
-
-        if (aptResource) {
-          const balance = (aptResource.data as any).coin.value;
-          const aptBalance = parseInt(balance) / 100000000; // Convert octas to APT
-          console.log(`💰 Wallet balance updated (fallback): ${aptBalance.toFixed(4)} APT`);
-          setWalletBalance(aptBalance);
-        } else {
-          setWalletBalance(0);
-        }
-      } catch (fallbackError: any) {
-        // Don't reset balance on rate limit errors
-        if (!(fallbackError.status === 429 || (fallbackError.message && fallbackError.message.includes('429')))) {
-          console.error('Fallback balance fetch also failed:', fallbackError);
-          setWalletBalance(0);
-        }
-      }
+      // For other errors, log and reset balance
+      console.error('❌ Balance fetch failed:', error.message);
+      setWalletBalance(0);
+      return 0;
     }
   }, [account]); // Add account as dependency
 
@@ -333,7 +332,7 @@ export function useAptosGameContract() {
    */
   const debugCheckActiveGame = async (): Promise<boolean> => {
     if (!account) {
-      console.log('❌ No account connected');
+      // Silently fail if no account - this can happen during transaction processing
       return false;
     }
     return await gameContract.debugCheckActiveGame(account.address.toString());

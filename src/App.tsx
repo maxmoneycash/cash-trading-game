@@ -10,11 +10,11 @@ function App() {
   const debugEnabled = params.get('debug') === 'true'
 
   // Path-based routing for clean environment separation
-  const isTestMode = window.location.pathname === '/test'
+  const isDevnetMode = window.location.pathname === '/devnet'
   const isDemoMode = window.location.pathname === '/demo'
 
-  // Test environment: dedicated Aptos development and testing
-  if (isTestMode) {
+  // Devnet environment: Get test tokens for Aptos devnet
+  if (isDevnetMode) {
     return <AptosTestPage />
   }
 

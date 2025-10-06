@@ -164,6 +164,9 @@ const AptosCandlestickChart = () => {
         setGameState(newState);
     }, [gameState, connected, walletBalance, gameStartTransaction, isStartingGame]);
 
+    const DEFAULT_BET_AMOUNT = 0.5; // 0.5 APT per game
+    const currentBetAmount = DEFAULT_BET_AMOUNT;
+
     // Track wallet connection changes
     const prevConnectedRef = useRef(connected);
     useEffect(() => {
@@ -177,10 +180,6 @@ const AptosCandlestickChart = () => {
             prevConnectedRef.current = connected;
         }
     }, [connected, gameState]);
-
-    // Fixed default bet amount for production
-    const DEFAULT_BET_AMOUNT = 0.05; // 0.05 APT per game
-    const currentBetAmount = DEFAULT_BET_AMOUNT;
 
     // Sync modal ref with state and handle escape key/pointer events.
     useEffect(() => {
@@ -340,14 +339,14 @@ const AptosCandlestickChart = () => {
         const availableForBetting = Math.max(0, currentBalance - GAS_RESERVE);
 
         if (availableForBetting < MIN_WAGER_APT) {
-            console.warn('Insufficient balance after gas reserve', {
+            console.warn('Insufficient balance after gas reserve - waiting for funds', {
                 currentBalance,
                 gasReserve: GAS_RESERVE,
                 availableForBetting,
                 minWager: MIN_WAGER_APT
             });
+            // Queue seed but DON'T fetch balance again to avoid rate limits
             setQueuedSeed(seed);
-            fetchWalletBalance();
             return;
         }
 
@@ -479,6 +478,15 @@ const AptosCandlestickChart = () => {
         const currentHasWalletConnection = currentConnected;
         const currentHasWalletBalance = currentWalletBalance > 0;
 
+        // IMPORTANT: Don't process queued seed if waiting for wallet
+        if (isWaitingForWallet) {
+            console.log('⏸️ Queued seed processing paused - waiting for wallet', {
+                isWaitingForWallet,
+                queuedSeed: queuedSeed ? queuedSeed.substring(0, 10) + '...' : null
+            });
+            return;
+        }
+
         // Process queued seed when wallet is ready (first round only, not after settlement)
         if (queuedSeed && currentHasWalletConnection && currentHasWalletBalance && gameState === 'ready' && !isStartingGame) {
             const currentGameStartTransaction = gameStartTransactionRef.current;
@@ -494,7 +502,7 @@ const AptosCandlestickChart = () => {
                 setQueuedSeed(null);
             }
         }
-    }, [queuedSeed, gameState, isStartingGame, startRoundOnChain]);
+    }, [queuedSeed, gameState, isStartingGame, startRoundOnChain, isWaitingForWallet]);
 
     const settleRoundOnChain = useCallback(async () => {
         // Use refs to get current values
@@ -953,6 +961,31 @@ const AptosCandlestickChart = () => {
                             <div style={{ fontSize: '14px', marginTop: '8px', opacity: 0.8 }}>
                                 Click "Connect Wallet" in the bottom left
                             </div>
+                            <button
+                                onClick={() => window.location.href = '/devnet'}
+                                style={{
+                                    marginTop: '24px',
+                                    padding: '12px 24px',
+                                    fontSize: '14px',
+                                    fontWeight: '600',
+                                    color: 'white',
+                                    background: 'rgba(59, 130, 246, 0.8)',
+                                    border: '1px solid rgba(59, 130, 246, 0.5)',
+                                    borderRadius: '8px',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s',
+                                }}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.background = 'rgba(59, 130, 246, 1)';
+                                    e.currentTarget.style.transform = 'scale(1.05)';
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.background = 'rgba(59, 130, 246, 0.8)';
+                                    e.currentTarget.style.transform = 'scale(1)';
+                                }}
+                            >
+                                🪙 Add Test Tokens (Devnet)
+                            </button>
                         </div>
                     </div>
                 )}

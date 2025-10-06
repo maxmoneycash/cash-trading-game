@@ -17,7 +17,8 @@ interface TransactionLogEntry {
 }
 
 export function SimplifiedAptosTest() {
-  const { connected, account, connect, disconnect, wallets } = useWallet();
+  const wallet = useWallet();
+  const { connected, account, connect, disconnect, wallets } = wallet;
   const { walletBalance, fetchWalletBalance } = useAptosGameContract();
   const { aptPrice } = useAptPrice();
 
@@ -96,7 +97,6 @@ export function SimplifiedAptosTest() {
     }
   };
 
-
   return (
     <div style={{
       maxWidth: '1200px',
@@ -126,13 +126,13 @@ export function SimplifiedAptosTest() {
           WebkitTextFillColor: 'transparent',
           backgroundClip: 'text'
         }}>
-          🧪 Cash Trading Aptos Test Lab
+          🪙 Get Devnet Tokens
         </h1>
         <p style={{
           color: 'rgba(255, 255, 255, 0.7)',
           margin: '0 0 15px 0'
         }}>
-          Essential wallet and contract testing
+          Request test APT tokens to start trading
         </p>
         <a
           href="/"
@@ -154,100 +154,19 @@ export function SimplifiedAptosTest() {
             e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
           }}
         >
-          ← Back to Demo Game
+          ← Back to Game
         </a>
       </div>
 
       {/* Main Content - Single Column */}
       <div style={{
-        maxWidth: '600px',
+        maxWidth: '500px',
         margin: '0 auto 30px auto',
         display: 'flex',
         flexDirection: 'column',
         gap: '20px'
       }}>
-        {/* Wallet Connection */}
-        <div style={{
-          background: 'rgba(255, 255, 255, 0.05)',
-          border: '1px solid rgba(255, 255, 255, 0.1)',
-          borderRadius: '12px',
-          padding: '20px'
-        }}>
-          <h3 style={{ margin: '0 0 15px 0', color: '#4ecdc4' }}>
-            🔗 Wallet Connection
-          </h3>
-
-          {connected ? (
-            <div>
-              <div style={{
-                background: 'rgba(76, 175, 80, 0.1)',
-                border: '1px solid rgba(76, 175, 80, 0.3)',
-                borderRadius: '8px',
-                padding: '15px',
-                marginBottom: '15px'
-              }}>
-                <p style={{ margin: '0 0 5px 0', color: '#4CAF50', fontWeight: 'bold' }}>
-                  ✅ Wallet Connected
-                </p>
-                <p style={{ margin: '0', fontSize: '14px' }}>
-                  Address: {account?.address.toString().slice(0, 8)}...{account?.address.toString().slice(-6)}
-                </p>
-              </div>
-              <button
-                onClick={disconnect}
-                style={{
-                  background: '#f44336',
-                  color: 'white',
-                  border: 'none',
-                  padding: '10px 20px',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  fontSize: '14px'
-                }}
-              >
-                Disconnect Wallet
-              </button>
-            </div>
-          ) : (
-            <div>
-              <p style={{ margin: '0 0 15px 0', fontSize: '14px', color: 'rgba(255, 255, 255, 0.7)' }}>
-                Choose a wallet to connect:
-              </p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {wallets.map((wallet) => (
-                  <button
-                    key={wallet.name}
-                    onClick={() => handleConnect(wallet.name)}
-                    disabled={wallet.readyState !== 'Installed'}
-                    style={{
-                      background: wallet.readyState === 'Installed' ? '#4CAF50' : '#666',
-                      color: 'white',
-                      border: 'none',
-                      padding: '12px 16px',
-                      borderRadius: '6px',
-                      cursor: wallet.readyState === 'Installed' ? 'pointer' : 'not-allowed',
-                      fontSize: '14px',
-                      textAlign: 'left'
-                    }}
-                  >
-                    {wallet.name} {wallet.readyState !== 'Installed' && '(Not Installed)'}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Balance Display */}
-        {connected && (
-          <BalanceDisplay
-            aptBalance={walletBalance}
-            onRefresh={handleRefreshBalance}
-            aptToUsdRate={aptPrice}
-          />
-        )}
-
-        {/* Faucet */}
+        {/* Faucet - First and most prominent */}
         {connected && (
           <DevnetFaucet
             onFaucetRequest={(amount) => {
@@ -301,6 +220,78 @@ export function SimplifiedAptosTest() {
             }}
           />
         )}
+
+        {/* Balance Display */}
+        {connected && (
+          <BalanceDisplay
+            aptBalance={walletBalance}
+            onRefresh={handleRefreshBalance}
+            aptToUsdRate={aptPrice}
+          />
+        )}
+
+        {/* Wallet Connection - Compact */}
+        <div style={{
+          background: 'rgba(255, 255, 255, 0.05)',
+          border: '1px solid rgba(255, 255, 255, 0.1)',
+          borderRadius: '12px',
+          padding: '16px'
+        }}>
+          <h3 style={{ margin: '0 0 12px 0', color: '#4ecdc4', fontSize: '16px' }}>
+            🔗 Wallet
+          </h3>
+
+          {connected ? (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ fontSize: '14px' }}>
+                <span style={{ color: '#4CAF50', marginRight: '8px' }}>✅</span>
+                {account?.address.toString().slice(0, 8)}...{account?.address.toString().slice(-6)}
+              </div>
+              <button
+                onClick={disconnect}
+                style={{
+                  background: '#f44336',
+                  color: 'white',
+                  border: 'none',
+                  padding: '6px 12px',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontSize: '12px'
+                }}
+              >
+                Disconnect
+              </button>
+            </div>
+          ) : (
+            <div>
+              <p style={{ margin: '0 0 10px 0', fontSize: '13px', color: 'rgba(255, 255, 255, 0.7)' }}>
+                Connect your wallet to get tokens:
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {wallets.map((wallet) => (
+                  <button
+                    key={wallet.name}
+                    onClick={() => handleConnect(wallet.name)}
+                    disabled={wallet.readyState !== 'Installed'}
+                    style={{
+                      background: wallet.readyState === 'Installed' ? '#4CAF50' : '#666',
+                      color: 'white',
+                      border: 'none',
+                      padding: '10px 14px',
+                      borderRadius: '6px',
+                      cursor: wallet.readyState === 'Installed' ? 'pointer' : 'not-allowed',
+                      fontSize: '13px',
+                      textAlign: 'left'
+                    }}
+                  >
+                    {wallet.name} {wallet.readyState !== 'Installed' && '(Not Installed)'}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
       </div>
 
       {/* Transaction Log */}

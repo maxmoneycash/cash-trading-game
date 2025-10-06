@@ -21,5 +21,7 @@ export default defineConfig({
   },
   optimizeDeps: {
     include: ['buffer'],
+    // Force re-optimization on file changes
+    force: process.env.FORCE_OPTIMIZE === 'true'
   },
 })

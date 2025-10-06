@@ -12,7 +12,7 @@ export function DevnetFaucet({
 }: DevnetFaucetProps) {
   const { account } = useWallet();
   const [isRequesting, setIsRequesting] = useState(false);
-  const [requestAmount, setRequestAmount] = useState(1.0);
+  const requestAmount = 5; // Fixed 5 APT
 
   const handleFaucetRequest = async () => {
     if (!account || isRequesting) return;
@@ -88,65 +88,25 @@ export function DevnetFaucet({
         🚰 Devnet Faucet
       </h3>
 
-      <div style={{
-        marginBottom: '15px',
-        padding: '12px',
-        background: 'rgba(255, 193, 7, 0.1)',
-        border: '1px solid rgba(255, 193, 7, 0.3)',
-        borderRadius: '6px',
-        fontSize: '12px',
-        color: '#ffc107'
-      }}>
-        ℹ️ Request test APT tokens for devnet testing
-      </div>
-
-      <div style={{ marginBottom: '15px' }}>
-        <label style={{
-          display: 'block',
-          marginBottom: '8px',
-          fontSize: '14px',
-          color: 'rgba(255, 255, 255, 0.8)'
-        }}>
-          Amount to Request (APT):
-        </label>
-        <input
-          type="number"
-          value={requestAmount || ''}
-          onChange={(e) => setRequestAmount(parseFloat(e.target.value) || '')}
-          min="0.1"
-          max="10"
-          step="0.1"
-          style={{
-            width: '100%',
-            padding: '10px',
-            borderRadius: '6px',
-            border: '1px solid rgba(255, 255, 255, 0.2)',
-            background: 'rgba(255, 255, 255, 0.05)',
-            color: '#ffffff',
-            fontSize: '14px'
-          }}
-        />
-      </div>
-
       <button
         onClick={handleFaucetRequest}
-        disabled={isRequesting || requestAmount <= 0}
+        disabled={isRequesting}
         style={{
           width: '100%',
           background: isRequesting ? '#666' : 'linear-gradient(45deg, #FF9800, #FF5722)',
           color: 'white',
           border: 'none',
-          padding: '12px 20px',
-          borderRadius: '6px',
+          padding: '16px 20px',
+          borderRadius: '8px',
           cursor: isRequesting ? 'not-allowed' : 'pointer',
-          fontSize: '14px',
+          fontSize: '16px',
           fontWeight: '600',
           transition: 'all 0.2s ease'
         }}
         onMouseOver={(e) => {
           if (!isRequesting) {
-            e.currentTarget.style.transform = 'translateY(-1px)';
-            e.currentTarget.style.boxShadow = '0 4px 12px rgba(255, 152, 0, 0.3)';
+            e.currentTarget.style.transform = 'translateY(-2px)';
+            e.currentTarget.style.boxShadow = '0 6px 20px rgba(255, 152, 0, 0.4)';
           }
         }}
         onMouseOut={(e) => {
@@ -154,16 +114,16 @@ export function DevnetFaucet({
           e.currentTarget.style.boxShadow = 'none';
         }}
       >
-        {isRequesting ? 'Requesting...' : `Request ${requestAmount} APT`}
+        {isRequesting ? '⏳ Requesting...' : `🪙 Request 5 APT`}
       </button>
 
       <div style={{
-        marginTop: '10px',
-        fontSize: '11px',
-        color: 'rgba(255, 255, 255, 0.5)',
+        marginTop: '12px',
+        fontSize: '12px',
+        color: 'rgba(255, 255, 255, 0.6)',
         textAlign: 'center'
       }}>
-        Devnet tokens have no real value • Used for testing only
+        Devnet tokens have no real value • For testing only
       </div>
     </div>
   );

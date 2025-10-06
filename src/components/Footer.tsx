@@ -2,6 +2,7 @@ import React from 'react';
 import { isStandalone } from '../utils/helpers';
 import ControlCenterModal from './ControlCenter/ControlCenterModal';
 import { WalletBalanceDisplay } from './WalletBalanceDisplay';
+import { Trade } from '../types/trading';
 
 /**
  * Footer component with balance display, instructions, and modal control center.
@@ -17,9 +18,11 @@ interface FooterProps {
     aptosMode?: boolean;
     gameState?: 'waiting' | 'playing' | 'completed';
     currentPnL?: number; // Live P&L from current game
+    trades?: Trade[];
+    aptToUsdRate?: number;
 }
 
-const Footer: React.FC<FooterProps> = ({ balance, walletBalance, isHolding, showLiquidation, rugpullType, isModalOpen, setIsModalOpen, aptosMode = false, gameState = 'waiting', currentPnL = 0 }) => {
+const Footer: React.FC<FooterProps> = ({ balance, walletBalance, isHolding, showLiquidation, rugpullType, isModalOpen, setIsModalOpen, aptosMode = false, gameState = 'waiting', currentPnL = 0, trades, aptToUsdRate = 10 }) => {
     const isMobile = typeof window !== 'undefined' ? window.innerWidth < 768 : true;
     const leftPadding = isMobile ? (4 + 15) : (8 + 15);
     const rightPadding = isMobile ? (34 + 10) : (46 + 10);
@@ -124,6 +127,10 @@ const Footer: React.FC<FooterProps> = ({ balance, walletBalance, isHolding, show
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
                 balance={balance}
+                walletBalance={walletBalance}
+                currentPnL={currentPnL}
+                trades={trades}
+                aptToUsdRate={aptToUsdRate}
             />
         </>
     );

@@ -12,7 +12,6 @@ interface TabConfig {
 }
 
 const tabs: TabConfig[] = [
-    { id: 'leaderboard', label: 'Leaderboard' },
     { id: 'account', label: 'Account' },
     { id: 'control-center', label: 'Controls' },
     { id: 'close', label: '✕' },

@@ -1,22 +1,30 @@
 import React, { useState, useEffect } from 'react';
 import ControlCenterTabs from './ControlCenterTabs';
-import LeaderboardTab from './tabs/LeaderboardTab';
 import AccountTab from './tabs/AccountTab';
 import ControlCenterTab from './tabs/ControlCenterTab';
+import { Trade } from '../../types/trading';
 
 interface ControlCenterModalProps {
     isOpen: boolean;
     onClose: () => void;
     balance: number;
+    walletBalance?: number;
+    currentPnL?: number;
+    trades?: Trade[];
+    aptToUsdRate?: number;
     // Add more props as needed for complex features
 }
 
-export type TabId = 'leaderboard' | 'account' | 'control-center' | 'close';
+export type TabId = 'account' | 'control-center' | 'close';
 
 const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
     isOpen,
     onClose,
-    balance
+    balance,
+    walletBalance,
+    currentPnL,
+    trades,
+    aptToUsdRate = 10
 }) => {
     const [activeTab, setActiveTab] = useState<TabId>('account');
     const [debugMode, setDebugMode] = useState(false);
@@ -24,10 +32,8 @@ const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
 
     const renderTabContent = () => {
         switch (activeTab) {
-            case 'leaderboard':
-                return <LeaderboardTab />;
             case 'account':
-                return <AccountTab balance={balance} />;
+                return <AccountTab balance={balance} walletBalance={walletBalance} currentPnL={currentPnL} trades={trades} aptToUsdRate={aptToUsdRate} />;
             case 'control-center':
                 return <ControlCenterTab />;
             default:
@@ -334,7 +340,7 @@ const ControlCenterModal: React.FC<ControlCenterModalProps> = ({
                             style={{
                                 flex: '1 1 auto',
                                 overflow: 'hidden',
-                                padding: activeTab === 'leaderboard' ? '0' : (isMobile ? '1rem' : '1.5rem'),
+                                padding: isMobile ? '1rem' : '1.5rem',
                                 display: 'flex',
                                 flexDirection: 'column',
                                 minHeight: 0,

@@ -6,6 +6,7 @@ import useP5Chart from '../hooks/useP5Chart';
 import { useDebug } from '../debug/DebugContext';
 import { useWallet } from '@aptos-labs/wallet-adapter-react';
 import { useAptosGameContract } from '../hooks/useAptosGameContract';
+import { useAptPrice } from '../hooks/useAptPrice';
 import { gameContract } from '../contracts/GameContract';
 import { Trade, GameSession } from '../types/trading';
 
@@ -21,6 +22,7 @@ const AptosCandlestickChart = () => {
     const dbg = useDebug();
     const wallet = useWallet();
     const { connected } = wallet;
+    const { aptPrice } = useAptPrice();
     const {
         walletBalance,
         fetchWalletBalance,
@@ -91,9 +93,22 @@ const AptosCandlestickChart = () => {
     const [isStartingGame, setIsStartingGame] = useState(false);
     const [accumulatedPnL, setAccumulatedPnL] = useState(0);
 
-    // Trade tracking
+    // Trade tracking with localStorage persistence
+    const TRADES_STORAGE_KEY = 'aptos_trade_history';
     const [currentTrade, setCurrentTrade] = useState<Trade | null>(null);
-    const [trades, setTrades] = useState<Trade[]>([]);
+    const [trades, setTrades] = useState<Trade[]>(() => {
+        // Initialize from localStorage
+        if (typeof window !== 'undefined') {
+            try {
+                const stored = localStorage.getItem(TRADES_STORAGE_KEY);
+                return stored ? JSON.parse(stored) : [];
+            } catch (e) {
+                console.error('Failed to load trades from localStorage:', e);
+                return [];
+            }
+        }
+        return [];
+    });
     const currentTradeRef = useRef<Trade | null>(null);
     const tradesRef = useRef<Trade[]>([]);
     const gameSeedRef = useRef<string | null>(gameSeed);
@@ -114,6 +129,17 @@ const AptosCandlestickChart = () => {
     useEffect(() => {
         gameStartTransactionRef.current = gameStartTransaction;
     }, [gameStartTransaction]);
+
+    // Persist trades to localStorage whenever they change
+    useEffect(() => {
+        if (typeof window !== 'undefined' && trades.length > 0) {
+            try {
+                localStorage.setItem(TRADES_STORAGE_KEY, JSON.stringify(trades));
+            } catch (e) {
+                console.error('Failed to save trades to localStorage:', e);
+            }
+        }
+    }, [trades, TRADES_STORAGE_KEY]);
 
     // Track gameState changes with protective guards
     const setGameStateWithLogging = useCallback((newState: GameState | ((prev: GameState) => GameState)) => {
@@ -947,6 +973,8 @@ const AptosCandlestickChart = () => {
                 aptosMode={true}
                 gameState={gameState === 'playing' ? 'playing' : gameState === 'settling' ? 'completed' : 'waiting'}
                 currentPnL={accumulatedPnL}
+                trades={trades}
+                aptToUsdRate={aptPrice}
             />
         </div>
     );

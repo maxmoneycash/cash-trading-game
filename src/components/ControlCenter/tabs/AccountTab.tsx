@@ -1,19 +1,15 @@
 import React, { useState } from 'react';
+import { Trade } from '../../../types/trading';
 
 interface AccountTabProps {
     balance: number;
+    walletBalance?: number;
+    currentPnL?: number;
+    trades?: Trade[];
+    aptToUsdRate?: number;
 }
 
-interface Trade {
-    id: number;
-    timestamp: Date;
-    entry: number;
-    exit: number;
-    pnl: number;
-    duration: string;
-}
-
-const AccountTab: React.FC<AccountTabProps> = ({ balance }) => {
+const AccountTab: React.FC<AccountTabProps> = ({ balance, walletBalance, currentPnL, trades, aptToUsdRate = 10 }) => {
     const [timeFrame, setTimeFrame] = useState<'1D' | '1W' | '1M' | 'ALL'>('1W');
     const [scrollDebug, setScrollDebug] = useState({ isScrolling: false, scrollTop: 0 });
     const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
@@ -41,24 +37,36 @@ const AccountTab: React.FC<AccountTabProps> = ({ balance }) => {
         }, 1000);
     };
 
-    // Mock data for recent trades
-    const recentTrades = [
-        { date: new Date('2024-01-15T14:32:00'), pair: 'BTC/USD', tradeSize: 500, timeInTrade: '12s', percentGain: 2.3, pnl: 11.50 },
-        { date: new Date('2024-01-15T14:29:00'), pair: 'BTC/USD', tradeSize: 75, timeInTrade: '8s', percentGain: 1.8, pnl: 1.35 },
-        { date: new Date('2024-01-15T14:22:00'), pair: 'BTC/USD', tradeSize: 750, timeInTrade: '22s', percentGain: -0.8, pnl: -6.00 },
-        { date: new Date('2024-01-15T14:16:00'), pair: 'BTC/USD', tradeSize: 1000, timeInTrade: '15s', percentGain: 3.5, pnl: 35.00 },
-        { date: new Date('2024-01-15T14:09:00'), pair: 'BTC/USD', tradeSize: 400, timeInTrade: '28s', percentGain: 4.2, pnl: 16.80 },
-        { date: new Date('2024-01-15T14:02:00'), pair: 'BTC/USD', tradeSize: 20, timeInTrade: '5s', percentGain: -1.2, pnl: -0.24 },
-        { date: new Date('2024-01-15T13:49:00'), pair: 'BTC/USD', tradeSize: 800, timeInTrade: '19s', percentGain: 5.1, pnl: 40.80 },
-        { date: new Date('2024-01-15T13:42:00'), pair: 'BTC/USD', tradeSize: 150, timeInTrade: '11s', percentGain: 3.8, pnl: 5.70 },
-        { date: new Date('2024-01-15T13:34:00'), pair: 'BTC/USD', tradeSize: 550, timeInTrade: '24s', percentGain: 1.5, pnl: 8.25 },
-        { date: new Date('2024-01-15T13:26:00'), pair: 'BTC/USD', tradeSize: 900, timeInTrade: '17s', percentGain: -2.8, pnl: -25.20 },
-        { date: new Date('2024-01-15T13:14:00'), pair: 'BTC/USD', tradeSize: 50, timeInTrade: '29s', percentGain: 6.2, pnl: 3.10 },
-        { date: new Date('2024-01-15T12:34:00'), pair: 'BTC/USD', tradeSize: 450, timeInTrade: '9s', percentGain: 4.9, pnl: 22.05 },
-        { date: new Date('2024-01-15T12:04:00'), pair: 'BTC/USD', tradeSize: 200, timeInTrade: '14s', percentGain: -3.2, pnl: -6.40 },
-        { date: new Date('2024-01-15T11:34:00'), pair: 'BTC/USD', tradeSize: 35, timeInTrade: '7s', percentGain: -2.5, pnl: -0.88 },
-        { date: new Date('2024-01-15T11:04:00'), pair: 'BTC/USD', tradeSize: 950, timeInTrade: '26s', percentGain: 7.8, pnl: 74.10 },
-    ];
+    // Calculate live balance in USD
+    // walletBalance and currentPnL are in APT, convert to USD
+    const baseBalanceAPT = walletBalance ?? balance;
+    const liveBalanceAPT = baseBalanceAPT + (currentPnL ?? 0);
+    const liveBalanceUSD = liveBalanceAPT * aptToUsdRate;
+
+    // Convert Trade[] to display format and filter only closed trades
+    const closedTrades = (trades ?? []).filter(t => t.status === 'closed');
+    const recentTrades = closedTrades.map(trade => {
+        const timeInTrade = trade.exitTimestamp && trade.entryTimestamp
+            ? `${Math.round((trade.exitTimestamp - trade.entryTimestamp) / 1000)}s`
+            : '0s';
+        const percentGain = trade.exitPrice && trade.entryPrice
+            ? ((trade.exitPrice - trade.entryPrice) / trade.entryPrice) * 100
+            : 0;
+
+        return {
+            date: new Date(trade.exitTimestamp ?? trade.entryTimestamp),
+            pair: 'BTC/USD',
+            tradeSize: trade.size,
+            timeInTrade,
+            percentGain,
+            pnl: (trade.pnl ?? 0) * aptToUsdRate
+        };
+    }).reverse(); // Show most recent first
+
+    // Calculate win rate
+    const totalTrades = closedTrades.length;
+    const winningTrades = closedTrades.filter(t => (t.pnl ?? 0) > 0).length;
+    const winRate = totalTrades > 0 ? (winningTrades / totalTrades) * 100 : 0;
 
     return (
         <>
@@ -131,15 +139,24 @@ const AccountTab: React.FC<AccountTabProps> = ({ balance }) => {
                                 textShadow: '0 0 40px rgba(0, 255, 136, 0.3)',
                                 marginBottom: '0.5rem',
                             }}>
-                                ${balance.toFixed(0)}
+                                ${liveBalanceUSD.toFixed(2)}
                             </div>
                             <div style={{
                                 fontSize: '0.9rem',
-                                color: 'rgba(0, 255, 136, 0.7)',
+                                color: currentPnL && currentPnL >= 0 ? 'rgba(0, 255, 136, 0.7)' : 'rgba(255, 68, 68, 0.7)',
                                 fontWeight: 500,
                             }}>
-                                <span style={{ fontSize: '1.1rem', marginRight: '0.25rem' }}>↗</span>
-                                12.5% today
+                                {currentPnL !== undefined && currentPnL !== 0 && (
+                                    <>
+                                        <span style={{ fontSize: '1.1rem', marginRight: '0.25rem' }}>
+                                            {currentPnL >= 0 ? '↗' : '↘'}
+                                        </span>
+                                        {currentPnL >= 0 ? '+' : ''}${(currentPnL * aptToUsdRate).toFixed(2)} this round
+                                    </>
+                                )}
+                                {(currentPnL === undefined || currentPnL === 0) && (
+                                    <span style={{ opacity: 0.5 }}>No active position</span>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -180,18 +197,18 @@ const AccountTab: React.FC<AccountTabProps> = ({ balance }) => {
                             <div style={{
                                 fontSize: isMobile ? '2.5rem' : '3rem',
                                 fontWeight: 700,
-                                color: '#00FF88',
+                                color: winRate >= 50 ? '#00FF88' : '#FF4444',
                                 letterSpacing: '-0.02em',
                                 marginBottom: '0.5rem',
                             }}>
-                                68.5%
+                                {totalTrades > 0 ? `${winRate.toFixed(1)}%` : 'N/A'}
                             </div>
                             <div style={{
                                 fontSize: '0.8rem',
                                 color: 'rgba(255, 255, 255, 0.5)',
                                 fontWeight: 400,
                             }}>
-                                137 wins / 200 trades
+                                {totalTrades > 0 ? `${winningTrades} wins / ${totalTrades} trades` : 'No trades yet'}
                             </div>
                         </div>
                     </div>
@@ -285,6 +302,18 @@ const AccountTab: React.FC<AccountTabProps> = ({ balance }) => {
                                     </tr>
                                 </thead>
                                 <tbody>
+                                    {recentTrades.length === 0 && (
+                                        <tr>
+                                            <td colSpan={5} style={{
+                                                padding: '2rem',
+                                                textAlign: 'center',
+                                                color: 'rgba(255, 255, 255, 0.5)',
+                                                fontSize: '0.875rem',
+                                            }}>
+                                                No trades yet. Start trading to see your history!
+                                            </td>
+                                        </tr>
+                                    )}
                                     {recentTrades.map((trade, index) => (
                                         <tr
                                             key={index}

@@ -2,6 +2,7 @@ import React, { useRef, useEffect, useState, useCallback } from 'react';
 import p5 from 'p5';
 import PnlOverlay from './PnlOverlay';
 import Footer from './Footer';
+import RoundSummaryModal from './RoundSummaryModal';
 import useP5Chart from '../hooks/useP5Chart';
 import { useDebug } from '../debug/DebugContext';
 import { useWallet } from '@aptos-labs/wallet-adapter-react';
@@ -69,6 +70,12 @@ const AptosCandlestickChart = () => {
     const [rugpullType, setRugpullType] = useState<string | null>(null);
     const [displayPnl, setDisplayPnl] = useState(0);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [showRoundSummary, setShowRoundSummary] = useState(false);
+    const [roundSummaryData, setRoundSummaryData] = useState<{
+        trades: Trade[];
+        totalPnL: number;
+        betAmount: number;
+    } | null>(null);
 
     // Aptos-specific state with persistence key to prevent React remount resets
     const getInitialGameState = (): GameState => {
@@ -164,7 +171,7 @@ const AptosCandlestickChart = () => {
         setGameState(newState);
     }, [gameState, connected, walletBalance, gameStartTransaction, isStartingGame]);
 
-    const DEFAULT_BET_AMOUNT = 0.5; // 0.5 APT per game
+    const DEFAULT_BET_AMOUNT = 0.05; // 0.05 APT per game (reduced to prevent treasury drain)
     const currentBetAmount = DEFAULT_BET_AMOUNT;
 
     // Track wallet connection changes
@@ -385,12 +392,12 @@ const AptosCandlestickChart = () => {
         // Set a timeout to reset if stuck in starting state
         const startTimeout = setTimeout(() => {
             if (gameStateRef.current === 'starting') {
-                console.error('[GAME] Timeout: Game stuck in starting state, resetting...');
+                console.error('[GAME] Timeout: Game stuck in starting state after 60s, resetting...');
                 setIsStartingGame(false);
                 setGameStateWithLogging('ready');
-                setQueuedSeed(null);
+                // Don't clear queued seed - let user try again
             }
-        }, 10000); // 10 second timeout
+        }, 60000); // 60 second timeout (was 10s, now 60s to allow time for wallet approval)
 
         // Start the game on-chain with the existing start_game function
         console.log('\n🎮 Starting new round...');
@@ -429,6 +436,10 @@ const AptosCandlestickChart = () => {
                 sessionStorage.setItem('aptosGameTransaction', txHash);
                 console.log(`✅ Bet confirmed - Round started!\n`);
 
+                // CRITICAL: Unpause the game so chart can run
+                console.log('🎮 Setting isWaitingForWallet to FALSE - game should resume');
+                setIsWaitingForWallet(false);
+
                 // Set game to playing immediately (don't block on balance check)
                 setGameStateWithLogging('playing');
                 setIsStartingGame(false);
@@ -457,16 +468,27 @@ const AptosCandlestickChart = () => {
             }
         } catch (error: any) {
             clearTimeout(startTimeout);
-            console.error('[GAME] Failed to start game:', error);
-            console.error('[GAME] Error details:', {
-                message: error?.message,
-                code: error?.code,
-                stack: error?.stack
-            });
+            const isUserRejection = error?.message?.includes('User rejected') || error?.code === 4001;
+
+            if (isUserRejection) {
+                console.warn('[GAME] User rejected transaction - stopping auto-retry');
+            } else {
+                console.error('[GAME] Failed to start game:', error);
+                console.error('[GAME] Error details:', {
+                    message: error?.message,
+                    code: error?.code,
+                    stack: error?.stack
+                });
+            }
+
             setIsStartingGame(false);
             setGameStateWithLogging('ready');
             // Clear the queued seed so it doesn't keep retrying
             setQueuedSeed(null);
+
+            // Also clear from chart to prevent new round from starting
+            sessionStorage.setItem('preventAutoStart', 'true');
+            setTimeout(() => sessionStorage.removeItem('preventAutoStart'), 5000);
         }
     }, [gameState, isStartingGame, determineBetAmount, startGame, fetchWalletBalance, setGameStateWithLogging]);
 
@@ -505,6 +527,14 @@ const AptosCandlestickChart = () => {
     }, [queuedSeed, gameState, isStartingGame, startRoundOnChain, isWaitingForWallet]);
 
     const settleRoundOnChain = useCallback(async () => {
+        // CRITICAL FIX: Prevent duplicate settlement calls
+        // Check if we're already settling
+        const currentGameState = gameStateRef.current;
+        if (currentGameState === 'settling') {
+            console.warn('⚠️ Settlement already in progress - ignoring duplicate call');
+            return;
+        }
+
         // Use refs to get current values
         const currentSignAndSubmitTransaction = signAndSubmitTransactionRef.current;
         const currentGameSeed = gameSeedRef.current;
@@ -545,13 +575,45 @@ const AptosCandlestickChart = () => {
         const netPnL = currentAccumulatedPnL;
         const isProfit = netPnL > 0;
 
-        // For a single payout transaction, we need to calculate the total amount
-        // If profit: return bet + profit
-        // If loss: return bet - loss (or 0 if loss exceeds bet)
-        const totalPayout = isProfit
-            ? betAmount + netPnL
-            : Math.max(0, betAmount + netPnL); // netPnL is negative for losses
+        console.log('📊 Showing round summary modal', {
+            trades: currentTrades.length,
+            totalPnL: netPnL,
+            betAmount: betAmount
+        });
 
+        // Show round summary modal FIRST before blockchain settlement
+        setRoundSummaryData({
+            trades: currentTrades,
+            totalPnL: netPnL,
+            betAmount: betAmount
+        });
+        setShowRoundSummary(true);
+
+        // DON'T set game state to settling yet - wait for user to confirm
+        // The modal will trigger proceedWithSettlement when closed
+        return;
+    }, []);
+
+    // Actual settlement function (called after summary modal closes)
+    const proceedWithSettlement = useCallback(async () => {
+        const currentSignAndSubmitTransaction = signAndSubmitTransactionRef.current;
+        const currentGameSeed = gameSeedRef.current;
+        const currentGameStartTransaction = gameStartTransactionRef.current;
+        const currentAccumulatedPnL = accumulatedPnLRef.current;
+
+        const effectiveGameSeed = currentGameSeed || sessionStorage.getItem('aptosGameSeed');
+        const betAmount = parseFloat(sessionStorage.getItem('aptosGameBetAmount') || '0');
+
+        if (!currentSignAndSubmitTransaction || !effectiveGameSeed || !currentGameStartTransaction) {
+            console.error('Cannot proceed with settlement - missing data');
+            setGameStateWithLogging('ready');
+            return;
+        }
+
+        const netPnL = currentAccumulatedPnL;
+        const isProfit = netPnL > 0;
+
+        // Set settling state IMMEDIATELY to block duplicate calls
         setGameStateWithLogging('settling');
         try {
             const settlementIcon = isProfit ? '💸' : '💳';
@@ -644,6 +706,7 @@ const AptosCandlestickChart = () => {
             const gamePnL = netPnL; // Just the game P&L (excluding gas)
             const estimatedGasFees = 0.000056; // start_game (~0.000050) + settlement (~0.000006)
             const expectedChangeWithGas = gamePnL - estimatedGasFees; // Game P&L minus gas fees
+            const totalPayout = betAmount + netPnL; // Bet amount + P&L (what the contract returns)
 
             console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
             console.log('🏁 ROUND COMPLETE');
@@ -692,9 +755,43 @@ const AptosCandlestickChart = () => {
             setChartKey(prev => prev + 1);
         } catch (error) {
             console.error('❌ SETTLEMENT FAILED:', error instanceof Error ? error.message : error);
-            console.log('🔄 Settlement failed - keeping game state for retry...');
-            // Don't clear game state on error - allow retry with same seed
-            setGameStateWithLogging('playing'); // Go back to playing state for retry
+
+            // Check if this is a treasury insufficient balance error (expected for wins on devnet)
+            const errorMsg = error instanceof Error ? error.message : String(error);
+            const isTreasuryError = errorMsg.includes('Insufficient balance') ||
+                                   errorMsg.includes('INSUFFICIENT_BALANCE');
+
+            if (isTreasuryError) {
+                console.warn('⚠️ Treasury has insufficient balance to pay winnings.');
+                console.warn('💡 This is expected on devnet. In production, treasury would be funded.');
+                console.log('🔄 Resetting game to allow next round...');
+
+                // Reset game state even though settlement failed
+                setGameStartTransaction(null);
+                setGameSeed(null);
+                setAccumulatedPnL(0);
+                setTrades([]);
+                tradesRef.current = [];
+                setCurrentTrade(null);
+                currentTradeRef.current = null;
+
+                // Clear persisted state
+                sessionStorage.removeItem('aptosGameTransaction');
+                sessionStorage.removeItem('aptosGameState');
+                sessionStorage.removeItem('aptosGameSeed');
+                sessionStorage.removeItem('aptosGameBetAmount');
+
+                // Transition to ready state
+                setGameStateWithLogging('ready');
+
+                // Force chart remount to start a new round
+                console.log('🔄 Remounting chart for new round...');
+                setChartKey(prev => prev + 1);
+            } else {
+                // Real error - keep game state for retry
+                console.log('🔄 Settlement failed - keeping game state for retry...');
+                setGameStateWithLogging('playing'); // Go back to playing state for retry
+            }
         }
     }, [gameSeed, completeGame, fetchWalletBalance]);
 
@@ -802,7 +899,7 @@ const AptosCandlestickChart = () => {
         setShowLiquidation,
         setRugpullType,
         setBalance: () => { }, // No-op in Aptos mode
-        balance: 0.25, // Fixed trading balance in Aptos mode (5x the bet for position sizing)
+        balance: walletBalance, // Use actual wallet balance for 20% position sizing
         isModalOpen,
         isPaused: pausedState,
         overlayActive: dbg.overlayActive,
@@ -874,6 +971,13 @@ const AptosCandlestickChart = () => {
                     }
                 }
             } else if (meta?.seed && (phase === 'start' || !phase)) {
+                // Check if user just rejected a transaction
+                const preventAutoStart = sessionStorage.getItem('preventAutoStart');
+                if (preventAutoStart) {
+                    console.log('⏸️ Auto-start prevented (user rejected previous transaction)');
+                    return;
+                }
+
                 // Auto-start new round when ready
                 const currentGameState = gameStateRef.current;
                 const currentGameStartTransaction = gameStartTransactionRef.current;
@@ -1007,6 +1111,19 @@ const AptosCandlestickChart = () => {
                 gameState={gameState === 'playing' ? 'playing' : gameState === 'settling' ? 'completed' : 'waiting'}
                 currentPnL={accumulatedPnL}
                 trades={trades}
+                aptToUsdRate={aptPrice}
+            />
+
+            {/* Round Summary Modal */}
+            <RoundSummaryModal
+                isOpen={showRoundSummary}
+                onClose={() => {
+                    setShowRoundSummary(false);
+                    proceedWithSettlement();
+                }}
+                trades={roundSummaryData?.trades || []}
+                totalPnL={roundSummaryData?.totalPnL || 0}
+                betAmount={roundSummaryData?.betAmount || 0}
                 aptToUsdRate={aptPrice}
             />
         </div>

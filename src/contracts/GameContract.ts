@@ -50,16 +50,17 @@ export class GameContract {
   async startGame(
     signAndSubmitTransaction: any,
     betAmountAPT: number,
-    seed?: string
+    seed: string  // REQUIRED: contract always expects seed
   ): Promise<string> {
     const betAmountOctas = Math.floor(betAmountAPT * 100000000); // Convert APT to octas
 
-    const functionArguments: string[] = [betAmountOctas.toString()];
-    const supportsSeedArgument = import.meta.env.VITE_APTOS_START_ACCEPTS_SEED === 'true';
-    if (supportsSeedArgument && seed) {
-      const seedHex = seed.startsWith('0x') ? seed : `0x${seed}`;
-      functionArguments.push(seedHex);
-    }
+    // Ensure seed is in proper hex format
+    const seedHex = seed.startsWith('0x') ? seed : `0x${seed}`;
+
+    const functionArguments: string[] = [
+      betAmountOctas.toString(),
+      seedHex
+    ];
 
     const transaction = {
       data: {

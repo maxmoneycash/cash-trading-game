@@ -117,7 +117,7 @@ const useP5Chart = ({
             let gridAlpha = 0;
             let pulseAnimation = 0;
             let roundStartTime = 0;
-            let roundDuration = 10000; // 10 seconds for testing
+            let roundDuration = 30000; // 30 seconds per round
             let isRoundActive = false;
             let isHistoricalView = false;
             let zoomTransition = 0;
@@ -884,7 +884,7 @@ const useP5Chart = ({
                     }
                     const lastCandle = candles[candles.length - 1];
                     const currentBalance = flagsRef.current.balance;
-                    const positionSize = currentBalance * 0.2;
+                    const positionSize = currentBalance * 0.5; // 50% of balance (safer than 2x leverage)
                     const shares = positionSize / lastCandle.close;
                     const entryCandleIndex = allRoundCandles.length - 1;
 

@@ -149,20 +149,20 @@ export function generateSeededCandles(seedHex: string, config: CandleConfig): Ca
     // Integer-only state (no floats!)
     let momentum_bps = 0;                              // basis points (1 bps = 0.01%)
     const MOM_DECAY_NUM = 90, MOM_DECAY_DEN = 100;     // ≈0.90 decay
-    const MOM_KICK_MIN = -8, MOM_KICK_MAX = 8;         // random kick each step
+    const MOM_KICK_MIN = -12, MOM_KICK_MAX = 12;       // random kick each step
 
     // Volatility regime (captures clustering); 0=calm,1=volatile,2=very volatile
     let vol_regime = 0;                                 // start calm
-    const VOL_MULT = [1, 2, 4];                        // multiplier per regime
-    const BASE_VOL_BPS = 10;                            // base shock scale in bps
+    const VOL_MULT = [1, 2, 4];                        // multiplier per regime (removed insane MOON mode)
+    const BASE_VOL_BPS = 50;                            // base shock scale in bps (moderate volatility)
     // Regime transition probabilities (per candle)
-    const REGIME_CHANGE_PERMILLE = 8;                   // ~0.8% chance to change
+    const REGIME_CHANGE_PERMILLE = 10;                  // ~1% chance to change
 
     for (let i = 0; i < total_candles; i++) {
         // Possibly change volatility regime (small probability)
         if ((rng.nextU32() % 1000) < REGIME_CHANGE_PERMILLE) {
             const dir = (rng.nextU32() & 1) ? 1 : -1; // up or down
-            vol_regime = Math.min(2, Math.max(0, vol_regime + dir));
+            vol_regime = Math.min(2, Math.max(0, vol_regime + dir)); // Max regime is 2
         }
 
         // Momentum update (integer decay + random kick scaled by regime)
@@ -175,17 +175,17 @@ export function generateSeededCandles(seedHex: string, config: CandleConfig): Ca
 
         // Occasional jumps (rare, larger moves) scaled by regime
         let jump_bps = 0;
-        if ((rng.nextU32() % 1000) < 4) { // ~0.4% per candle
-            const mag = randint(30, 120) * VOL_MULT[vol_regime]; // 0.3%..1.2% (times regime)
+        if ((rng.nextU32() % 1000) < 5) { // ~0.5% per candle
+            const mag = randint(30, 80) * VOL_MULT[vol_regime]; // 0.3%..0.8% base moves
             jump_bps = (rng.nextU32() & 1) ? mag : -mag;
         }
 
         // Total step in bps
         let step_bps = momentum_bps + shock_bps + jump_bps;
 
-        // Clamp overall step to a sane range
-        if (step_bps > 120) step_bps = 120;
-        if (step_bps < -120) step_bps = -120;
+        // Clamp to reasonable range (max 2x profit possible)
+        if (step_bps > 200) step_bps = 200;  // 2% max move per candle
+        if (step_bps < -200) step_bps = -200; // 2% max drop
 
         // Integer delta: price * step_bps / 10_000
         const delta_fp = Math.trunc((currentPrice * step_bps) / 10000);

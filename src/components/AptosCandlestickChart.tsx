@@ -437,14 +437,20 @@ const AptosCandlestickChart = () => {
 
             // Capture wallet balance and address BEFORE transaction
             const balanceBeforeStart = walletBalanceRef.current;
-            const walletAddress = account?.address.toString();
+            // Use passkey account if passkey is connected, otherwise use wallet account
+            const walletAddress = passkey.isConnected
+                ? passkey.account?.address.toString()
+                : account?.address.toString();
 
             if (!walletAddress) {
+                addDebugMessage('❌ No wallet address - cannot start!');
                 console.error('❌ Cannot start game - wallet address not available');
                 setIsStartingGame(false);
                 setGameStateWithLogging('ready');
                 return;
             }
+
+            addDebugMessage(`✅ Starting with address: ${walletAddress.substring(0, 10)}...`);
 
             // Store balance and address before start for end game summary
             sessionStorage.setItem('aptosGameBalanceBeforeStart', balanceBeforeStart.toString());

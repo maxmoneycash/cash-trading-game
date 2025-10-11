@@ -405,9 +405,7 @@ const AptosCandlestickChart = () => {
         sessionStorage.setItem('aptosGameSeed', seed);
         setAccumulatedPnL(0);
 
-        // Reset trades for new game
-        setTrades([]);
-        tradesRef.current = [];
+        // Reset only current trade (keep trade history)
         setCurrentTrade(null);
         currentTradeRef.current = null;
 
@@ -800,8 +798,7 @@ const AptosCandlestickChart = () => {
             setGameStartTransaction(null);
             setGameSeed(null);
             setAccumulatedPnL(0);
-            setTrades([]);
-            tradesRef.current = [];
+            // Keep trade history, only reset current trade
             setCurrentTrade(null);
             currentTradeRef.current = null;
 
@@ -834,8 +831,7 @@ const AptosCandlestickChart = () => {
                 setGameStartTransaction(null);
                 setGameSeed(null);
                 setAccumulatedPnL(0);
-                setTrades([]);
-                tradesRef.current = [];
+                // Keep trade history, only reset current trade
                 setCurrentTrade(null);
                 currentTradeRef.current = null;
 

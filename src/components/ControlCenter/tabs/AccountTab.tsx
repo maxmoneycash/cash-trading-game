@@ -183,176 +183,217 @@ const AccountTab: React.FC<AccountTabProps> = ({ balance, walletBalance, current
                 </div>
 
 
-                {/* Recent Trades */}
-                <div>
-                    <h3 style={{
-                        margin: '0 0 1rem 0',
-                        fontSize: '1.125rem',
-                        fontWeight: 600,
-                        color: 'rgba(255, 255, 255, 0.9)',
-                    }}>
-                        Recent Trades
-                    </h3>
+                {/* Trade History - Liquid Glass Design */}
+                <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '0.75rem',
+                }}>
+                    {/* Header */}
                     <div style={{
-                        background: 'rgba(255, 255, 255, 0.03)',
-                        borderRadius: '12px',
-                        border: '1px solid rgba(255, 255, 255, 0.08)',
-                        overflow: 'hidden',
-                        backdropFilter: 'blur(10px)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '0 0.25rem',
                     }}>
-                        <div style={{ overflowX: 'auto' }} className="hide-scrollbar">
-                            <table style={{
-                                width: '100%',
-                                borderCollapse: 'collapse',
-                                fontFamily: 'inherit',
-                                minWidth: isMobile ? '280px' : '320px',
+                        <h3 style={{
+                            margin: 0,
+                            fontSize: isMobile ? '1rem' : '1.125rem',
+                            fontWeight: 600,
+                            color: 'rgba(255, 255, 255, 0.95)',
+                            letterSpacing: '-0.01em',
+                        }}>
+                            Trade History
+                        </h3>
+                        <span style={{
+                            fontSize: '0.75rem',
+                            color: 'rgba(255, 255, 255, 0.4)',
+                            fontWeight: 500,
+                        }}>
+                            {totalTrades} {totalTrades === 1 ? 'trade' : 'trades'}
+                        </span>
+                    </div>
+
+                    {/* Trades Container */}
+                    <div style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '0.5rem',
+                        maxHeight: '400px',
+                        overflowY: 'auto',
+                        paddingRight: '0.25rem',
+                    }}
+                        className="hide-scrollbar"
+                    >
+                        {recentTrades.length === 0 ? (
+                            <div style={{
+                                background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.01) 100%)',
+                                border: '1px solid rgba(255, 255, 255, 0.06)',
+                                borderRadius: '16px',
+                                padding: isMobile ? '2.5rem 1.5rem' : '3rem 2rem',
+                                textAlign: 'center',
+                                backdropFilter: 'blur(20px)',
+                                boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.03)',
                             }}>
-                                <thead>
-                                    <tr style={{
-                                        borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-                                        background: 'rgba(255, 255, 255, 0.02)',
+                                <div style={{
+                                    fontSize: '2rem',
+                                    marginBottom: '0.75rem',
+                                    opacity: 0.3,
+                                }}>
+                                    📊
+                                </div>
+                                <div style={{
+                                    fontSize: '0.9rem',
+                                    color: 'rgba(255, 255, 255, 0.5)',
+                                    fontWeight: 500,
+                                    lineHeight: 1.6,
+                                }}>
+                                    No trades yet
+                                    <br />
+                                    <span style={{ fontSize: '0.8rem', opacity: 0.7 }}>
+                                        Start trading to build your history
+                                    </span>
+                                </div>
+                            </div>
+                        ) : (
+                            recentTrades.map((trade, index) => (
+                                <div
+                                    key={index}
+                                    style={{
+                                        background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.02) 100%)',
+                                        border: '1px solid rgba(255, 255, 255, 0.08)',
+                                        borderRadius: '12px',
+                                        padding: isMobile ? '0.875rem 1rem' : '1rem 1.25rem',
+                                        backdropFilter: 'blur(20px)',
+                                        transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                                        cursor: 'default',
+                                        boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.04)',
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        e.currentTarget.style.background = 'linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.04) 100%)';
+                                        e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.12)';
+                                        e.currentTarget.style.transform = 'translateY(-2px)';
+                                        e.currentTarget.style.boxShadow = 'inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 4px 12px rgba(0, 0, 0, 0.1)';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.currentTarget.style.background = 'linear-gradient(135deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.02) 100%)';
+                                        e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)';
+                                        e.currentTarget.style.transform = 'translateY(0)';
+                                        e.currentTarget.style.boxShadow = 'inset 0 1px 0 rgba(255, 255, 255, 0.04)';
+                                    }}
+                                >
+                                    {/* Top Row: Date & P&L */}
+                                    <div style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'space-between',
+                                        marginBottom: '0.75rem',
                                     }}>
-                                        <th style={{
-                                            padding: '1rem',
-                                            textAlign: 'left',
-                                            fontWeight: 500,
-                                            fontSize: '0.75rem',
+                                        <span style={{
+                                            fontSize: isMobile ? '0.7rem' : '0.75rem',
                                             color: 'rgba(255, 255, 255, 0.5)',
-                                            textTransform: 'uppercase',
-                                            letterSpacing: '0.05em',
-                                        }}>
-                                            Date
-                                        </th>
-                                        <th style={{
-                                            padding: '1rem',
-                                            textAlign: 'center',
                                             fontWeight: 500,
-                                            fontSize: '0.75rem',
-                                            color: 'rgba(255, 255, 255, 0.5)',
-                                            textTransform: 'uppercase',
-                                            letterSpacing: '0.05em',
+                                            letterSpacing: '0.02em',
                                         }}>
-                                            Size
-                                        </th>
-                                        <th style={{
-                                            padding: '1rem',
-                                            textAlign: 'right',
-                                            fontWeight: 500,
-                                            fontSize: '0.75rem',
-                                            color: 'rgba(255, 255, 255, 0.5)',
-                                            textTransform: 'uppercase',
-                                            letterSpacing: '0.05em',
+                                            {trade.date.toLocaleDateString('en-US', {
+                                                month: 'short',
+                                                day: 'numeric',
+                                                hour: 'numeric',
+                                                minute: '2-digit'
+                                            })}
+                                        </span>
+                                        <div style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '0.5rem',
                                         }}>
-                                            Time In
-                                        </th>
-                                        <th style={{
-                                            padding: '1rem',
-                                            textAlign: 'right',
-                                            fontWeight: 500,
-                                            fontSize: '0.75rem',
-                                            color: 'rgba(255, 255, 255, 0.5)',
-                                            textTransform: 'uppercase',
-                                            letterSpacing: '0.05em',
-                                        }}>
-                                            %
-                                        </th>
-                                        <th style={{
-                                            padding: '1rem',
-                                            textAlign: 'right',
-                                            fontWeight: 500,
-                                            fontSize: '0.75rem',
-                                            color: 'rgba(255, 255, 255, 0.5)',
-                                            textTransform: 'uppercase',
-                                            letterSpacing: '0.05em',
-                                        }}>
-                                            P&L
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {recentTrades.length === 0 && (
-                                        <tr>
-                                            <td colSpan={5} style={{
-                                                padding: '2rem',
-                                                textAlign: 'center',
-                                                color: 'rgba(255, 255, 255, 0.5)',
-                                                fontSize: '0.875rem',
+                                            <span style={{
+                                                fontSize: isMobile ? '0.85rem' : '0.95rem',
+                                                fontWeight: 700,
+                                                color: trade.pnl >= 0 ? '#00FF88' : '#FF4444',
+                                                textShadow: `0 0 12px ${trade.pnl >= 0 ? 'rgba(0, 255, 136, 0.3)' : 'rgba(255, 68, 68, 0.3)'}`,
+                                                fontFamily: 'monospace',
                                             }}>
-                                                No trades yet. Start trading to see your history!
-                                            </td>
-                                        </tr>
-                                    )}
-                                    {recentTrades.map((trade, index) => (
-                                        <tr
-                                            key={index}
-                                            style={{
-                                                borderBottom: index < recentTrades.length - 1 ? '1px solid rgba(255, 255, 255, 0.05)' : 'none',
-                                                transition: 'background 0.15s ease',
-                                            }}
-                                            onMouseEnter={(e) => {
-                                                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.02)';
-                                            }}
-                                            onMouseLeave={(e) => {
-                                                e.currentTarget.style.background = 'transparent';
-                                            }}
-                                        >
-                                            <td style={{
-                                                padding: '1rem',
-                                                fontSize: isMobile ? '0.75rem' : '0.875rem',
-                                                color: 'rgba(255, 255, 255, 0.7)',
-                                                whiteSpace: 'nowrap',
+                                                {trade.pnl >= 0 ? '+' : ''}${trade.pnl.toFixed(2)}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    {/* Bottom Row: Stats Grid */}
+                                    <div style={{
+                                        display: 'grid',
+                                        gridTemplateColumns: '1fr 1fr 1fr',
+                                        gap: isMobile ? '0.75rem' : '1rem',
+                                    }}>
+                                        {/* Size */}
+                                        <div>
+                                            <div style={{
+                                                fontSize: '0.65rem',
+                                                color: 'rgba(255, 255, 255, 0.4)',
+                                                marginBottom: '0.25rem',
+                                                textTransform: 'uppercase',
+                                                letterSpacing: '0.05em',
+                                                fontWeight: 600,
                                             }}>
-                                                {trade.date.toLocaleDateString('en-US', {
-                                                    month: 'numeric',
-                                                    day: 'numeric',
-                                                    hour: 'numeric',
-                                                    minute: '2-digit'
-                                                })}
-                                            </td>
-                                            <td style={{
-                                                padding: '1rem',
-                                                textAlign: 'center',
-                                                fontSize: isMobile ? '0.75rem' : '0.875rem',
-                                                color: 'rgba(255, 255, 255, 0.7)',
-                                                fontWeight: 500,
-                                                whiteSpace: 'nowrap',
+                                                Size
+                                            </div>
+                                            <div style={{
+                                                fontSize: isMobile ? '0.8rem' : '0.875rem',
+                                                color: 'rgba(255, 255, 255, 0.85)',
+                                                fontWeight: 600,
+                                                fontFamily: 'monospace',
                                             }}>
                                                 ${trade.tradeSize.toFixed(2)}
-                                            </td>
-                                            <td style={{
-                                                padding: '1rem',
-                                                textAlign: 'right',
-                                                fontSize: isMobile ? '0.75rem' : '0.875rem',
-                                                color: 'rgba(255, 255, 255, 0.7)',
-                                                whiteSpace: 'nowrap',
+                                            </div>
+                                        </div>
+
+                                        {/* Time */}
+                                        <div>
+                                            <div style={{
+                                                fontSize: '0.65rem',
+                                                color: 'rgba(255, 255, 255, 0.4)',
+                                                marginBottom: '0.25rem',
+                                                textTransform: 'uppercase',
+                                                letterSpacing: '0.05em',
+                                                fontWeight: 600,
+                                            }}>
+                                                Time
+                                            </div>
+                                            <div style={{
+                                                fontSize: isMobile ? '0.8rem' : '0.875rem',
+                                                color: 'rgba(255, 255, 255, 0.85)',
+                                                fontWeight: 600,
+                                                fontFamily: 'monospace',
                                             }}>
                                                 {trade.timeInTrade}
-                                            </td>
-                                            <td style={{
-                                                padding: '1rem',
-                                                textAlign: 'right',
-                                                fontSize: isMobile ? '0.75rem' : '0.875rem',
-                                                color: trade.percentGain >= 0 ? '#00FF88' : '#FF4444',
+                                            </div>
+                                        </div>
+
+                                        {/* Return % */}
+                                        <div style={{ textAlign: 'right' }}>
+                                            <div style={{
+                                                fontSize: '0.65rem',
+                                                color: 'rgba(255, 255, 255, 0.4)',
+                                                marginBottom: '0.25rem',
+                                                textTransform: 'uppercase',
+                                                letterSpacing: '0.05em',
                                                 fontWeight: 600,
-                                                whiteSpace: 'nowrap',
+                                            }}>
+                                                Return
+                                            </div>
+                                            <div style={{
+                                                fontSize: isMobile ? '0.8rem' : '0.875rem',
+                                                color: trade.percentGain >= 0 ? '#00FF88' : '#FF4444',
+                                                fontWeight: 700,
+                                                fontFamily: 'monospace',
                                             }}>
                                                 {trade.percentGain >= 0 ? '+' : ''}{trade.percentGain.toFixed(1)}%
-                                            </td>
-                                            <td style={{
-                                                padding: '1rem',
-                                                textAlign: 'right',
-                                                fontSize: isMobile ? '0.75rem' : '0.875rem',
-                                                color: trade.pnl >= 0 ? '#00FF88' : '#FF4444',
-                                                fontWeight: 600,
-                                                whiteSpace: 'nowrap',
-                                            }}>
-                                                ${trade.pnl >= 0 ? '+' : ''}{trade.pnl.toFixed(2)}
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))
+                        )}
                     </div>
                 </div>
             </div>

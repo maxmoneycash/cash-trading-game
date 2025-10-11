@@ -273,13 +273,18 @@ const RoundSummaryModal: React.FC<RoundSummaryModalProps> = ({
         <button
           onClick={(e) => {
             e.stopPropagation();
-            console.log('🔘 Settle Round button clicked');
+            console.log('🔘 Settle Round button clicked (onClick)');
+            console.log('🔍 About to call onClose() which triggers proceedWithSettlement');
             onClose();
+          }}
+          onTouchStart={(e) => {
+            console.log('👆 Settle Round button touch started');
           }}
           onTouchEnd={(e) => {
             e.preventDefault();
             e.stopPropagation();
-            console.log('📱 Settle Round button touched (mobile)');
+            console.log('📱 Settle Round button touched (onTouchEnd)');
+            console.log('🔍 About to call onClose() which triggers proceedWithSettlement');
             onClose();
           }}
           style={{

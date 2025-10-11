@@ -1132,8 +1132,14 @@ const AptosCandlestickChart = () => {
             <RoundSummaryModal
                 isOpen={showRoundSummary}
                 onClose={() => {
-                    setShowRoundSummary(false);
+                    console.log('📤 Modal onClose called - initiating settlement');
+                    // CRITICAL: Call settlement FIRST (while in user gesture context)
+                    // Then close modal async
                     proceedWithSettlement();
+                    // Close modal after a tiny delay to ensure transaction popup shows
+                    setTimeout(() => {
+                        setShowRoundSummary(false);
+                    }, 100);
                 }}
                 trades={roundSummaryData?.trades || []}
                 totalPnL={roundSummaryData?.totalPnL || 0}

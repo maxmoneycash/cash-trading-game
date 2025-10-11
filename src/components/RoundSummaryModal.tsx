@@ -271,7 +271,17 @@ const RoundSummaryModal: React.FC<RoundSummaryModalProps> = ({
 
         {/* CTA Button */}
         <button
-          onClick={onClose}
+          onClick={(e) => {
+            e.stopPropagation();
+            console.log('🔘 Settle Round button clicked');
+            onClose();
+          }}
+          onTouchEnd={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('📱 Settle Round button touched (mobile)');
+            onClose();
+          }}
           style={{
             width: '100%',
             padding: '18px',
@@ -285,7 +295,9 @@ const RoundSummaryModal: React.FC<RoundSummaryModalProps> = ({
             transition: 'all 0.2s ease',
             letterSpacing: '1px',
             textTransform: 'uppercase',
-            boxShadow: 'inset 0 0 4px 1px hsl(0, 0%, 100%, 0.1)'
+            boxShadow: 'inset 0 0 4px 1px hsl(0, 0%, 100%, 0.1)',
+            WebkitTapHighlightColor: 'transparent',
+            touchAction: 'manipulation'
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.background = 'hsl(0, 0%, 100%, 0.25)';

@@ -596,6 +596,8 @@ const AptosCandlestickChart = () => {
 
     // Actual settlement function (called after summary modal closes)
     const proceedWithSettlement = useCallback(async () => {
+        console.log('💳 proceedWithSettlement called - initiating settlement transaction');
+
         const currentSignAndSubmitTransaction = signAndSubmitTransactionRef.current;
         const currentGameSeed = gameSeedRef.current;
         const currentGameStartTransaction = gameStartTransactionRef.current;
@@ -604,8 +606,20 @@ const AptosCandlestickChart = () => {
         const effectiveGameSeed = currentGameSeed || sessionStorage.getItem('aptosGameSeed');
         const betAmount = parseFloat(sessionStorage.getItem('aptosGameBetAmount') || '0');
 
+        console.log('🔍 Settlement data check:', {
+            hasSignFunction: !!currentSignAndSubmitTransaction,
+            hasGameSeed: !!effectiveGameSeed,
+            hasStartTransaction: !!currentGameStartTransaction,
+            betAmount,
+            pnl: currentAccumulatedPnL
+        });
+
         if (!currentSignAndSubmitTransaction || !effectiveGameSeed || !currentGameStartTransaction) {
-            console.error('Cannot proceed with settlement - missing data');
+            console.error('❌ Cannot proceed with settlement - missing data:', {
+                signFunction: !!currentSignAndSubmitTransaction,
+                gameSeed: !!effectiveGameSeed,
+                startTransaction: !!currentGameStartTransaction
+            });
             setGameStateWithLogging('ready');
             return;
         }

@@ -95,7 +95,7 @@ const AptosCandlestickChart = () => {
     } | null>(null);
 
     // Debug overlay for mobile
-    const [debugMessages, setDebugMessages] = useState<string[]>([]);
+    const [debugMessages, setDebugMessages] = useState<string[]>(['🟢 Debug overlay active - waiting for events...']);
 
     // Aptos-specific state with persistence key to prevent React remount resets
     const getInitialGameState = (): GameState => {
@@ -455,6 +455,7 @@ const AptosCandlestickChart = () => {
             const txHash = await startGame(betAmount, seed);
 
             if (txHash) {
+                addDebugMessage(`🎮 Game started! Bet: ${betAmount.toFixed(4)} APT`);
                 console.log(`   ✅ Transaction submitted: ${txHash}`);
                 clearTimeout(startTimeout);
                 setGameStartTransaction(txHash);
@@ -554,7 +555,12 @@ const AptosCandlestickChart = () => {
     // Helper to add debug messages
     const addDebugMessage = useCallback((msg: string) => {
         console.log(msg);
-        setDebugMessages(prev => [...prev.slice(-5), `${new Date().toLocaleTimeString()}: ${msg}`]);
+        const timestamp = new Date().toLocaleTimeString();
+        setDebugMessages(prev => {
+            const newMessages = [...prev.slice(-5), `${timestamp}: ${msg}`];
+            console.log('📱 Debug messages updated:', newMessages);
+            return newMessages;
+        });
     }, []);
 
     const settleRoundOnChain = useCallback(async () => {
@@ -995,11 +1001,15 @@ const AptosCandlestickChart = () => {
 
             // Check if this is a round end first, to prioritize settlement
             if (phase === 'end' || (meta as any).gameEnded) {
+                addDebugMessage('🎯 Round end detected!');
+
                 // Use refs to get current values and avoid stale closure
                 const currentGameState = gameStateRef.current;
                 const currentAccumulatedPnL = accumulatedPnLRef.current;
                 const currentGameStartTransaction = gameStartTransactionRef.current;
                 const currentSignAndSubmitTransaction = signAndSubmitTransactionRef.current;
+
+                addDebugMessage(`State: ${currentGameState}, PnL: ${currentAccumulatedPnL.toFixed(4)}`);
 
                 console.log('🎯 Round end detected:', {
                     gameState: currentGameState,
@@ -1011,9 +1021,12 @@ const AptosCandlestickChart = () => {
                 });
 
                 if (currentGameState === 'playing' && currentGameStartTransaction && currentSignAndSubmitTransaction) {
+                    addDebugMessage('✅ Conditions met - calling settle');
+
                     // Check if we have a gameSeed - if not, we can't settle properly
                     const currentGameSeed = gameSeedRef.current;
                     if (!currentGameSeed) {
+                        addDebugMessage('❌ Missing gameSeed!');
                         console.error('❌ Cannot settle - gameSeed is missing!', {
                             gameState: currentGameState,
                             gameStartTransaction: currentGameStartTransaction,
@@ -1043,6 +1056,7 @@ const AptosCandlestickChart = () => {
                         settleRoundOnChain();
                     }, 100);
                 } else {
+                    addDebugMessage(`❌ Can't settle: state=${currentGameState}, tx=${!!currentGameStartTransaction}, sign=${!!currentSignAndSubmitTransaction}`);
                     console.log('❌ Not settling - conditions not met:', {
                         gameState: currentGameState,
                         hasTransaction: !!currentGameStartTransaction,
@@ -1182,29 +1196,33 @@ const AptosCandlestickChart = () => {
             {/* PnL Overlay */}
             <PnlOverlay pnl={pnl} displayPnl={displayPnl} isHolding={isHolding} />
 
-            {/* Debug Messages Overlay (Mobile) */}
-            {debugMessages.length > 0 && (
-                <div style={{
-                    position: 'fixed',
-                    top: 60,
-                    left: 10,
-                    right: 10,
-                    background: 'rgba(0, 0, 0, 0.9)',
-                    color: '#00ff00',
-                    padding: '10px',
-                    borderRadius: '8px',
-                    fontFamily: 'monospace',
-                    fontSize: '11px',
-                    zIndex: 9999,
-                    maxHeight: '200px',
-                    overflow: 'auto',
-                    pointerEvents: 'none',
-                }}>
-                    {debugMessages.map((msg, i) => (
-                        <div key={i} style={{ marginBottom: '4px' }}>{msg}</div>
-                    ))}
+            {/* Debug Messages Overlay (Mobile) - ALWAYS VISIBLE */}
+            <div style={{
+                position: 'fixed',
+                top: 80,
+                left: 5,
+                right: 5,
+                background: 'rgba(0, 0, 0, 0.95)',
+                color: '#00ff00',
+                padding: '12px',
+                borderRadius: '12px',
+                border: '2px solid #00ff00',
+                fontFamily: 'monospace',
+                fontSize: '13px',
+                fontWeight: 'bold',
+                zIndex: 99999,
+                maxHeight: '250px',
+                overflow: 'auto',
+                pointerEvents: 'none',
+                boxShadow: '0 0 20px rgba(0, 255, 0, 0.5)',
+            }}>
+                <div style={{ marginBottom: '8px', color: '#ffff00', fontSize: '14px' }}>
+                    🐛 DEBUG LOG (Mobile)
                 </div>
-            )}
+                {debugMessages.map((msg, i) => (
+                    <div key={i} style={{ marginBottom: '6px', lineHeight: '1.4' }}>{msg}</div>
+                ))}
+            </div>
 
             {/* Footer */}
             <Footer

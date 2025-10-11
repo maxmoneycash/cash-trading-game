@@ -20,9 +20,11 @@ interface FooterProps {
     currentPnL?: number; // Live P&L from current game
     trades?: Trade[];
     aptToUsdRate?: number;
+    passkeyConnected?: boolean;
+    passkeyAddress?: string | null;
 }
 
-const Footer: React.FC<FooterProps> = ({ balance, walletBalance, isHolding, showLiquidation, rugpullType, isModalOpen, setIsModalOpen, aptosMode = false, gameState = 'waiting', currentPnL = 0, trades, aptToUsdRate = 10 }) => {
+const Footer: React.FC<FooterProps> = ({ balance, walletBalance, isHolding, showLiquidation, rugpullType, isModalOpen, setIsModalOpen, aptosMode = false, gameState = 'waiting', currentPnL = 0, trades, aptToUsdRate = 10, passkeyConnected = false, passkeyAddress = null }) => {
     const isMobile = typeof window !== 'undefined' ? window.innerWidth < 768 : true;
     const leftPadding = isMobile ? (4 + 15) : (8 + 15);
     const rightPadding = isMobile ? (34 + 10) : (46 + 10);
@@ -53,6 +55,8 @@ const Footer: React.FC<FooterProps> = ({ balance, walletBalance, isHolding, show
                         isMobile={isMobile}
                         onClick={() => setIsModalOpen(true)}
                         currentPnL={currentPnL}
+                        passkeyConnected={passkeyConnected}
+                        passkeyAddress={passkeyAddress}
                     />
                 ) : (
                     <div className="glass-container"
@@ -131,6 +135,8 @@ const Footer: React.FC<FooterProps> = ({ balance, walletBalance, isHolding, show
                 currentPnL={currentPnL}
                 trades={trades}
                 aptToUsdRate={aptToUsdRate}
+                passkeyConnected={passkeyConnected}
+                passkeyAddress={passkeyAddress}
             />
         </>
     );

@@ -6,6 +6,7 @@ import RoundSummaryModal from './RoundSummaryModal';
 import useP5Chart from '../hooks/useP5Chart';
 import { useDebug } from '../debug/DebugContext';
 import { useWallet } from '@aptos-labs/wallet-adapter-react';
+import { usePasskey } from '../hooks/usePasskey';
 import { useAptosGameContract } from '../hooks/useAptosGameContract';
 import { useAptPrice } from '../hooks/useAptPrice';
 import { gameContract } from '../contracts/GameContract';
@@ -22,7 +23,12 @@ const MIN_WAGER_APT = 0.001;
 const AptosCandlestickChart = () => {
     const dbg = useDebug();
     const wallet = useWallet();
-    const { connected } = wallet;
+    const passkey = usePasskey();
+
+    // Check for either wallet OR passkey connection
+    const connected = wallet.connected || passkey.isConnected;
+    const authMethod = passkey.isConnected ? 'passkey' : 'wallet';
+
     const { aptPrice } = useAptPrice();
     const {
         walletBalance,
@@ -36,21 +42,28 @@ const AptosCandlestickChart = () => {
 
     // Use refs to avoid stale closure issues
     const connectedRef = useRef(connected);
-    const walletBalanceRef = useRef(walletBalance);
+
+    // Use passkey balance if passkey is connected, otherwise use wallet balance
+    const effectiveBalance = passkey.isConnected ? passkey.balance : walletBalance;
+    const walletBalanceRef = useRef(effectiveBalance);
+
     const gameStateRef = useRef<GameState>('disconnected');
     const accumulatedPnLRef = useRef(0);
     const gameStartTransactionRef = useRef<string | null>(null);
-    const signAndSubmitTransactionRef = useRef(wallet.signAndSubmitTransaction);
+
+    // Use passkey sign function if passkey is connected, otherwise use wallet
+    const signAndSubmitTransaction = passkey.isConnected ? passkey.signAndSubmitTransaction : wallet.signAndSubmitTransaction;
+    const signAndSubmitTransactionRef = useRef(signAndSubmitTransaction);
 
     // Update refs when values change
     useEffect(() => {
         connectedRef.current = connected;
-        walletBalanceRef.current = walletBalance;
-        signAndSubmitTransactionRef.current = wallet.signAndSubmitTransaction;
-    }, [connected, walletBalance, wallet.signAndSubmitTransaction]);
+        walletBalanceRef.current = effectiveBalance;
+        signAndSubmitTransactionRef.current = signAndSubmitTransaction;
+    }, [connected, effectiveBalance, signAndSubmitTransaction]);
 
     const hasWalletConnection = connected;
-    const hasWalletBalance = walletBalance > 0;
+    const hasWalletBalance = effectiveBalance > 0;
 
     const chartRef = useRef<HTMLDivElement>(null!);
     const p5InstanceRef = useRef<p5 | null>(null);
@@ -1114,8 +1127,8 @@ const AptosCandlestickChart = () => {
 
             {/* Footer */}
             <Footer
-                balance={walletBalance}
-                walletBalance={walletBalance}
+                balance={effectiveBalance}
+                walletBalance={effectiveBalance}
                 isHolding={isHolding}
                 showLiquidation={showLiquidation}
                 rugpullType={rugpullType}
@@ -1126,6 +1139,8 @@ const AptosCandlestickChart = () => {
                 currentPnL={accumulatedPnL}
                 trades={trades}
                 aptToUsdRate={aptPrice}
+                passkeyConnected={passkey.isConnected}
+                passkeyAddress={passkey.address}
             />
 
             {/* Round Summary Modal */}

@@ -7,12 +7,17 @@ interface WalletBalanceDisplayProps {
   isMobile: boolean;
   onClick: () => void;
   currentPnL?: number; // Live P&L to add to balance display
+  passkeyConnected?: boolean;
+  passkeyAddress?: string | null;
 }
 
-export function WalletBalanceDisplay({ isMobile, onClick, currentPnL = 0 }: WalletBalanceDisplayProps) {
+export function WalletBalanceDisplay({ isMobile, onClick, currentPnL = 0, passkeyConnected = false, passkeyAddress = null }: WalletBalanceDisplayProps) {
   const { connect, connected, connecting, wallets } = useWallet();
   const { walletBalance, fetchWalletBalance } = useAptosGameContract();
   const { aptPrice } = useAptPrice();
+
+  // Check if user is connected via passkey OR wallet
+  const isConnected = connected || passkeyConnected;
 
   const [isConnecting, setIsConnecting] = useState(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
@@ -42,7 +47,8 @@ export function WalletBalanceDisplay({ isMobile, onClick, currentPnL = 0 }: Wall
   const handleConnectWallet = async (e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent triggering parent onClick
 
-    if (connected) {
+    // If connected (via wallet OR passkey), just open the modal
+    if (isConnected) {
       onClick(); // Open modal if already connected
       return;
     }
@@ -86,11 +92,22 @@ export function WalletBalanceDisplay({ isMobile, onClick, currentPnL = 0 }: Wall
       return 'Connect Wallet';
     }
 
-    if (!connected) {
+    if (!isConnected) {
       return 'Connect Wallet';
     }
 
-    if (connected) {
+    if (isConnected) {
+      // If connected via passkey, show passkey status
+      if (passkeyConnected) {
+        if (liveBalance === 0) {
+          return '$0.00 USD';
+        } else if (aptPrice > 0) {
+          return `$${usdBalance.toFixed(2)} USD`;
+        } else {
+          return `${liveBalance.toFixed(4)} APT`;
+        }
+      }
+
       // If we have wallet balance (including 0), process it
       if (walletBalance !== undefined && walletBalance !== null) {
         if (liveBalance === 0) {
@@ -111,7 +128,7 @@ export function WalletBalanceDisplay({ isMobile, onClick, currentPnL = 0 }: Wall
 
   const getStatusColor = () => {
     if (connectionError) return '#ff6b6b';
-    if (connected) return '#4ecdc4';
+    if (isConnected) return '#4ecdc4';
     return '#fff';
   };
 
@@ -133,7 +150,7 @@ export function WalletBalanceDisplay({ isMobile, onClick, currentPnL = 0 }: Wall
         fontFamily: 'Bai Jamjuree, sans-serif',
         background: 'rgba(255, 255, 255, 0.035)',
         boxShadow: '0 6px 6px rgba(0, 0, 0, 0.2), 0 0 20px rgba(0, 0, 0, 0.1)',
-        border: connected ? '1px solid rgba(78, 205, 196, 0.3)' : 'none',
+        border: isConnected ? '1px solid rgba(78, 205, 196, 0.3)' : 'none',
         transition: 'all 0.3s ease',
       }}
     >
@@ -142,7 +159,7 @@ export function WalletBalanceDisplay({ isMobile, onClick, currentPnL = 0 }: Wall
       <div className="glass-specular"></div>
 
       {/* Connection status indicator */}
-      {connected && (
+      {isConnected && (
         <div style={{
           position: 'absolute',
           top: '4px',

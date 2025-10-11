@@ -33,12 +33,16 @@ const AptosCandlestickChart = () => {
     const {
         walletBalance,
         fetchWalletBalance,
-        startGame,
-        completeGame,
+        startGame: walletStartGame,
+        completeGame: walletCompleteGame,
         debugCheckActiveGame,
         initializeContract,
         account
     } = useAptosGameContract();
+
+    // Use passkey functions when passkey is connected, otherwise use wallet functions
+    const startGame = passkey.isConnected ? passkey.startGame : walletStartGame;
+    const completeGame = passkey.isConnected ? passkey.completeGame : walletCompleteGame;
 
     // Use refs to avoid stale closure issues
     const connectedRef = useRef(connected);
@@ -270,9 +274,14 @@ const AptosCandlestickChart = () => {
 
     useEffect(() => {
         if (hasWalletConnection) {
-            fetchWalletBalance();
+            // Refresh balance based on auth method
+            if (passkey.isConnected) {
+                passkey.refreshBalance();
+            } else {
+                fetchWalletBalance();
+            }
         }
-    }, [hasWalletConnection, fetchWalletBalance]);
+    }, [hasWalletConnection, fetchWalletBalance, passkey]);
 
     // Animate PNL display smoothly.
     useEffect(() => {
@@ -670,59 +679,68 @@ const AptosCandlestickChart = () => {
             }
             console.log(`📍 Using wallet address from storage: ${walletAddress}`);
 
-            const txHash = await gameContract.completeGame(
-                currentSignAndSubmitTransaction,
+            const txHash = await completeGame(
                 effectiveGameSeed,
                 isProfit,
                 Math.abs(netPnL)
             );
             console.log(`✅ Settlement confirmed!`);
-            console.log(`⏳ Updating balance from blockchain...`);
 
-            // Retrieve balance from before START transaction for comparison
-            const balanceBeforeGame = parseFloat(sessionStorage.getItem('aptosGameBalanceBeforeStart') || oldBalance.toString());
-            const expectedFinalBalance = balanceBeforeGame + netPnL - 0.000056; // Original + P&L - gas
+            // Check if using passkey demo mode
+            const isPasskeyDemo = passkey.isConnected;
 
-            let balanceAfterEnd = walletBalanceRef.current;
-            let payoutCredited = false;
+            if (isPasskeyDemo) {
+                console.log('🔐 Passkey demo mode - skipping blockchain balance wait');
+                // Refresh passkey balance immediately
+                await passkey.refreshBalance();
+            } else {
+                console.log(`⏳ Updating balance from blockchain...`);
 
-            console.log(`🔍 Balance check setup:`);
-            console.log(`   Balance before game: ${balanceBeforeGame.toFixed(4)} APT`);
-            console.log(`   Expected final balance: ${expectedFinalBalance.toFixed(4)} APT`);
-            console.log(`   Wallet address: ${walletAddress}`);
-            console.log(`   Settlement tx: https://explorer.aptoslabs.com/txn/${txHash}?network=devnet`);
-            console.log(`⏰ Waiting for balance to update (querying chain at latest ledger version)...`);
+                // Retrieve balance from before START transaction for comparison
+                const balanceBeforeGame = parseFloat(sessionStorage.getItem('aptosGameBalanceBeforeStart') || oldBalance.toString());
+                const expectedFinalBalance = balanceBeforeGame + netPnL - 0.000056; // Original + P&L - gas
 
-            // Wait times: 1s, 1s, 1s (3s total)
-            // Transaction is already confirmed, just need state to propagate to query endpoints
-            const waitTimes = [1000, 1000, 1000];
-            for (let attempt = 0; attempt < waitTimes.length; attempt++) {
-                const waitTime = waitTimes[attempt];
-                await new Promise(resolve => setTimeout(resolve, waitTime));
+                let balanceAfterEnd = walletBalanceRef.current;
+                let payoutCredited = false;
 
-                console.log(`🔄 Attempt ${attempt + 1}: Fetching balance...`);
-                // Fetch balance using view function at latest ledger version (bypasses caching)
-                // Pass wallet address directly to avoid issues with account object being undefined during transactions
-                const fetchedBalance = await fetchWalletBalance(0, walletAddress);
-                console.log(`   ↳ Returned: ${fetchedBalance !== undefined ? fetchedBalance.toFixed(4) + ' APT' : 'undefined'}`);
+                console.log(`🔍 Balance check setup:`);
+                console.log(`   Balance before game: ${balanceBeforeGame.toFixed(4)} APT`);
+                console.log(`   Expected final balance: ${expectedFinalBalance.toFixed(4)} APT`);
+                console.log(`   Wallet address: ${walletAddress}`);
+                console.log(`   Settlement tx: https://explorer.aptoslabs.com/txn/${txHash}?network=devnet`);
+                console.log(`⏰ Waiting for balance to update (querying chain at latest ledger version)...`);
 
-                if (fetchedBalance !== undefined) {
-                    balanceAfterEnd = fetchedBalance;
-                    console.log(`   ↳ Updated balanceAfterEnd to: ${balanceAfterEnd.toFixed(4)} APT`);
-                } else {
-                    console.warn(`   ↳ fetchWalletBalance returned undefined!`);
-                }
+                // Wait times: 1s, 1s, 1s (3s total)
+                // Transaction is already confirmed, just need state to propagate to query endpoints
+                const waitTimes = [1000, 1000, 1000];
+                for (let attempt = 0; attempt < waitTimes.length; attempt++) {
+                    const waitTime = waitTimes[attempt];
+                    await new Promise(resolve => setTimeout(resolve, waitTime));
 
-                const tolerance = 0.001; // 0.001 APT tolerance (to account for gas variance)
-                const totalWaitedSoFar = waitTimes.slice(0, attempt + 1).reduce((a, b) => a + b, 0) / 1000;
-                console.log(`⏳ Attempt ${attempt + 1}/${waitTimes.length} (${totalWaitedSoFar.toFixed(1)}s): Current: ${balanceAfterEnd.toFixed(4)} APT, Expected: ${expectedFinalBalance.toFixed(4)} APT, Diff: ${(balanceAfterEnd - expectedFinalBalance).toFixed(6)} APT`);
+                    console.log(`🔄 Attempt ${attempt + 1}: Fetching balance...`);
+                    // Fetch balance using view function at latest ledger version (bypasses caching)
+                    // Pass wallet address directly to avoid issues with account object being undefined during transactions
+                    const fetchedBalance = await fetchWalletBalance(0, walletAddress);
+                    console.log(`   ↳ Returned: ${fetchedBalance !== undefined ? fetchedBalance.toFixed(4) + ' APT' : 'undefined'}`);
 
-                // Only consider it updated if the balance is CLOSE to the expected final balance
-                // Don't just check if it changed - it changes when the bet is deducted!
-                if (Math.abs(balanceAfterEnd - expectedFinalBalance) < tolerance) {
-                    console.log(`✅ Payout credited after ${totalWaitedSoFar.toFixed(1)}s! Balance: ${balanceAfterEnd.toFixed(4)} APT`);
-                    payoutCredited = true;
-                    break;
+                    if (fetchedBalance !== undefined) {
+                        balanceAfterEnd = fetchedBalance;
+                        console.log(`   ↳ Updated balanceAfterEnd to: ${balanceAfterEnd.toFixed(4)} APT`);
+                    } else {
+                        console.warn(`   ↳ fetchWalletBalance returned undefined!`);
+                    }
+
+                    const tolerance = 0.001; // 0.001 APT tolerance (to account for gas variance)
+                    const totalWaitedSoFar = waitTimes.slice(0, attempt + 1).reduce((a, b) => a + b, 0) / 1000;
+                    console.log(`⏳ Attempt ${attempt + 1}/${waitTimes.length} (${totalWaitedSoFar.toFixed(1)}s): Current: ${balanceAfterEnd.toFixed(4)} APT, Expected: ${expectedFinalBalance.toFixed(4)} APT, Diff: ${(balanceAfterEnd - expectedFinalBalance).toFixed(6)} APT`);
+
+                    // Only consider it updated if the balance is CLOSE to the expected final balance
+                    // Don't just check if it changed - it changes when the bet is deducted!
+                    if (Math.abs(balanceAfterEnd - expectedFinalBalance) < tolerance) {
+                        console.log(`✅ Payout credited after ${totalWaitedSoFar.toFixed(1)}s! Balance: ${balanceAfterEnd.toFixed(4)} APT`);
+                        payoutCredited = true;
+                        break;
+                    }
                 }
             }
 
@@ -926,7 +944,7 @@ const AptosCandlestickChart = () => {
         setShowLiquidation,
         setRugpullType,
         setBalance: () => { }, // No-op in Aptos mode
-        balance: walletBalance, // Use actual wallet balance for 20% position sizing
+        balance: effectiveBalance, // Use effective balance (passkey or wallet) for 20% position sizing
         isModalOpen,
         isPaused: pausedState,
         overlayActive: dbg.overlayActive,

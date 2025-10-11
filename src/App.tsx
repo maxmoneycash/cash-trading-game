@@ -4,6 +4,7 @@ import { DebugProvider } from './debug/DebugContext'
 import DebugOverlay from './components/DebugOverlay'
 import { AptosTestPage } from './pages/AptosTestPage'
 import { AptosWalletProvider } from './providers/AptosWalletProvider'
+import { MobileAuthHandler } from './components/MobileAuthHandler'
 
 function App() {
   const params = new URLSearchParams(window.location.search)
@@ -37,7 +38,14 @@ function App() {
   );
 
   // Main game needs AptosWalletProvider for blockchain functionality
-  return <AptosWalletProvider>{content}</AptosWalletProvider>;
+  // MobileAuthHandler detects mobile and offers passkey authentication
+  return (
+    <AptosWalletProvider>
+      <MobileAuthHandler>
+        {content}
+      </MobileAuthHandler>
+    </AptosWalletProvider>
+  );
 }
 
 export default App

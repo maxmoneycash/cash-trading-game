@@ -689,19 +689,34 @@ const AptosCandlestickChart = () => {
             // Check if using passkey demo mode
             const isPasskeyDemo = passkey.isConnected;
 
+            // Initialize balance tracking variables (needed for summary logging below)
+            let balanceBeforeGame = parseFloat(sessionStorage.getItem('aptosGameBalanceBeforeStart') || oldBalance.toString());
+            let balanceAfterEnd = walletBalanceRef.current;
+            let payoutCredited = false;
+
             if (isPasskeyDemo) {
                 console.log('🔐 Passkey demo mode - skipping blockchain balance wait');
+                console.log('🔄 Refreshing passkey balance from localStorage...');
+
                 // Refresh passkey balance immediately
-                await passkey.refreshBalance();
+                try {
+                    await passkey.refreshBalance();
+                    console.log('✅ Passkey balance refreshed:', passkey.balance);
+
+                    // Update balanceAfterEnd with passkey balance
+                    balanceAfterEnd = passkey.balance;
+                    payoutCredited = true; // Consider it credited since localStorage is instant
+                } catch (error) {
+                    console.error('❌ Failed to refresh passkey balance:', error);
+                }
+
+                // No need to wait for blockchain, continue immediately
+                console.log('⏭️ Skipping blockchain balance checks for passkey demo');
             } else {
                 console.log(`⏳ Updating balance from blockchain...`);
 
                 // Retrieve balance from before START transaction for comparison
-                const balanceBeforeGame = parseFloat(sessionStorage.getItem('aptosGameBalanceBeforeStart') || oldBalance.toString());
                 const expectedFinalBalance = balanceBeforeGame + netPnL - 0.000056; // Original + P&L - gas
-
-                let balanceAfterEnd = walletBalanceRef.current;
-                let payoutCredited = false;
 
                 console.log(`🔍 Balance check setup:`);
                 console.log(`   Balance before game: ${balanceBeforeGame.toFixed(4)} APT`);

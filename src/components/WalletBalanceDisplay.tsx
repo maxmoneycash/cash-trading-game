@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useWallet } from '@aptos-labs/wallet-adapter-react';
 import { useAptosGameContract } from '../hooks/useAptosGameContract';
 import { useAptPrice } from '../hooks/useAptPrice';
+import { usePasskey } from '../hooks/usePasskey';
 
 interface WalletBalanceDisplayProps {
   isMobile: boolean;
@@ -13,11 +14,15 @@ interface WalletBalanceDisplayProps {
 
 export function WalletBalanceDisplay({ isMobile, onClick, currentPnL = 0, passkeyConnected = false, passkeyAddress = null }: WalletBalanceDisplayProps) {
   const { connect, connected, connecting, wallets } = useWallet();
-  const { walletBalance, fetchWalletBalance } = useAptosGameContract();
+  const { walletBalance: walletBalanceFromHook, fetchWalletBalance } = useAptosGameContract();
+  const passkey = usePasskey();
   const { aptPrice } = useAptPrice();
 
   // Check if user is connected via passkey OR wallet
   const isConnected = connected || passkeyConnected;
+
+  // Use passkey balance if connected via passkey, otherwise use wallet balance
+  const effectiveBalance = passkeyConnected ? passkey.balance : walletBalanceFromHook;
 
   const [isConnecting, setIsConnecting] = useState(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
@@ -78,8 +83,8 @@ export function WalletBalanceDisplay({ isMobile, onClick, currentPnL = 0, passke
   };
 
   // Calculate USD value including live P&L
-  const liveBalance = walletBalance + (currentPnL || 0);
-  const usdBalance = connected && liveBalance > 0 && aptPrice > 0
+  const liveBalance = effectiveBalance + (currentPnL || 0);
+  const usdBalance = isConnected && liveBalance > 0 && aptPrice > 0
     ? liveBalance * aptPrice
     : 0;
 
@@ -108,8 +113,8 @@ export function WalletBalanceDisplay({ isMobile, onClick, currentPnL = 0, passke
         }
       }
 
-      // If we have wallet balance (including 0), process it
-      if (walletBalance !== undefined && walletBalance !== null) {
+      // If we have effective balance (including 0), process it
+      if (effectiveBalance !== undefined && effectiveBalance !== null) {
         if (liveBalance === 0) {
           return '$0.00 USD';
         } else if (aptPrice > 0) {
@@ -118,7 +123,7 @@ export function WalletBalanceDisplay({ isMobile, onClick, currentPnL = 0, passke
           return `${liveBalance.toFixed(4)} APT`;
         }
       } else {
-        // If balance is undefined/null but wallet is connected, keep trying
+        // If balance is undefined/null but connected, keep trying
         return 'Loading balance...';
       }
     }

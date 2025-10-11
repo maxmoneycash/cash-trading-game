@@ -111,11 +111,11 @@ export function usePasskey() {
         setError(null);
     };
 
-    const refreshBalance = async () => {
+    const refreshBalance = useCallback(async () => {
         if (credential) {
             await fetchBalance(credential.publicKey.aptosAddress);
         }
-    };
+    }, [credential, fetchBalance]);
 
     // Update demo balance (for passkey demo)
     const updateDemoBalance = (address: string, change: number) => {

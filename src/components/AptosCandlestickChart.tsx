@@ -94,9 +94,6 @@ const AptosCandlestickChart = () => {
         betAmount: number;
     } | null>(null);
 
-    // Debug overlay for mobile
-    const [debugMessages, setDebugMessages] = useState<string[]>(['🟢 Debug overlay active - waiting for events...']);
-
     // Aptos-specific state with persistence key to prevent React remount resets
     const getInitialGameState = (): GameState => {
         // Never restore game state - always start fresh to avoid stale contract data
@@ -443,14 +440,11 @@ const AptosCandlestickChart = () => {
                 : account?.address.toString();
 
             if (!walletAddress) {
-                addDebugMessage('❌ No wallet address - cannot start!');
                 console.error('❌ Cannot start game - wallet address not available');
                 setIsStartingGame(false);
                 setGameStateWithLogging('ready');
                 return;
             }
-
-            addDebugMessage(`✅ Starting with address: ${walletAddress.substring(0, 10)}...`);
 
             // Store balance and address before start for end game summary
             sessionStorage.setItem('aptosGameBalanceBeforeStart', balanceBeforeStart.toString());
@@ -461,7 +455,6 @@ const AptosCandlestickChart = () => {
             const txHash = await startGame(betAmount, seed);
 
             if (txHash) {
-                addDebugMessage(`🎮 Game started! Bet: ${betAmount.toFixed(4)} APT`);
                 console.log(`   ✅ Transaction submitted: ${txHash}`);
                 clearTimeout(startTimeout);
                 setGameStartTransaction(txHash);
@@ -558,25 +551,12 @@ const AptosCandlestickChart = () => {
         }
     }, [queuedSeed, gameState, isStartingGame, startRoundOnChain, isWaitingForWallet]);
 
-    // Helper to add debug messages
-    const addDebugMessage = useCallback((msg: string) => {
-        console.log(msg);
-        const timestamp = new Date().toLocaleTimeString();
-        setDebugMessages(prev => {
-            const newMessages = [...prev.slice(-5), `${timestamp}: ${msg}`];
-            console.log('📱 Debug messages updated:', newMessages);
-            return newMessages;
-        });
-    }, []);
-
     const settleRoundOnChain = useCallback(async () => {
-        addDebugMessage('🏁 settleRoundOnChain called!');
 
         // CRITICAL FIX: Prevent duplicate settlement calls
         // Check if we're already settling
         const currentGameState = gameStateRef.current;
         if (currentGameState === 'settling') {
-            addDebugMessage('⚠️ Already settling - ignoring');
             console.warn('⚠️ Settlement already in progress - ignoring duplicate call');
             return;
         }
@@ -621,7 +601,6 @@ const AptosCandlestickChart = () => {
         const netPnL = currentAccumulatedPnL;
         const isProfit = netPnL > 0;
 
-        addDebugMessage(`📊 Showing summary modal. PnL: ${netPnL.toFixed(4)}`);
         console.log('📊 Showing round summary modal', {
             trades: currentTrades.length,
             totalPnL: netPnL,
@@ -635,16 +614,14 @@ const AptosCandlestickChart = () => {
             betAmount: betAmount
         });
         setShowRoundSummary(true);
-        addDebugMessage('✅ Modal set to show');
 
         // DON'T set game state to settling yet - wait for user to confirm
         // The modal will trigger proceedWithSettlement when closed
         return;
-    }, [addDebugMessage]);
+    }, []);
 
     // Actual settlement function (called after summary modal closes)
     const proceedWithSettlement = useCallback(async () => {
-        addDebugMessage('💳 proceedWithSettlement called');
         console.log('💳 proceedWithSettlement called - initiating settlement transaction');
 
         const currentSignAndSubmitTransaction = signAndSubmitTransactionRef.current;
@@ -676,12 +653,9 @@ const AptosCandlestickChart = () => {
         const netPnL = currentAccumulatedPnL;
         const isProfit = netPnL > 0;
 
-        addDebugMessage(`Setting state to settling. PnL: ${netPnL.toFixed(4)}`);
-
         // Set settling state IMMEDIATELY to block duplicate calls
         setGameStateWithLogging('settling');
         try {
-            addDebugMessage('Calling completeGame...');
             const settlementIcon = isProfit ? '💸' : '💳';
             const settlementAction = isProfit ? 'profit payout' : 'loss settlement';
             console.log(`\n${settlementIcon} Round complete! Requesting ${settlementAction} of ${Math.abs(netPnL).toFixed(6)} APT...`);
@@ -714,7 +688,6 @@ const AptosCandlestickChart = () => {
                 isProfit,
                 Math.abs(netPnL)
             );
-            addDebugMessage(`✅ completeGame done! Hash: ${txHash.substring(0, 10)}...`);
             console.log(`✅ Settlement confirmed!`);
 
             // Check if using passkey demo mode
@@ -726,21 +699,18 @@ const AptosCandlestickChart = () => {
             let payoutCredited = false;
 
             if (isPasskeyDemo) {
-                addDebugMessage('🔐 Passkey mode - refreshing balance');
                 console.log('🔐 Passkey demo mode - skipping blockchain balance wait');
                 console.log('🔄 Refreshing passkey balance from localStorage...');
 
                 // Refresh passkey balance immediately
                 try {
                     await passkey.refreshBalance();
-                    addDebugMessage(`✅ Balance refreshed: ${passkey.balance.toFixed(4)} APT`);
                     console.log('✅ Passkey balance refreshed:', passkey.balance);
 
                     // Update balanceAfterEnd with passkey balance
                     balanceAfterEnd = passkey.balance;
                     payoutCredited = true; // Consider it credited since localStorage is instant
                 } catch (error) {
-                    addDebugMessage('❌ Balance refresh failed!');
                     console.error('❌ Failed to refresh passkey balance:', error);
                 }
 
@@ -826,7 +796,6 @@ const AptosCandlestickChart = () => {
             console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
 
             // Settlement succeeded - reset game state for next round
-            addDebugMessage('🔄 Resetting for next round');
             console.log('🔄 Resetting game state for next round...');
             setGameStartTransaction(null);
             setGameSeed(null);
@@ -846,7 +815,6 @@ const AptosCandlestickChart = () => {
             setGameStateWithLogging('ready');
 
             // Force chart remount to start a new round
-            addDebugMessage('✅ Settlement complete! Starting new round...');
             console.log('🔄 Remounting chart for new round...');
             setChartKey(prev => prev + 1);
         } catch (error) {
@@ -1007,15 +975,11 @@ const AptosCandlestickChart = () => {
 
             // Check if this is a round end first, to prioritize settlement
             if (phase === 'end' || (meta as any).gameEnded) {
-                addDebugMessage('🎯 Round end detected!');
-
                 // Use refs to get current values and avoid stale closure
                 const currentGameState = gameStateRef.current;
                 const currentAccumulatedPnL = accumulatedPnLRef.current;
                 const currentGameStartTransaction = gameStartTransactionRef.current;
                 const currentSignAndSubmitTransaction = signAndSubmitTransactionRef.current;
-
-                addDebugMessage(`State: ${currentGameState}, PnL: ${currentAccumulatedPnL.toFixed(4)}`);
 
                 console.log('🎯 Round end detected:', {
                     gameState: currentGameState,
@@ -1027,12 +991,9 @@ const AptosCandlestickChart = () => {
                 });
 
                 if (currentGameState === 'playing' && currentGameStartTransaction && currentSignAndSubmitTransaction) {
-                    addDebugMessage('✅ Conditions met - calling settle');
-
                     // Check if we have a gameSeed - if not, we can't settle properly
                     const currentGameSeed = gameSeedRef.current;
                     if (!currentGameSeed) {
-                        addDebugMessage('❌ Missing gameSeed!');
                         console.error('❌ Cannot settle - gameSeed is missing!', {
                             gameState: currentGameState,
                             gameStartTransaction: currentGameStartTransaction,
@@ -1062,7 +1023,6 @@ const AptosCandlestickChart = () => {
                         settleRoundOnChain();
                     }, 100);
                 } else {
-                    addDebugMessage(`❌ Can't settle: state=${currentGameState}, tx=${!!currentGameStartTransaction}, sign=${!!currentSignAndSubmitTransaction}`);
                     console.log('❌ Not settling - conditions not met:', {
                         gameState: currentGameState,
                         hasTransaction: !!currentGameStartTransaction,
@@ -1201,34 +1161,6 @@ const AptosCandlestickChart = () => {
 
             {/* PnL Overlay */}
             <PnlOverlay pnl={pnl} displayPnl={displayPnl} isHolding={isHolding} />
-
-            {/* Debug Messages Overlay (Mobile) - ALWAYS VISIBLE */}
-            <div style={{
-                position: 'fixed',
-                top: 80,
-                left: 5,
-                right: 5,
-                background: 'rgba(0, 0, 0, 0.95)',
-                color: '#00ff00',
-                padding: '12px',
-                borderRadius: '12px',
-                border: '2px solid #00ff00',
-                fontFamily: 'monospace',
-                fontSize: '13px',
-                fontWeight: 'bold',
-                zIndex: 99999,
-                maxHeight: '250px',
-                overflow: 'auto',
-                pointerEvents: 'none',
-                boxShadow: '0 0 20px rgba(0, 255, 0, 0.5)',
-            }}>
-                <div style={{ marginBottom: '8px', color: '#ffff00', fontSize: '14px' }}>
-                    🐛 DEBUG LOG (Mobile)
-                </div>
-                {debugMessages.map((msg, i) => (
-                    <div key={i} style={{ marginBottom: '6px', lineHeight: '1.4' }}>{msg}</div>
-                ))}
-            </div>
 
             {/* Footer */}
             <Footer

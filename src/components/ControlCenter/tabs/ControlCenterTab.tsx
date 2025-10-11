@@ -223,43 +223,11 @@ const ControlCenterTab: React.FC = () => {
     const [positionSize, setPositionSize] = useState(20);
     const [doNotDisturb, setDoNotDisturb] = useState(false);
     const [darkMode, setDarkMode] = useState(true);
-    const [scrollDebug, setScrollDebug] = useState({ isScrolling: false, scrollTop: 0 });
-
-    // Simple scroll debug handler
-    const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
-        const target = e.target as HTMLDivElement;
-        const scrollInfo = {
-            scrollTop: target.scrollTop,
-            scrollHeight: target.scrollHeight,
-            clientHeight: target.clientHeight,
-            canScroll: target.scrollHeight > target.clientHeight
-        };
-
-        setScrollDebug({
-            isScrolling: true,
-            scrollTop: scrollInfo.scrollTop
-        });
-
-        console.log('📜 ControlCenterTab Scrolling:', scrollInfo);
-
-        // Hide debug after 1 second
-        setTimeout(() => {
-            setScrollDebug(prev => ({ ...prev, isScrolling: false }));
-        }, 1000);
-    };
 
     return (
         <>
-            {/* Debug Indicator */}
-            {scrollDebug.isScrolling && (
-                <div className="scroll-debug">
-                    Controls Scrolling: {Math.round(scrollDebug.scrollTop)}px
-                </div>
-            )}
-
             <div
                 className="hide-scrollbar"
-                onScroll={handleScroll}
                 style={{
                     display: 'flex',
                     flexDirection: 'column',

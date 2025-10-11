@@ -29,6 +29,9 @@ const RoundSummaryModal: React.FC<RoundSummaryModalProps> = ({
   const pnlUSD = totalPnL * aptToUsdRate;
   const returnPercent = betAmount > 0 ? (totalPnL / betAmount) * 100 : 0;
 
+  // Responsive sizing for mobile
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+
   return (
     <div
       style={{
@@ -53,22 +56,22 @@ const RoundSummaryModal: React.FC<RoundSummaryModalProps> = ({
         onClick={(e) => e.stopPropagation()}
         style={{
           position: 'relative',
-          maxWidth: '480px',
+          maxWidth: isMobile ? '95vw' : '480px',
           width: '100%',
-          maxHeight: '90vh',
+          maxHeight: isMobile ? '85vh' : '90vh',
           overflowY: 'auto',
-          border: '3px solid hsl(0, 0%, 100%, 0.3)',
-          borderRadius: '24px',
-          padding: '48px 40px',
+          border: isMobile ? '2px solid hsl(0, 0%, 100%, 0.3)' : '3px solid hsl(0, 0%, 100%, 0.3)',
+          borderRadius: isMobile ? '16px' : '24px',
+          padding: isMobile ? '24px 20px' : '48px 40px',
           background: 'hsl(0, 0%, 100%, 0.08)',
           backdropFilter: 'blur(16px)',
           boxShadow: 'inset 0 0 8px 1px hsl(0, 0%, 100%, 0.2), 0 20px 60px rgba(0, 0, 0, 0.5)'
         }}
       >
         {/* Header */}
-        <div style={{ textAlign: 'center', marginBottom: '48px' }}>
+        <div style={{ textAlign: 'center', marginBottom: isMobile ? '20px' : '48px' }}>
           <h2 style={{
-            fontSize: '32px',
+            fontSize: isMobile ? '24px' : '32px',
             fontWeight: 700,
             color: 'rgba(255,255,255,0.95)',
             marginBottom: '0',
@@ -79,40 +82,40 @@ const RoundSummaryModal: React.FC<RoundSummaryModalProps> = ({
         </div>
 
         {/* Main P&L - Massive Hero */}
-        <div style={{ textAlign: 'center', marginBottom: '56px' }}>
+        <div style={{ textAlign: 'center', marginBottom: isMobile ? '24px' : '56px' }}>
           <div
             style={{
-              fontSize: '72px',
+              fontSize: isMobile ? '48px' : '72px',
               fontWeight: 900,
               lineHeight: '1',
               color: isProfit ? '#00FF99' : '#FF5555',
-              letterSpacing: '-3px',
+              letterSpacing: isMobile ? '-2px' : '-3px',
               textShadow: `0 0 30px ${isProfit ? 'rgba(0,255,153,0.4)' : 'rgba(255,85,85,0.4)'}`,
-              marginBottom: '16px'
+              marginBottom: isMobile ? '8px' : '16px'
             }}
           >
             {isProfit ? '+' : ''}{totalPnL.toFixed(4)}
           </div>
           <div style={{
-            fontSize: '18px',
+            fontSize: isMobile ? '14px' : '18px',
             color: 'rgba(255,255,255,0.5)',
             fontWeight: 600,
             letterSpacing: '2px',
-            marginBottom: '24px'
+            marginBottom: isMobile ? '12px' : '24px'
           }}>
             APT
           </div>
           <div style={{
-            fontSize: '24px',
+            fontSize: isMobile ? '18px' : '24px',
             color: 'rgba(255,255,255,0.8)',
             fontWeight: 600,
-            marginBottom: '12px'
+            marginBottom: isMobile ? '8px' : '12px'
           }}>
             {isProfit ? '+' : ''}${pnlUSD.toFixed(2)} USD
           </div>
           <div
             style={{
-              fontSize: '16px',
+              fontSize: isMobile ? '14px' : '16px',
               fontWeight: 600,
               color: 'rgba(255,255,255,0.6)'
             }}
@@ -125,14 +128,14 @@ const RoundSummaryModal: React.FC<RoundSummaryModalProps> = ({
         <div style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(2, 1fr)',
-          gap: '24px',
-          marginBottom: '48px'
+          gap: isMobile ? '12px' : '24px',
+          marginBottom: isMobile ? '20px' : '48px'
         }}>
           <div style={{ textAlign: 'center' }}>
             <div style={{
-              fontSize: '13px',
+              fontSize: isMobile ? '11px' : '13px',
               color: 'rgba(255,255,255,0.5)',
-              marginBottom: '12px',
+              marginBottom: isMobile ? '6px' : '12px',
               textTransform: 'uppercase',
               letterSpacing: '1.5px',
               fontWeight: 600
@@ -140,7 +143,7 @@ const RoundSummaryModal: React.FC<RoundSummaryModalProps> = ({
               Trades
             </div>
             <div style={{
-              fontSize: '36px',
+              fontSize: isMobile ? '24px' : '36px',
               fontWeight: 800,
               color: 'rgba(255,255,255,0.95)',
               lineHeight: '1'
@@ -151,9 +154,9 @@ const RoundSummaryModal: React.FC<RoundSummaryModalProps> = ({
 
           <div style={{ textAlign: 'center' }}>
             <div style={{
-              fontSize: '13px',
+              fontSize: isMobile ? '11px' : '13px',
               color: 'rgba(255,255,255,0.5)',
-              marginBottom: '12px',
+              marginBottom: isMobile ? '6px' : '12px',
               textTransform: 'uppercase',
               letterSpacing: '1.5px',
               fontWeight: 600
@@ -161,7 +164,7 @@ const RoundSummaryModal: React.FC<RoundSummaryModalProps> = ({
               Win Rate
             </div>
             <div style={{
-              fontSize: '36px',
+              fontSize: isMobile ? '24px' : '36px',
               fontWeight: 800,
               color: 'rgba(255,255,255,0.95)',
               lineHeight: '1'
@@ -172,9 +175,9 @@ const RoundSummaryModal: React.FC<RoundSummaryModalProps> = ({
 
           <div style={{ textAlign: 'center' }}>
             <div style={{
-              fontSize: '13px',
+              fontSize: isMobile ? '11px' : '13px',
               color: 'rgba(255,255,255,0.5)',
-              marginBottom: '12px',
+              marginBottom: isMobile ? '6px' : '12px',
               textTransform: 'uppercase',
               letterSpacing: '1.5px',
               fontWeight: 600
@@ -182,7 +185,7 @@ const RoundSummaryModal: React.FC<RoundSummaryModalProps> = ({
               Winners
             </div>
             <div style={{
-              fontSize: '36px',
+              fontSize: isMobile ? '24px' : '36px',
               fontWeight: 800,
               color: 'rgba(255,255,255,0.95)',
               lineHeight: '1'
@@ -193,9 +196,9 @@ const RoundSummaryModal: React.FC<RoundSummaryModalProps> = ({
 
           <div style={{ textAlign: 'center' }}>
             <div style={{
-              fontSize: '13px',
+              fontSize: isMobile ? '11px' : '13px',
               color: 'rgba(255,255,255,0.5)',
-              marginBottom: '12px',
+              marginBottom: isMobile ? '6px' : '12px',
               textTransform: 'uppercase',
               letterSpacing: '1.5px',
               fontWeight: 600
@@ -203,7 +206,7 @@ const RoundSummaryModal: React.FC<RoundSummaryModalProps> = ({
               Losers
             </div>
             <div style={{
-              fontSize: '36px',
+              fontSize: isMobile ? '24px' : '36px',
               fontWeight: 800,
               color: 'rgba(255,255,255,0.95)',
               lineHeight: '1'
@@ -217,19 +220,19 @@ const RoundSummaryModal: React.FC<RoundSummaryModalProps> = ({
         <div style={{
           height: '1px',
           background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)',
-          marginBottom: '32px'
+          marginBottom: isMobile ? '16px' : '32px'
         }} />
 
         {/* Bet Summary - Clean rows */}
-        <div style={{ marginBottom: '40px' }}>
+        <div style={{ marginBottom: isMobile ? '20px' : '40px' }}>
           <div style={{
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            marginBottom: '16px'
+            marginBottom: isMobile ? '10px' : '16px'
           }}>
             <span style={{
-              fontSize: '15px',
+              fontSize: isMobile ? '13px' : '15px',
               color: 'rgba(255,255,255,0.6)',
               fontWeight: 600,
               letterSpacing: '0.5px'
@@ -237,7 +240,7 @@ const RoundSummaryModal: React.FC<RoundSummaryModalProps> = ({
               Initial Bet
             </span>
             <span style={{
-              fontSize: '17px',
+              fontSize: isMobile ? '14px' : '17px',
               color: 'rgba(255,255,255,0.95)',
               fontWeight: 700,
               fontFamily: 'monospace'
@@ -251,7 +254,7 @@ const RoundSummaryModal: React.FC<RoundSummaryModalProps> = ({
             alignItems: 'center'
           }}>
             <span style={{
-              fontSize: '15px',
+              fontSize: isMobile ? '13px' : '15px',
               color: 'rgba(255,255,255,0.6)',
               fontWeight: 600,
               letterSpacing: '0.5px'
@@ -259,7 +262,7 @@ const RoundSummaryModal: React.FC<RoundSummaryModalProps> = ({
               Final Payout
             </span>
             <span style={{
-              fontSize: '17px',
+              fontSize: isMobile ? '14px' : '17px',
               color: 'rgba(255,255,255,0.95)',
               fontWeight: 700,
               fontFamily: 'monospace'
@@ -289,12 +292,12 @@ const RoundSummaryModal: React.FC<RoundSummaryModalProps> = ({
           }}
           style={{
             width: '100%',
-            padding: '18px',
-            borderRadius: '16px',
+            padding: isMobile ? '14px' : '18px',
+            borderRadius: isMobile ? '12px' : '16px',
             background: 'hsl(0, 0%, 100%, 0.15)',
             border: '2px solid hsl(0, 0%, 100%, 0.3)',
             color: 'rgba(255,255,255,0.95)',
-            fontSize: '16px',
+            fontSize: isMobile ? '14px' : '16px',
             fontWeight: 700,
             cursor: 'pointer',
             transition: 'all 0.2s ease',
@@ -321,8 +324,8 @@ const RoundSummaryModal: React.FC<RoundSummaryModalProps> = ({
         {/* Footer hint */}
         <div style={{
           textAlign: 'center',
-          marginTop: '20px',
-          fontSize: '12px',
+          marginTop: isMobile ? '12px' : '20px',
+          fontSize: isMobile ? '11px' : '12px',
           color: 'rgba(255,255,255,0.4)',
           fontWeight: 500
         }}>

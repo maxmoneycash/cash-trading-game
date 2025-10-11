@@ -11,31 +11,7 @@ interface AccountTabProps {
 
 const AccountTab: React.FC<AccountTabProps> = ({ balance, walletBalance, currentPnL, trades, aptToUsdRate = 10 }) => {
     const [timeFrame, setTimeFrame] = useState<'1D' | '1W' | '1M' | 'ALL'>('1W');
-    const [scrollDebug, setScrollDebug] = useState({ isScrolling: false, scrollTop: 0 });
     const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
-
-    // Simple scroll debug handler
-    const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
-        const target = e.target as HTMLDivElement;
-        const scrollInfo = {
-            scrollTop: target.scrollTop,
-            scrollHeight: target.scrollHeight,
-            clientHeight: target.clientHeight,
-            canScroll: target.scrollHeight > target.clientHeight
-        };
-
-        setScrollDebug({
-            isScrolling: true,
-            scrollTop: scrollInfo.scrollTop
-        });
-
-        console.log('📜 AccountTab Scrolling:', scrollInfo);
-
-        // Hide debug after 1 second
-        setTimeout(() => {
-            setScrollDebug(prev => ({ ...prev, isScrolling: false }));
-        }, 1000);
-    };
 
     // Calculate live balance in USD
     // walletBalance and currentPnL are in APT, convert to USD
@@ -56,7 +32,7 @@ const AccountTab: React.FC<AccountTabProps> = ({ balance, walletBalance, current
         return {
             date: new Date(trade.exitTimestamp ?? trade.entryTimestamp),
             pair: 'BTC/USD',
-            tradeSize: trade.size,
+            tradeSize: (trade.size ?? 0) * aptToUsdRate, // Convert APT to USD
             timeInTrade,
             percentGain,
             pnl: (trade.pnl ?? 0) * aptToUsdRate
@@ -70,16 +46,8 @@ const AccountTab: React.FC<AccountTabProps> = ({ balance, walletBalance, current
 
     return (
         <>
-            {/* Debug Indicator */}
-            {scrollDebug.isScrolling && (
-                <div className="scroll-debug">
-                    Account Scrolling: {Math.round(scrollDebug.scrollTop)}px
-                </div>
-            )}
-
             <div
                 className="hide-scrollbar"
-                onScroll={handleScroll}
                 style={{
                     display: 'flex',
                     flexDirection: 'column',
@@ -349,7 +317,7 @@ const AccountTab: React.FC<AccountTabProps> = ({ balance, walletBalance, current
                                                 fontWeight: 500,
                                                 whiteSpace: 'nowrap',
                                             }}>
-                                                ${trade.tradeSize}
+                                                ${trade.tradeSize.toFixed(2)}
                                             </td>
                                             <td style={{
                                                 padding: '1rem',

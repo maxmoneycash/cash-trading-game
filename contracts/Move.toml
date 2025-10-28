@@ -4,7 +4,7 @@ version = "1.0.0"
 authors = ["Cash Trading Game Team"]
 
 [addresses]
-cash_trading_game = "_"
+cash_trading_game = "0xAC90639E0D28963F6D370FBB363D9A120B5ED00660CD276B4B1A58D499CEEE34"
 
 [dev-addresses]
 

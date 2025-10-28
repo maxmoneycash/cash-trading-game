@@ -11,6 +11,15 @@ node_modules
 dist
 dist-ssr
 *.local
+
+# Move / contract build outputs
+contracts/build/
+contracts/.aptos/
+
+# Server build artifacts & databases
+server/dist
+server/database/*.db
+
 # Ignore stray compiled JS in server (TS outputs should go to dist/)
 server/**/*.js
 

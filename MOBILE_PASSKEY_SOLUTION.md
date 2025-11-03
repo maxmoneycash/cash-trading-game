@@ -20,11 +20,11 @@ We've implemented a **smart authentication system** that automatically detects m
    - Checks for passkey/WebAuthn support
    - Recommends best auth method per device
 
-2. **Mobile Auth Handler** (`src/components/MobileAuthHandler.tsx`)
-   - Automatically shows on mobile devices
-   - Offers passkey authentication (Face ID / Touch ID)
-   - Falls back to wallet if user prefers
-   - Beautiful, user-friendly UI
+2. **Wallet Manager & Picker** (`src/components/wallet/WalletManager.tsx`, `WalletPicker.tsx`)
+   - Provides the unified wallet modal used across desktop and mobile
+   - Lists Petra, Backpack, Google/Apple (Aptos Connect) and a passkey card
+   - Handles faucet requests for passkey accounts without leaving the game
+   - Replaces the old one-off Petra button and passkey popover
 
 3. **Unified Auth Hook** (`src/hooks/useUnifiedAuth.ts`)
    - Provides single interface for both wallet and passkey auth
@@ -42,98 +42,87 @@ We've implemented a **smart authentication system** that automatically detects m
 1. **User opens app on mobile** → Detects mobile device
 2. **Shows passkey prompt** → "Use Face ID / Touch ID for best experience"
 3. **User authenticates with biometrics** → Creates passkey credential
-4. **Transactions use passkey** → No popups needed! ✨
+ 4. **Transactions use passkey** → No popups needed! ✨
 
-### Current Limitations
+### Current Status
 
-**Important:** The current passkey implementation uses **mock/demo transactions** for now. This means:
+**UPDATED:** Passkeys now run through Aptos **keyless** accounts (WebAuthn + hosted aggregator) for real on-chain transactions.
 
-- ✅ Passkey authentication works perfectly
-- ✅ Game flow works without popup issues
-- ❌ Transactions are not real blockchain transactions (yet)
-- ❌ Settlement doesn't actually transfer APT (yet)
+- ✅ Passkey authentication with Face ID / Touch ID
+- ✅ Game flow works without wallet popups
+- ✅ Transactions land on Aptos devnet with explorer links
+- ✅ Balances come from on-chain views (no local storage simulation)
+- ✅ Works alongside Petra/desktop wallets
 
-### Next Steps to Enable Real Passkey Transactions
+### Implementation Details
 
-To make passkeys work with REAL Aptos blockchain transactions, we need to:
+#### 1. Real Passkey Transaction Signing ✅
+The passkey signing function now:
+- Builds transactions with `aptos.transaction.build.simple`
+- Generates the signing message via `generateSigningMessageForTransaction`
+- Requests a WebAuthn assertion and normalizes the secp256r1 signature
+- Wraps the result in `WebAuthnSignature` + `AccountAuthenticatorSingleKey`
+- Submits through the Aptos keyless transport and waits for confirmation
 
-#### 1. Implement Passkey Transaction Signing
-```typescript
-// src/utils/passkey-webauthn.ts
-export function createPasskeySignFunction(credentialId: string, credentialData: any) {
-    return async (transaction: any) => {
-        // 1. Build real Aptos transaction
-        const aptosClient = new AptosClient(APTOS_NODE_URL);
-        const rawTxn = await aptosClient.generateTransaction(
-            credentialData.publicKey.aptosAddress,
-            transaction.data
-        );
+See: `src/utils/passkey-webauthn.ts:createPasskeySignFunction()`
 
-        // 2. Create signing challenge from transaction hash
-        const txnHash = sha3_256(BCS.bcsToBytes(rawTxn));
+#### 2. Proper Address Derivation ✅
+Passkey addresses are derived using:
+- P-256 public key (65 bytes, uncompressed)
+- SECP256R1_ECDSA signature scheme (0x02)
+- SHA3-256 hashing
+- Single-key authentication format
 
-        // 3. Sign with WebAuthn passkey
-        const credential = await navigator.credentials.get({
-            publicKey: {
-                challenge: txnHash,
-                allowCredentials: [{ type: 'public-key', id: credentialId }]
-            }
-        });
+See: `src/utils/passkey-webauthn.ts:calculateAptosAddress()`
 
-        // 4. Extract signature from WebAuthn response
-        const signature = extractSignatureFromCredential(credential);
+#### 3. Real Balance Fetching ✅
+Balances are now fetched from the blockchain using:
+- Aptos SDK view function calls
+- `0x1::coin::balance` for AptosCoin
+- Real-time blockchain queries
+- No localStorage fallbacks
 
-        // 5. Submit signed transaction to Aptos
-        const signedTxn = new SignedTransaction(rawTxn, signature);
-        const pendingTxn = await aptosClient.submitSignedBCSTransaction(signedTxn);
+See: `src/utils/passkey-webauthn.ts:getAptBalance()`
 
-        // 6. Wait for confirmation
-        await aptosClient.waitForTransaction(pendingTxn.hash);
-
-        return { hash: pendingTxn.hash, success: true };
-    };
-}
-```
-
-#### 2. Add Passkey Account Derivation
-```typescript
-// Derive proper Aptos address from passkey public key
-export function calculateAptosAddress(publicKeyBytes: Uint8Array): string {
-    // Use Aptos SDK to derive address from P-256 public key
-    const aptosAccount = new AptosAccount(undefined, publicKeyBytes);
-    return aptosAccount.address().hex();
-}
-```
-
-#### 3. Update Settlement Flow
-Once real transactions work, the settlement flow becomes:
+#### 4. Transaction Flow
+The settlement flow now works as follows:
 1. **Round ends** → Show settlement modal
 2. **User clicks "Settle"** → Triggers passkey authentication
 3. **Biometric prompt appears** → User authenticates with Face ID/Touch ID
-4. **Transaction signed** → Using passkey private key
-5. **Submitted to blockchain** → Real APT transferred
-6. **Game updated** → Balance reflects actual settlement
+4. **Transaction signed** → Using passkey private key via WebAuthn
+5. **Submitted to blockchain** → Real APT transferred on devnet
+6. **Confirmation** → Transaction appears on Aptos Explorer
+7. **Balance updated** → Fetched from real blockchain
 
 ## Testing
 
-### To Test on Mobile:
-1. **Deploy changes** to Vercel
-2. **Open on mobile** device (iPhone, Android)
-3. **Should see passkey prompt** automatically
-4. **Authenticate with biometric** (Face ID / Touch ID)
-5. **Play game** - settlement should work without popups
+### Prerequisites
+- Serve the PWA over **HTTPS** (WebAuthn requirement). Use Vercel, ngrok, or a local TLS cert.
+- Ensure the environment points to devnet (`VITE_APTOS_NETWORK=DEVNET`, default).
+- Optional: override keyless endpoints with `VITE_APTOS_KEYLESS_REST_URL` / `VITE_APTOS_KEYLESS_GRPC_URL` if Aptos provides custom ones.
 
-### To Test Passkey (Desktop):
-1. **Add `?mobile=true`** to URL to force mobile mode
-2. **Should see passkey prompt**
-3. **Authenticate with computer's biometric** (Touch ID on Mac, Windows Hello, etc.)
+### To Test on Mobile (Recommended Path)
+1. Start the frontend locally: `npm run dev -- --host 0.0.0.0`.
+2. Expose it over HTTPS (e.g., `ngrok http 5173`) and open the HTTPS URL on iOS/Android.
+3. The passkey prompt appears automatically. Create a passkey (Face ID / Touch ID).
+4. Request faucet funds from the passkey menu (`Add Test Tokens`).
+5. Play a round; when settlement triggers, confirm the biometric prompt appears and the console logs a real transaction hash.
+6. Paste the hash into `https://explorer.aptoslabs.com/txn/<hash>?network=devnet` to verify it landed on-chain.
+
+### To Test Passkey on Desktop
+1. Run `npm run dev`.
+2. Open `http://localhost:5173/?mobile=true` in Chrome/Safari with a platform authenticator (Touch ID, Windows Hello).
+3. Walk through passkey creation, faucet funding, and a game round as above, verifying hashes on explorer.
 
 ## Files Modified
 
 - ✅ `/src/utils/deviceDetection.ts` - NEW: Device detection utility
-- ✅ `/src/hooks/useUnifiedAuth.ts` - NEW: Unified authentication hook
-- ✅ `/src/components/MobileAuthHandler.tsx` - NEW: Mobile auth UI
-- ✅ `/src/App.tsx` - UPDATED: Added MobileAuthHandler wrapper
+- ✅ `/src/hooks/useUnifiedAuth.ts` - Unified auth hook (now backed by Passkey context)
+- ✅ `/src/hooks/PasskeyProvider.tsx` - NEW: Context wrapper exposing a single passkey state
+- ✅ `/src/components/wallet/WalletManager.tsx` - NEW: Shared wallet/passkey modal controller
+- ✅ `/src/components/wallet/WalletPicker.tsx` - NEW: Wallet/adaptor modal UI
+- ✅ `/src/components/wallet/WalletStatusButton.tsx` - NEW: Footer button mirroring Aptos example layout
+- ✅ `/src/App.tsx` - UPDATED: Wraps app with `PasskeyProvider` and `WalletManager`
 
 ## Files Already Existing (Passkey System)
 
@@ -153,6 +142,7 @@ Once real transactions work, the settlement flow becomes:
 - ✅ **One codebase** - Works on desktop and mobile
 - ✅ **Progressive enhancement** - Falls back to wallet if passkeys unavailable
 - ✅ **Future-proof** - Passkeys are the future of web auth
+- ⚠️ **Keyless dependency** - Relies on Aptos-hosted keyless aggregator (no extra backend needed today, but requires HTTPS and platform support)
 
 ## Deployment Checklist
 
@@ -166,15 +156,15 @@ Once real transactions work, the settlement flow becomes:
 
 ## Future Enhancements
 
-1. **Real Blockchain Integration**
-   - Implement proper passkey transaction signing
-   - Add passkey account derivation
-   - Enable real APT transfers
-
-2. **Account Recovery**
+1. **Account Recovery**
    - Add passkey backup/recovery flow
    - Sync across devices with cloud keychain
    - Fallback to wallet if passkey lost
+
+2. **Advanced Keyless Control**
+   - Optionally run a self-hosted keyless aggregator
+   - Add telemetry/monitoring around keyless submission errors
+   - Allow users to choose wallets vs passkeys explicitly
 
 3. **Multi-Device Support**
    - Allow both wallet and passkey for same account
@@ -189,6 +179,6 @@ Once real transactions work, the settlement flow becomes:
 
 ---
 
-**Status**: ✅ Basic passkey authentication working, demo transactions only
+**Status**: ✅ **COMPLETE** - Real blockchain transactions working with passkeys!
 
-**Next**: Implement real blockchain transaction signing with passkeys
+**Transactions are live on Aptos devnet and can be viewed on the explorer.**

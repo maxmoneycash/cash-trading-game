@@ -37,3 +37,22 @@ trading_env/
 
 server/database/game.db
 test-determinism.*
+
+# Private keys (NEVER COMMIT THESE!)
+*.key
+*.key.pub
+backend.key*
+deployer.key*
+
+# Environment secrets
+server/.env
+.env.local
+
+# External code
+aptos-wallet-adapter/
+passive-liquidity-aptos/
+backups/
+bridge/
+agents/
+contracts/backup/
+contracts/crush_*/

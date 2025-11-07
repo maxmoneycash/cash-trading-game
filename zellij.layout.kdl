@@ -1,0 +1,17 @@
+layout {
+  cwd "."
+  pane size=8 {
+    command "./scripts/pane_boot.sh"
+    args "bridge"
+  }
+  pane split_direction="vertical" {
+    pane {
+      command "./scripts/pane_boot.sh"
+      args "coder"
+    }
+    pane {
+      command "./scripts/pane_boot.sh"
+      args "reviewer"
+    }
+  }
+}
